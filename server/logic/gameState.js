@@ -20,6 +20,7 @@ function createRoom(roomId) {
     bluffResult: null,
     bluffPickerId: null,
     bluffTargetId: null,
+    bluffSelectIdx: null,
     timerDuration: 60,
     turnStartTime: null,
     createdAt: Date.now(),
@@ -108,12 +109,26 @@ function reducer(state, action) {
       }
 
       // Move turn to the NEXT player immediately
-      // This matches the "Pass, Play, Call Bluff" choice for the next player
       const nextTurnId = getNextPlayerId(newPlayers, playerId, newRanking);
+
+      const playersWithCards = newPlayers.filter(p => !newRanking.find(r => r.id === p.id));
+      const gameEnded = playersWithCards.length <= 1;
+
+      if (gameEnded && playersWithCards.length === 1) {
+        const lastPlayer = playersWithCards[0];
+        if (!newRanking.find(r => r.id === lastPlayer.id)) {
+          newRanking.push({
+            id: lastPlayer.id,
+            name: lastPlayer.name,
+            avatar: lastPlayer.avatar,
+            rankPos: newRanking.length + 1
+          });
+        }
+      }
 
       return {
         ...state,
-        state: GAME_STATES.PLAYER_TURN, // Stay in player turn phase
+        state: gameEnded ? GAME_STATES.ENDED : GAME_STATES.PLAYER_TURN,
         hands: { ...state.hands, [playerId]: playerHand },
         players: newPlayers,
         ranking: newRanking,
@@ -122,7 +137,7 @@ function reducer(state, action) {
         roundRank: state.roundRank || declaredRank,
         lastPlayerToPlay: playerId,
         passCount: 0,
-        currentTurn: nextTurnId,
+        currentTurn: gameEnded ? null : nextTurnId,
         turnStartTime: Date.now(),
       };
     }
@@ -136,7 +151,15 @@ function reducer(state, action) {
         state: GAME_STATES.BLUFF_PICKING,
         bluffPickerId: playerId,
         bluffTargetId: state.lastMove.playerId,
+        bluffSelectIdx: null, // Reset when picking starts
         turnStartTime: Date.now(), // Reset timer for picking (20s)
+      };
+    }
+    
+    case "SELECT_BLUFF_CARD": {
+      return {
+        ...state,
+        bluffSelectIdx: payload.idx
       };
     }
 
@@ -203,6 +226,7 @@ function reducer(state, action) {
           pileCount: allPileCards.length,
           loserId
         },
+        bluffSelectIdx: null,
         turnStartTime: Date.now(),
       };
     }
@@ -259,12 +283,30 @@ function reducer(state, action) {
         nextTurn = getNextPlayerId(newPlayers, targetId, state.ranking);
       }
 
+      const playersWithCards = newPlayers.filter(p => !state.ranking.find(r => r.id === p.id));
+      const gameEnded = playersWithCards.length <= 1;
+      let newRanking = [...state.ranking];
+
+      if (gameEnded && playersWithCards.length === 1) {
+        const lastPlayer = playersWithCards[0];
+        if (!newRanking.find(r => r.id === lastPlayer.id)) {
+          newRanking.push({
+            id: lastPlayer.id,
+            name: lastPlayer.name,
+            avatar: lastPlayer.avatar,
+            rankPos: newRanking.length + 1
+          });
+        }
+      }
+
       return {
         ...state,
+        state: gameEnded ? GAME_STATES.ENDED : state.state,
         players: newPlayers,
         hands: newHands,
         sidePile: newSidePile,
-        currentTurn: nextTurn,
+        ranking: newRanking,
+        currentTurn: gameEnded ? null : nextTurn,
       };
     }
 

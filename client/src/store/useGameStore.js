@@ -129,6 +129,11 @@ export const useGameStore = create((set, get) => ({
     s?.emit('pick_bluff_card', { roomId, cardIndex });
   },
 
+  selectBluffCard: (idx) => {
+    const { socket: s, roomId } = get();
+    s?.emit('select_bluff_card', { roomId, idx });
+  },
+
   passTurn: () => {
     const { socket: s, roomId } = get();
     s?.emit('pass_turn', { roomId });

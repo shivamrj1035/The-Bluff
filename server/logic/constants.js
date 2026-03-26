@@ -21,6 +21,7 @@ const EVENTS = {
   PLAY_CARDS: "play_cards",
   CALL_BLUFF: "call_bluff",
   PICK_BLUFF_CARD: "pick_bluff_card", // NEW: caller chooses card index
+  SELECT_BLUFF_CARD: "select_bluff_card", // NEW: real-time hover sync
   PASS_TURN: "pass_turn",
   LEAVE_ROOM: "leave_room",
   KICK_PLAYER: "kick_player",         // NEW: host removes player

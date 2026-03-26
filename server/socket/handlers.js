@@ -183,6 +183,22 @@ function setupHandlers(io, socket) {
     } catch (err) {}
   });
 
+  // --- SELECT BLUFF CARD (HOVER) ---
+  socket.on(EVENTS.SELECT_BLUFF_CARD, async ({ roomId, idx }) => {
+    try {
+      let room = await getRoom(roomId);
+      if (!room || room.state !== GAME_STATES.BLUFF_PICKING || room.bluffPickerId !== socket.id) return;
+
+      room = reducer(room, {
+        type: "SELECT_BLUFF_CARD",
+        playerId: socket.id,
+        payload: { idx },
+      });
+      await saveRoom(roomId, room);
+      emitState(io, roomId, room);
+    } catch (err) {}
+  });
+
   // --- PASS TURN ---
   socket.on(EVENTS.PASS_TURN, async ({ roomId }) => {
     try {
