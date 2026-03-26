@@ -133,3 +133,5 @@ body {
 .player-row.me { border-color: var(--primary-light); background: rgba(124,58,237,0.1); }
 .dot-live { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: pulse-ring 2s infinite; margin-left: auto; }
 .face-down-card { position: absolute; border-radius: 6px; background: linear-gradient(135deg, #4c1d95, #1e1b4b); border: 1px solid rgba(167,139,250,0.25); }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

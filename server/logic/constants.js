@@ -27,6 +27,7 @@ const EVENTS = {
   KICK_PLAYER: "kick_player",         // NEW: host removes player
   RESTART_GAME: "restart_game",       // NEW: host restarts from ranking
   CLOSE_GAME: "close_game",           // NEW: host closes room
+  PROCEED_NEXT_TURN: "proceed_next_turn", // NEW: internal/timer to end resolution
 
   // Server -> Client
   GAME_STATE: "game_state",

@@ -122,7 +122,11 @@ export default function GameBoard() {
 
   if (!gameState) return null;
 
-  const { players, hands, pile, sidePile, currentTurn, lastMove, state, hostId, roundRank, ranking, bluffPickerId, bluffSelectIdx } = gameState;
+  const { 
+    players, hands, pile, sidePile, currentTurn, lastMove, state, 
+    hostId, roundRank, ranking, bluffPickerId, bluffSelectIdx, bluffResult,
+    roomId: serverRoomId, isSpectator 
+  } = gameState;
   
   const myHand = useMemo(() => {
     const rawHand = hands?.[playerId] || [];
@@ -186,6 +190,35 @@ export default function GameBoard() {
           <div className="panel-sm" style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span style={{ fontWeight: 900, color: '#a78bfa', fontSize: '0.85rem' }}>THE BLUFF</span>
           </div>
+          {/* Room ID Pill */}
+          <div className="panel-sm" style={{ 
+            padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '8px',
+            background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)'
+          }}>
+            <span style={{ color: '#9ca3af', fontWeight: 700, fontSize: '0.7rem' }}>ROOM:</span>
+            <span style={{ fontWeight: 900, color: '#fff', fontSize: '0.8rem', letterSpacing: '0.05em' }}>{serverRoomId}</span>
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                navigator.clipboard.writeText(serverRoomId);
+                toast.success("Room code copied!");
+              }}
+              style={{ 
+                background: 'none', border: 'none', cursor: 'pointer', color: '#7c3aed',
+                padding: '2px', marginLeft: 2, display: 'flex', alignItems: 'center'
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+            </button>
+          </div>
+          {isSpectator && (
+            <div className="panel-sm" style={{ padding: '8px 16px', background: '#f59e0b', border: 'none' }}>
+              <span style={{ color: '#000', fontWeight: 900, fontSize: '0.65rem', textTransform: 'uppercase' }}>Spectating</span>
+            </div>
+          )}
           {roundRank && (
             <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="panel-sm"
               style={{ padding: '10px 20px', border: '1.5px solid #f59e0b', background: 'rgba(245,158,11,0.1)' }}>
@@ -328,54 +361,82 @@ export default function GameBoard() {
 
       {/* ── My Hand ── */}
       <AnimatePresence>
-        {(!isPortrait || showMobileHand || !isMyTurn) && (
+        {!isSpectator && (!isPortrait || showMobileHand) && (
           <motion.div
             initial={isPortrait ? { y: 200, opacity: 0 } : { opacity: 0 }}
             animate={isPortrait ? { y: 0, opacity: 1 } : { opacity: 1 }}
             exit={isPortrait ? { y: 200, opacity: 0 } : { opacity: 0 }}
             style={{
-              position: 'absolute', bottom: isPortrait ? '120px' : '135px',
+              position: 'absolute', bottom: isPortrait ? '130px' : '140px',
               left: 0, right: 0, display: 'flex', justifyContent: 'center',
               zIndex: 40, pointerEvents: (isPickingPhase || isEnded) ? 'none' : 'auto',
             }}>
-            <div style={{
-              position: 'relative', display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-              height: '180px', width: '90vw', maxWidth: '1200px',
-            }}>
-              {myHand.map((cardId, i) => {
-                const count = myHand.length;
-                // Traditional overlapping: calculate offset based on total count to fit width
-                const maxHandWidth = isPortrait ? 320 : 800;
-                const cardWidth = isPortrait ? 60 : 80;
-                const overlap = count > 1 ? Math.min(cardWidth - 10, (maxHandWidth - cardWidth) / (count - 1)) : 0;
-                const totalW = (count - 1) * overlap;
-                const tx = (i * overlap) - (totalW / 2);
-                
-                const selected = selectedCards.includes(cardId);
-                const angle = (i - (count - 1) / 2) * (count > 10 ? 1.5 : 3);
+            {isPortrait ? (
+              /* Mobile Sliding Layout */
+              <div style={{
+                width: '100vw', display: 'flex', overflowX: 'auto', overflowY: 'visible',
+                padding: '20px 40px 60px', scrollBehavior: 'smooth', gap: '12px', 
+                alignItems: 'flex-end', justifyContent: 'flex-start',
+                scrollbarWidth: 'none', msOverflowStyle: 'none'
+              }} className="no-scrollbar">
+                {myHand.map((cardId, i) => {
+                  const selected = selectedCards.includes(cardId);
+                  return (
+                    <div key={`${cardId}-${i}`}
+                      style={{ 
+                        cursor: 'pointer', flexShrink: 0, 
+                        transform: `translateY(${selected ? -20 : 0}px)`,
+                        transition: 'transform 0.2s ease',
+                      }}
+                      onClick={() => toggleCard(cardId)}
+                    >
+                      <Card cardId={cardId} scale={0.9} index={i} />
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              /* Desktop Traditional Fanned Layout */
+              <div style={{
+                position: 'relative', display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+                height: '180px', width: '95vw', maxWidth: '1400px',
+              }}>
+                {myHand.map((cardId, i) => {
+                  const count = myHand.length;
+                  // More generous spacing for traditional layout
+                  const maxHandWidth = Math.min(1100, window.innerWidth * 0.9);
+                  const cardWidth = 80;
+                  // Ensure at least 30-40px of each card is visible
+                  const overlap = count > 1 ? Math.min(60, (maxHandWidth - cardWidth) / (count - 1)) : 0;
+                  const totalW = (count - 1) * overlap;
+                  const tx = (i * overlap) - (totalW / 2);
+                  
+                  const selected = selectedCards.includes(cardId);
+                  const angle = (i - (count - 1) / 2) * (count > 15 ? 1 : 2);
 
-                return (
-                  <motion.div key={`${cardId}-${i}`}
-                    layout
-                    style={{
-                      position: 'absolute', left: '50%', bottom: 0, transformOrigin: 'bottom center',
-                      x: tx, y: selected ? -30 : 0, rotate: angle,
-                      zIndex: i, cursor: 'pointer',
-                    }}
-                    whileHover={{ y: selected ? -40 : -15, zIndex: 100 }}
-                    onClick={() => toggleCard(cardId)}
-                  >
-                    <Card cardId={cardId} scale={isPortrait ? 0.9 : 1.1} />
-                  </motion.div>
-                );
-              })}
-            </div>
+                  return (
+                    <motion.div key={`${cardId}-${i}`}
+                      layout
+                      style={{
+                        position: 'absolute', left: '50%', bottom: 0, transformOrigin: 'bottom center',
+                        x: tx, y: selected ? -30 : 0, rotate: angle,
+                        zIndex: i, cursor: 'pointer',
+                      }}
+                      whileHover={{ y: selected ? -40 : -15, zIndex: 100 }}
+                      onClick={() => toggleCard(cardId)}
+                    >
+                      <Card cardId={cardId} scale={1.1} index={i} />
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* ── Mobile "View Cards" Toggle ── */}
-      {isPortrait && state !== 'ENDED' && (
+      {/* ── Mobile "View Cards" Toggle (Hidden for Spectators) ── */}
+      {!isSpectator && isPortrait && state !== 'ENDED' && (
         <div style={{ position: 'absolute', bottom: '90px', left: '50%', transform: 'translateX(-50%)', zIndex: 45 }}>
           <button className="btn btn-sm"
             onClick={() => setShowMobileHand(!showMobileHand)}
@@ -441,6 +502,87 @@ export default function GameBoard() {
                   {bluffPicker?.name.toUpperCase()} IS LOOKING AT A CARD...
                 </p>
               )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Bluff Result / Resolution ── */}
+      <AnimatePresence>
+        {state === 'ROUND_RESOLUTION' && bluffResult && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 70, background: 'rgba(5,5,15,0.98)', backdropFilter: 'blur(20px)',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '30px'
+            }}>
+            
+            <motion.div
+              initial={{ scale: 0.5, rotateY: 180 }}
+              animate={{ scale: 1.2, rotateY: 0 }}
+              transition={{ type: 'spring', damping: 12, stiffness: 100 }}
+              style={{ filter: 'drop-shadow(0 0 40px rgba(124,58,237,0.6))' }}
+            >
+              <Card cardId={bluffResult.pickedCard} scale={isPortrait ? 1.2 : 1.5} />
+            </motion.div>
+
+            <div style={{ textAlign: 'center', maxWidth: '90%' }}>
+              <motion.h2
+                initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }}
+                style={{ 
+                  fontSize: isPortrait ? '1.8rem' : '3rem', fontWeight: 900, 
+                  color: bluffResult.wasBluff ? '#ef4444' : '#10b981', 
+                  textTransform: 'uppercase', letterSpacing: '0.1em' 
+                }}>
+                {bluffResult.wasBluff ? 'BLUFF CAUGHT!' : 'THEY WERE HONEST!'}
+              </motion.h2>
+              
+              <motion.p
+                initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5 }}
+                style={{ fontSize: isPortrait ? '1.1rem' : '1.5rem', fontWeight: 600, color: '#fff', marginTop: 10 }}>
+                {bluffResult.wasBluff 
+                  ? `${bluffResult.targetName} lied about having ${bluffResult.pickedCard.split('_')[1]}.` 
+                  : `${bluffResult.targetName} actually had ${bluffResult.pickedCard.split('_')[1]}.`
+                }
+              </motion.p>
+
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.8 }}
+                style={{ 
+                  marginTop: 20, padding: '15px 20px', background: 'rgba(255,255,255,0.05)', 
+                  borderRadius: 16, border: '1px solid rgba(255,255,255,0.1)',
+                  width: '90vw', maxWidth: '800px'
+                }}>
+                <div style={{ marginBottom: 12 }}>
+                  <span style={{ fontSize: '1rem', color: '#9ca3af' }}>Penalty: </span>
+                  <span style={{ fontSize: '1.2rem', fontWeight: 900, color: '#f59e0b' }}>
+                    {bluffResult.pileCount} CARDS
+                  </span>
+                  <div style={{ fontSize: '0.9rem', color: '#fff', marginTop: 2 }}>
+                    Assigned to <span style={{ color: '#7c3aed', fontWeight: 800 }}>{bluffResult.loserId === playerId ? 'YOU' : players.find(p => p.id === bluffResult.loserId)?.name.toUpperCase()}</span>
+                  </div>
+                </div>
+
+                {/* Assigned Cards Slider */}
+                <div style={{ 
+                  display: 'flex', overflowX: 'auto', gap: '6px', paddingBottom: '10px',
+                  justifyContent: 'flex-start', alignItems: 'center', scrollbarWidth: 'none',
+                }} className="no-scrollbar">
+                  {bluffResult.assignedCards?.map((cId, idx) => (
+                    <div key={idx} style={{ flexShrink: 0 }}>
+                      <Card cardId={cId} faceDown={cId !== bluffResult.pickedCard} small={true} scale={0.8} />
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            </div>
+            
+            {/* Resolution Progress Bar */}
+            <div style={{ position: 'absolute', bottom: 0, left: 0, height: '4px', background: 'var(--primary)', width: '100%' }}>
+               <motion.div 
+                 initial={{ width: '100%' }} animate={{ width: '0%' }} transition={{ duration: 4, ease: 'linear' }}
+                 style={{ height: '100%', background: 'rgba(255,255,255,0.3)', position: 'absolute', right: 0 }}
+               />
             </div>
           </motion.div>
         )}
@@ -535,30 +677,38 @@ export default function GameBoard() {
           </div>
 
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-            {isMyTurn && !isPickingPhase && !isEnded && (
+            {!isSpectator ? (
               <>
-                {!roundRank && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                    <span style={{ fontSize: '0.6rem', fontWeight: 900, color: '#6b7280', paddingLeft: 4 }}>RANK</span>
-                    <select value={declaredRank} onChange={e => setDeclaredRank(e.target.value)} className="rank-select" style={{ padding: '6px 10px', fontSize: '0.85rem' }}>
-                      {RANKS.map(r => <option key={r} value={r} style={{ background: '#0c0c1a' }}>{r}</option>)}
-                    </select>
-                  </div>
+                {isMyTurn && !isPickingPhase && !isEnded && (
+                  <>
+                    {!roundRank && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        <span style={{ fontSize: '0.6rem', fontWeight: 900, color: '#6b7280', paddingLeft: 4 }}>RANK</span>
+                        <select value={declaredRank} onChange={e => setDeclaredRank(e.target.value)} className="rank-select" style={{ padding: '6px 10px', fontSize: '0.85rem' }}>
+                          {RANKS.map(r => <option key={r} value={r} style={{ background: '#0c0c1a' }}>{r}</option>)}
+                        </select>
+                      </div>
+                    )}
+                    {pile.length > 0 && (
+                      <button className="btn btn-red btn-sm" onClick={callBluff} style={{ padding: '10px 18px', fontWeight: 900, width: 'auto' }}><MaskIcon size={16} /> BLUFF</button>
+                    )}
+                    <button className="btn btn-primary btn-sm" onClick={handlePlay} disabled={selectedCards.length === 0} style={{ padding: '10px 24px', opacity: selectedCards.length === 0 ? 0.3 : 1, width: 'auto', fontSize: '0.85rem' }}>
+                      PLAY {selectedCards.length || ''}
+                    </button>
+                    {roundRank && (
+                      <button className="btn btn-outline btn-sm" onClick={passTurn} style={{ padding: '10px 18px', width: 'auto' }}>PASS</button>
+                    )}
+                  </>
                 )}
-                {pile.length > 0 && (
-                  <button className="btn btn-red btn-sm" onClick={callBluff} style={{ padding: '10px 18px', fontWeight: 900, width: 'auto' }}><MaskIcon size={16} /> BLUFF</button>
-                )}
-                <button className="btn btn-primary btn-sm" onClick={handlePlay} disabled={selectedCards.length === 0} style={{ padding: '10px 24px', opacity: selectedCards.length === 0 ? 0.3 : 1, width: 'auto', fontSize: '0.85rem' }}>
-                  PLAY {selectedCards.length || ''}
-                </button>
-                {roundRank && (
-                  <button className="btn btn-outline btn-sm" onClick={passTurn} style={{ padding: '10px 18px', width: 'auto' }}>PASS</button>
+                {!isMyTurn && !isEnded && !isPickingPhase && (
+                  <p style={{ color: '#4b5563', fontSize: '0.85rem', fontWeight: 900, margin: 0, textTransform: 'uppercase', letterSpacing: '0.15em' }}>
+                    {state === 'WAITING' ? 'Waiting for Host' : 'Waiting for Turn...'}
+                  </p>
                 )}
               </>
-            )}
-            {!isMyTurn && !isEnded && !isPickingPhase && (
-              <p style={{ color: '#4b5563', fontSize: '0.85rem', fontWeight: 900, margin: 0, textTransform: 'uppercase', letterSpacing: '0.15em' }}>
-                {state === 'WAITING' ? 'Waiting for Host' : 'Waiting for Turn...'}
+            ) : (
+              <p style={{ color: '#9ca3af', fontSize: '0.85rem', fontWeight: 700, margin: 0, fontStyle: 'italic' }}>
+                YOU ARE SPECTATING THIS MATCH
               </p>
             )}
             {isPickingPhase && (

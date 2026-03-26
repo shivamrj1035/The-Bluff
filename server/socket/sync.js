@@ -37,11 +37,14 @@ function serializeState(room, playerId) {
     };
   });
 
+  const isSpectator = !room.players.find(p => p.id === playerId);
+  
   return {
     ...rest,
     hands: filteredHands,
     pile: filteredPile,
     myId: playerId,
+    isSpectator,
   };
 }
 

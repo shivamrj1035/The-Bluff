@@ -30,22 +30,23 @@ function startGlobalTimer(io) {
           continue;
         }
 
-        if (room.state === GAME_STATES.PLAYER_TURN || room.state === GAME_STATES.BLUFF_WINDOW || room.state === GAME_STATES.BLUFF_PICKING) {
+        if (room.state === GAME_STATES.PLAYER_TURN || room.state === GAME_STATES.BLUFF_WINDOW || room.state === GAME_STATES.BLUFF_PICKING || room.state === GAME_STATES.ROUND_RESOLUTION) {
           const now = Date.now();
           const isPicking = room.state === GAME_STATES.BLUFF_PICKING;
-          const limit = isPicking ? 20000 : (room.timerDuration || 60) * 1000;
+          const isResolution = room.state === GAME_STATES.ROUND_RESOLUTION;
+          const limit = isPicking ? 20000 : (isResolution ? 4000 : (room.timerDuration || 60) * 1000);
           
           if (room.turnStartTime && now - room.turnStartTime > limit) {
             console.log(`[TIMEOUT] Room ${roomId} turn timeout. Phase: ${room.state}`);
             
             if (isPicking) {
-               // If caller doesn't pick in 20s, they take the pile (penalty)
-               // We force a resolve where the picker is the loser
                room = reducer(room, { 
                  type: "RESOLVE_BLUFF_PICK", 
                  payload: { cardIndex: 0, forcePickerLoser: true }, 
                  playerId: room.bluffPickerId 
                });
+            } else if (isResolution) {
+               room = reducer(room, { type: "PROCEED_NEXT_TURN" });
             } else {
                room = reducer(room, { type: "PASS_TURN", playerId: room.currentTurn });
             }
@@ -73,34 +74,32 @@ function setupHandlers(io, socket) {
         room.hostId = socket.id;
       }
 
-      // 1. Check if name is already in use
+      // 1. Check if name is already in use (Reconnection)
       const existingPlayer = room.players.find((p) => p.name === playerName);
       if (existingPlayer) {
-        // 2. Allow reconnection if the existing player is disconnected
-        if (!existingPlayer.isConnected) {
-          console.log(`[RECONNECT] ${playerName} re-occupying slot ${existingPlayer.id} with ${socket.id}`);
-          existingPlayer.id = socket.id;
-          existingPlayer.isConnected = true;
-          // If they were host, update hostId
-          if (room.hostId === existingPlayer.id) room.hostId = socket.id;
-        } else {
-          // 3. Block if name is active and not a reconnect (different socket)
-          if (existingPlayer.id !== socket.id) {
-            return socket.emit(EVENTS.ERROR, { message: "This name is already taken in this room." });
-          }
-        }
+        // Re-occupy the slot
+        console.log(`[RECONNECT] ${playerName} re-occupying slot ${existingPlayer.id} with ${socket.id}`);
+        existingPlayer.id = socket.id;
+        existingPlayer.isConnected = true;
+        
+        // If they were host, update hostId
+        if (room.hostId === existingPlayer.id) room.hostId = socket.id;
+        
       } else {
-        // 4. Join new player only if game hasn't started
-        if (room.state !== GAME_STATES.WAITING) {
-          return socket.emit(EVENTS.ERROR, { message: "Game in progress." });
+        // 2. New Joiner
+        if (room.state === GAME_STATES.WAITING) {
+          // Normal join
+          room.players.push({
+            id: socket.id,
+            name: playerName || "Player",
+            avatar: avatar || "P",
+            isConnected: true,
+            cardCount: 0,
+          });
+        } else {
+          // Game in progress - Join as SPECTATOR (don't add to players)
+          console.log(`[SPECTATOR] ${playerName} joined room ${roomId}`);
         }
-        room.players.push({
-          id: socket.id,
-          name: playerName || "Player",
-          avatar: avatar || "P",
-          isConnected: true,
-          cardCount: 0,
-        });
       }
 
       await saveRoom(roomId, room);
@@ -177,8 +176,6 @@ function setupHandlers(io, socket) {
         payload: { cardIndex },
       });
       await saveRoom(roomId, room);
-      
-      io.to(roomId).emit(EVENTS.BLUFF_RESULT, room.bluffResult);
       emitState(io, roomId, room);
     } catch (err) {}
   });

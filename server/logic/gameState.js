@@ -97,22 +97,14 @@ function reducer(state, action) {
         p.id === playerId ? { ...p, cardCount: playerHand.length } : p
       );
 
-      // Check if player just finished their hand
-      let newRanking = [...state.ranking];
-      if (playerHand.length === 0 && !newRanking.find(r => r.id === playerId)) {
-        newRanking.push({
-          id: playerId,
-          name: player.name,
-          avatar: player.avatar,
-          rankPos: newRanking.length + 1
-        });
-      }
-
-      // Move turn to the NEXT player immediately
+      // Move turn to the NEXT player immediately (including those with 0 cards who aren't ranked yet)
       const nextTurnId = getNextPlayerId(newPlayers, playerId, newRanking);
 
-      const playersWithCards = newPlayers.filter(p => !newRanking.find(r => r.id === p.id));
-      const gameEnded = playersWithCards.length <= 1;
+      const playersWithCards = newPlayers.filter(p => p.cardCount > 0);
+      const activePlayersNotInRanking = newPlayers.filter(p => !newRanking.find(r => r.id === p.id));
+      
+      // Game strictly ends only if 1 or 0 players left UNRANKED
+      const gameEnded = activePlayersNotInRanking.length <= 1;
 
       if (gameEnded && playersWithCards.length === 1) {
         const lastPlayer = playersWithCards[0];
@@ -128,16 +120,16 @@ function reducer(state, action) {
 
       return {
         ...state,
-        state: gameEnded ? GAME_STATES.ENDED : GAME_STATES.PLAYER_TURN,
+        state: GAME_STATES.PLAYER_TURN, 
         hands: { ...state.hands, [playerId]: playerHand },
         players: newPlayers,
-        ranking: newRanking,
+        ranking: state.ranking, // DON'T rank yet
         pile: [...state.pile, newMove],
         lastMove: { playerId, playerName: player?.name, declaredRank, count: cardIds.length },
         roundRank: state.roundRank || declaredRank,
         lastPlayerToPlay: playerId,
         passCount: 0,
-        currentTurn: gameEnded ? null : nextTurnId,
+        currentTurn: nextTurnId,
         turnStartTime: Date.now(),
       };
     }
@@ -183,39 +175,47 @@ function reducer(state, action) {
         return p;
       });
 
-      const newRanking = state.ranking.filter(r => r.id !== loserId);
-      
-      // Winner of the bluff starts a NEW round
-      const nextTurnId = winnerOfBluffId;
+      // Check if ANY player now has 0 cards and isn't ranked (Winning condition)
+      const finalRanking = [...newRanking];
+      newPlayers.forEach(p => {
+        if (p.cardCount === 0 && !finalRanking.find(r => r.id === p.id)) {
+           finalRanking.push({
+             id: p.id,
+             name: p.name,
+             avatar: p.avatar,
+             rankPos: finalRanking.length + 1
+           });
+        }
+      });
 
-      const playersWithCards = newPlayers.filter(p => !newRanking.find(r => r.id === p.id));
-      const gameEnded = playersWithCards.length <= 1;
+      const finalPlayersInGame = newPlayers.filter(p => !finalRanking.find(r => r.id === p.id));
+      const gameIsActuallyEnded = finalPlayersInGame.length <= 1;
 
-      if (gameEnded && playersWithCards.length === 1) {
-        const lastPlayer = playersWithCards[0];
-        newRanking.push({
-          id: lastPlayer.id,
-          name: lastPlayer.name,
-          avatar: lastPlayer.avatar,
-          rankPos: newRanking.length + 1
+      // Handle the last person if game ended
+      if (gameIsActuallyEnded && finalPlayersInGame.length === 1) {
+        const lastP = finalPlayersInGame[0];
+        finalRanking.push({
+          id: lastP.id,
+          name: lastP.name,
+          avatar: lastP.avatar,
+          rankPos: finalRanking.length + 1
         });
       }
 
-      const pickerPlayer = state.players.find(p => p.id === state.bluffPickerId);
-      const targetPlayer = state.players.find(p => p.id === state.bluffTargetId);
-
       return {
         ...state,
-        state: gameEnded ? GAME_STATES.ENDED : GAME_STATES.PLAYER_TURN,
+        state: GAME_STATES.ROUND_RESOLUTION, // Paused to show result
         hands: newHands,
         players: newPlayers,
-        ranking: newRanking,
+        ranking: finalRanking,
         pile: [],
         roundRank: null, // Round resets after bluff resolved
         lastPlayerToPlay: null,
         passCount: 0,
         lastMove: null,
-        currentTurn: gameEnded ? null : nextTurnId,
+        // We calculate these but don't move turn yet
+        _nextTurnId: gameIsActuallyEnded ? null : nextTurnId,
+        _gameEnded: gameIsActuallyEnded,
         bluffResult: {
           pickerId: state.bluffPickerId,
           pickerName: pickerPlayer?.name,
@@ -224,10 +224,24 @@ function reducer(state, action) {
           wasBluff: isBluff,
           pickedCard,
           pileCount: allPileCards.length,
-          loserId
+          loserId,
+          assignedCards: allPileCards // Send IDs for the slider
         },
         bluffSelectIdx: null,
         turnStartTime: Date.now(),
+      };
+    }
+
+    case "PROCEED_NEXT_TURN": {
+      if (state.state !== GAME_STATES.ROUND_RESOLUTION) return state;
+      return {
+        ...state,
+        state: state._gameEnded ? GAME_STATES.ENDED : GAME_STATES.PLAYER_TURN,
+        currentTurn: state._nextTurnId,
+        turnStartTime: Date.now(),
+        // Clean up temp fields
+        _nextTurnId: undefined,
+        _gameEnded: undefined,
       };
     }
 
@@ -235,30 +249,62 @@ function reducer(state, action) {
       const nextPassCount = state.passCount + 1;
       const playersInGame = state.players.filter(p => !state.ranking.find(r => r.id === p.id));
       
-      // If everyone passed and it comes back to the last player who played, and they also pass
       const shouldResetRound = nextPassCount >= playersInGame.length;
+      const nextTurnId = getNextPlayerId(state.players, state.currentTurn, state.ranking);
+      
+      // Check for winners if round is resetting (all passed)
+      let finalRanking = [...state.ranking];
+      let hasWinners = false;
+      if (shouldResetRound) {
+        state.players.forEach(p => {
+          if ((state.hands[p.id]?.length === 0 || p.cardCount === 0) && !finalRanking.find(r => r.id === p.id)) {
+            finalRanking.push({
+              id: p.id,
+              name: p.name,
+              avatar: p.avatar,
+              rankPos: finalRanking.length + 1
+            });
+            hasWinners = true;
+          }
+        });
+      }
+
+      const finalPlayersInGame = state.players.filter(p => !finalRanking.find(r => r.id === p.id));
+      const gameIsActuallyEnded = finalPlayersInGame.length <= 1;
+
+      if (gameIsActuallyEnded && finalPlayersInGame.length === 1 && hasWinners) {
+        const lastP = finalPlayersInGame[0];
+        if (!finalRanking.find(r => r.id === lastP.id)) {
+          finalRanking.push({
+            id: lastP.id,
+            name: lastP.name,
+            avatar: lastP.avatar,
+            rankPos: finalRanking.length + 1
+          });
+        }
+      }
 
       if (shouldResetRound) {
         const allPileCards = state.pile.flatMap(m => m.cards);
         // Last player to play starts the new round
-        const nextTurnId = state.lastPlayerToPlay || getNextPlayerId(state.players, state.currentTurn, state.ranking);
+        const actualNextTurnId = state.lastPlayerToPlay || getNextPlayerId(state.players, state.currentTurn, finalRanking);
 
         return {
           ...state,
-          state: GAME_STATES.PLAYER_TURN,
+          state: gameIsActuallyEnded ? GAME_STATES.ENDED : GAME_STATES.PLAYER_TURN,
           pile: [],
           sidePile: [...state.sidePile, ...allPileCards],
           roundRank: null,
           lastPlayerToPlay: null,
           passCount: 0,
-          currentTurn: nextTurnId,
+          currentTurn: gameIsActuallyEnded ? null : actualNextTurnId,
           lastMove: null,
           bluffResult: null,
+          ranking: finalRanking,
           turnStartTime: Date.now(),
         };
       }
 
-      const nextTurnId = getNextPlayerId(state.players, state.currentTurn, state.ranking);
       return {
         ...state,
         state: GAME_STATES.PLAYER_TURN,

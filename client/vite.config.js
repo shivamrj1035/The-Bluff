@@ -34,6 +34,10 @@ export default defineConfig({
   ],
   server: {
     port: 3000,
+    host: true, // Allow connections from Windows host to WSL
+    hmr: {
+      host: 'localhost',
+    },
     proxy: {
       '/socket.io': {
         target: 'http://localhost:4000',
