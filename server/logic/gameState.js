@@ -98,38 +98,39 @@ function reducer(state, action) {
       );
 
       // Move turn to the NEXT player immediately (including those with 0 cards who aren't ranked yet)
-      const nextTurnId = getNextPlayerId(newPlayers, playerId, newRanking);
+      const nextTurnId = getNextPlayerId(newPlayers, playerId, state.ranking);
 
       const playersWithCards = newPlayers.filter(p => p.cardCount > 0);
-      const activePlayersNotInRanking = newPlayers.filter(p => !newRanking.find(r => r.id === p.id));
+      const activePlayersNotInRanking = newPlayers.filter(p => !state.ranking.find(r => r.id === p.id));
       
       // Game strictly ends only if 1 or 0 players left UNRANKED
       const gameEnded = activePlayersNotInRanking.length <= 1;
 
+      let finalRanking = [...state.ranking];
       if (gameEnded && playersWithCards.length === 1) {
         const lastPlayer = playersWithCards[0];
-        if (!newRanking.find(r => r.id === lastPlayer.id)) {
-          newRanking.push({
+        if (!finalRanking.find(r => r.id === lastPlayer.id)) {
+          finalRanking.push({
             id: lastPlayer.id,
             name: lastPlayer.name,
             avatar: lastPlayer.avatar,
-            rankPos: newRanking.length + 1
+            rankPos: finalRanking.length + 1
           });
         }
       }
 
       return {
         ...state,
-        state: GAME_STATES.PLAYER_TURN, 
+        state: gameEnded ? GAME_STATES.ENDED : GAME_STATES.PLAYER_TURN,
         hands: { ...state.hands, [playerId]: playerHand },
         players: newPlayers,
-        ranking: state.ranking, // DON'T rank yet
+        ranking: finalRanking,
         pile: [...state.pile, newMove],
         lastMove: { playerId, playerName: player?.name, declaredRank, count: cardIds.length },
         roundRank: state.roundRank || declaredRank,
         lastPlayerToPlay: playerId,
         passCount: 0,
-        currentTurn: nextTurnId,
+        currentTurn: gameEnded ? null : nextTurnId,
         turnStartTime: Date.now(),
       };
     }
@@ -166,6 +167,9 @@ function reducer(state, action) {
       const loserId = forcePickerLoser ? state.bluffPickerId : (isBluff ? state.bluffTargetId : state.bluffPickerId);
       const winnerOfBluffId = isBluff && !forcePickerLoser ? state.bluffPickerId : state.bluffTargetId;
 
+      const pickerPlayer = state.players.find(p => p.id === state.bluffPickerId);
+      const targetPlayer = state.players.find(p => p.id === state.bluffTargetId);
+
       const allPileCards = state.pile.flatMap((move) => move.cards);
       const loserHand = [...(state.hands[loserId] || []), ...allPileCards];
 
@@ -176,7 +180,10 @@ function reducer(state, action) {
       });
 
       // Check if ANY player now has 0 cards and isn't ranked (Winning condition)
-      const finalRanking = [...newRanking];
+      // Check if ANY player now has 0 cards and isn't ranked (Winning condition)
+      const finalRanking = state.ranking.filter(r => r.id !== loserId);
+      
+      const nextTurnId = getNextPlayerId(newPlayers, winnerOfBluffId, finalRanking);
       newPlayers.forEach(p => {
         if (p.cardCount === 0 && !finalRanking.find(r => r.id === p.id)) {
            finalRanking.push({

@@ -36,6 +36,7 @@ export const useGameStore = create((set, get) => ({
   error: null,
 
   // UI state
+  screen: 'LANDING', // 'LANDING' | 'JOIN'
   selectedCards: [],
   isDealing: false,
 
@@ -45,6 +46,8 @@ export const useGameStore = create((set, get) => ({
     localStorage.setItem('bluff_avatar', av);
     set({ playerName: name, avatar: av });
   },
+
+  setScreen: (screen) => set({ screen }),
 
   // --- Connect to a room ---
   connect: (roomId) => {
@@ -86,6 +89,10 @@ export const useGameStore = create((set, get) => ({
 
     s.on('error', ({ message }) => {
       set({ error: message });
+    });
+
+    s.on('room_closed', () => {
+      set({ status: 'IDLE', gameState: null, roomId: '', screen: 'LANDING' });
     });
 
     s.on('disconnect', () => {

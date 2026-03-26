@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useGameStore } from '../store/useGameStore';
 import { toast } from '../components/Toast';
@@ -50,9 +50,9 @@ export default function LandingPage() {
             <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.05)' }} />
           </div>
 
-          <a href="/join" className="btn btn-outline" style={{ textDecoration: 'none', padding: '15px', fontSize: '0.95rem' }}>
+          <button onClick={() => useGameStore.getState().setScreen('JOIN')} className="btn btn-outline" style={{ padding: '15px', fontSize: '0.95rem' }}>
             Join with Room ID
-          </a>
+          </button>
         </div>
 
       </motion.div>

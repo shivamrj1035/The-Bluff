@@ -78,12 +78,24 @@ function setupHandlers(io, socket) {
       const existingPlayer = room.players.find((p) => p.name === playerName);
       if (existingPlayer) {
         // Re-occupy the slot
-        console.log(`[RECONNECT] ${playerName} re-occupying slot ${existingPlayer.id} with ${socket.id}`);
+        const oldId = existingPlayer.id;
         existingPlayer.id = socket.id;
         existingPlayer.isConnected = true;
-        
-        // If they were host, update hostId
-        if (room.hostId === existingPlayer.id) room.hostId = socket.id;
+
+        if (room.hostId === oldId) room.hostId = socket.id;
+        if (room.currentTurn === oldId) room.currentTurn = socket.id;
+        if (room.bluffPickerId === oldId) room.bluffPickerId = socket.id;
+        if (room.bluffTargetId === oldId) room.bluffTargetId = socket.id;
+        if (room.lastPlayerToPlay === oldId) room.lastPlayerToPlay = socket.id;
+
+        // Update hands
+        if (room.hands[oldId]) {
+          room.hands[socket.id] = room.hands[oldId];
+          delete room.hands[oldId];
+        }
+
+        // Update ranking
+        room.ranking.forEach(r => { if (r.id === oldId) r.id = socket.id; });
         
       } else {
         // 2. New Joiner
@@ -244,7 +256,7 @@ function setupHandlers(io, socket) {
 
       await redis.del(`room:${roomId}`);
       activeRooms.delete(roomId);
-      io.to(roomId).emit(EVENTS.ERROR, { message: "Room closed by host." });
+      io.to(roomId).emit('room_closed');
     } catch (err) {}
   });
 
@@ -256,10 +268,13 @@ function setupHandlers(io, socket) {
 
 function emitState(io, roomId, room) {
   if (!room) return;
-  room.players.forEach((player) => {
-    const filtered = serializeState(room, player.id);
-    io.to(player.id).emit(EVENTS.GAME_STATE, filtered);
-  });
+  const roomSockets = io.sockets.adapter.rooms.get(roomId);
+  if (!roomSockets) return;
+
+  for (const socketId of roomSockets) {
+    const filtered = serializeState(room, socketId);
+    io.to(socketId).emit(EVENTS.GAME_STATE, filtered);
+  }
 }
 
 module.exports = { setupHandlers };

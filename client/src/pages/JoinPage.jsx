@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useGameStore } from '../store/useGameStore';
 import { toast } from '../components/Toast';
@@ -12,7 +12,7 @@ export default function JoinPage() {
   // Show server errors as toasts & handle URL Room ID
   React.useEffect(() => {
     if (error) toast.error(error);
-    
+
     // Auto-fill from URL if present
     const urlParams = new URLSearchParams(window.location.search);
     const roomFromUrl = urlParams.get('room');
@@ -24,8 +24,8 @@ export default function JoinPage() {
   const handleJoin = async () => {
     if (!name.trim()) return toast.error('Enter your name');
     if (!roomId.trim()) return toast.error('Enter Room ID');
-    
-    setIdentity(name, 'P'); 
+
+    setIdentity(name, 'P');
     connect(roomId);
   };
 
@@ -36,7 +36,7 @@ export default function JoinPage() {
       padding: '0 20px'
     }}>
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="panel" style={{ width: '100%', maxWidth: '380px', textAlign: 'center' }}>
-        
+
         <h1 style={{ fontSize: '1.8rem', fontWeight: 900, marginBottom: '6px', color: '#fff' }}>Join Game</h1>
         <p style={{ color: '#9ca3af', marginBottom: '24px', fontSize: '0.9rem' }}>Enter the room code and your name</p>
 
@@ -58,6 +58,14 @@ export default function JoinPage() {
 
         <button className="btn btn-primary" onClick={handleJoin} style={{ padding: '15px' }}>
           Connect to Table &rarr;
+        </button>
+
+        <button
+          onClick={() => useGameStore.getState().setScreen('LANDING')}
+          className="btn btn-outline"
+          style={{ marginTop: '12px', padding: '10px', fontSize: '0.8rem', border: 'none' }}
+        >
+          &larr; Go Back
         </button>
 
         <p style={{ marginTop: '20px', fontSize: '0.8rem', color: '#4b5563' }}>By joining, you agree to play fair.</p>

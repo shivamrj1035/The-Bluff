@@ -37,6 +37,10 @@ export default defineConfig({
     host: true, // Allow connections from Windows host to WSL
     hmr: {
       host: 'localhost',
+      clientPort: 3000,
+    },
+    watch: {
+      usePolling: true,
     },
     proxy: {
       '/socket.io': {
@@ -44,5 +48,11 @@ export default defineConfig({
         ws: true,
       },
     },
+  },
+  resolve: {
+    dedupe: ['react', 'react-dom'],
+  },
+  optimizeDeps: {
+    include: ['react', 'react-dom'],
   },
 })
