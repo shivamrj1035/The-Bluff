@@ -39,7 +39,7 @@ function reducer(state, action) {
         cardCount: hands[p.id].length,
       }));
 
-      // Find player with Spade Ace (S_A)
+      // Find player with Spade Ace (S_A) — they go first
       let startingPlayerId = players[0].id;
       for (const pId of Object.keys(hands)) {
         if (hands[pId].includes("S_A")) {
@@ -63,6 +63,9 @@ function reducer(state, action) {
         winner: null,
         ranking: [],
         bluffResult: null,
+        bluffPickerId: null,
+        bluffTargetId: null,
+        bluffSelectIdx: null,
         turnStartTime: Date.now(),
       };
     }
@@ -77,44 +80,59 @@ function reducer(state, action) {
 
     case "PLAY_CARDS": {
       const { cardIds, declaredRank } = payload;
-      
+
       // Enforce fixed rank if already set in the round
       if (state.roundRank && declaredRank !== state.roundRank) {
         return state;
       }
 
-      const playerHand = state.hands[playerId].filter((c) => !cardIds.includes(c));
+      // Validate player has these cards
+      const playerHand = state.hands[playerId];
+      if (!playerHand) return state;
+      const hasAllCards = cardIds.every((c) => playerHand.includes(c));
+      if (!hasAllCards) return state;
+
+      const newHand = playerHand.filter((c) => !cardIds.includes(c));
       const player = state.players.find((p) => p.id === playerId);
 
       const newMove = {
         playerId,
         playerName: player?.name || "Unknown",
         cards: cardIds,
+        count: cardIds.length,
         declaredRank,
+        type: "PLAY",
       };
 
       const newPlayers = state.players.map((p) =>
-        p.id === playerId ? { ...p, cardCount: playerHand.length } : p
+        p.id === playerId ? { ...p, cardCount: newHand.length } : p
       );
 
-      // Move turn to the NEXT player immediately (including those with 0 cards who aren't ranked yet)
       const nextTurnId = getNextPlayerId(newPlayers, playerId, state.ranking);
 
-      const playersWithCards = newPlayers.filter(p => p.cardCount > 0);
-      const activePlayersNotInRanking = newPlayers.filter(p => !state.ranking.find(r => r.id === p.id));
-      
-      // Game strictly ends only if 1 or 0 players left UNRANKED
-      const gameEnded = activePlayersNotInRanking.length <= 1;
+      // Check if player just played their last cards — add to ranking
+      let updatedRanking = [...state.ranking];
+      if (newHand.length === 0 && !updatedRanking.find(r => r.id === playerId)) {
+        updatedRanking.push({
+          id: playerId,
+          name: player?.name,
+          avatar: player?.avatar,
+          rankPos: updatedRanking.length + 1,
+        });
+      }
 
-      let finalRanking = [...state.ranking];
-      if (gameEnded && playersWithCards.length === 1) {
-        const lastPlayer = playersWithCards[0];
-        if (!finalRanking.find(r => r.id === lastPlayer.id)) {
-          finalRanking.push({
-            id: lastPlayer.id,
-            name: lastPlayer.name,
-            avatar: lastPlayer.avatar,
-            rankPos: finalRanking.length + 1
+      // Check active (unranked) players
+      const activeUnranked = newPlayers.filter(p => !updatedRanking.find(r => r.id === p.id));
+      const gameEnded = activeUnranked.length <= 1;
+
+      if (gameEnded && activeUnranked.length === 1) {
+        const lastP = activeUnranked[0];
+        if (!updatedRanking.find(r => r.id === lastP.id)) {
+          updatedRanking.push({
+            id: lastP.id,
+            name: lastP.name,
+            avatar: lastP.avatar,
+            rankPos: updatedRanking.length + 1,
           });
         }
       }
@@ -122,50 +140,70 @@ function reducer(state, action) {
       return {
         ...state,
         state: gameEnded ? GAME_STATES.ENDED : GAME_STATES.PLAYER_TURN,
-        hands: { ...state.hands, [playerId]: playerHand },
+        hands: { ...state.hands, [playerId]: newHand },
         players: newPlayers,
-        ranking: finalRanking,
+        ranking: updatedRanking,
         pile: [...state.pile, newMove],
-        lastMove: { playerId, playerName: player?.name, declaredRank, count: cardIds.length },
+        lastMove: {
+          playerId,
+          playerName: player?.name,
+          declaredRank,
+          count: cardIds.length,
+          type: "PLAY",
+        },
         roundRank: state.roundRank || declaredRank,
         lastPlayerToPlay: playerId,
         passCount: 0,
+        bluffResult: null,
         currentTurn: gameEnded ? null : nextTurnId,
         turnStartTime: Date.now(),
       };
     }
 
     case "CALL_BLUFF": {
-      // Caller is Doubting the *previous* move in the pile
-      if (!state.pile.length) return state;
+      // FIX Bug 1: bluffTargetId must use lastPlayerToPlay, NOT lastMove.playerId
+      // This ensures that if A plays, B passes, C calls bluff → target is A.
+      if (!state.pile.length || !state.lastPlayerToPlay) return state;
+      if (state.bluffPickerId === playerId) return state; // Cannot call bluff on yourself
 
       return {
         ...state,
         state: GAME_STATES.BLUFF_PICKING,
         bluffPickerId: playerId,
-        bluffTargetId: state.lastMove.playerId,
-        bluffSelectIdx: null, // Reset when picking starts
+        bluffTargetId: state.lastPlayerToPlay, // ← FIXED: was state.lastMove.playerId
+        bluffSelectIdx: null,
         turnStartTime: Date.now(), // Reset timer for picking (20s)
       };
     }
-    
+
     case "SELECT_BLUFF_CARD": {
       return {
         ...state,
-        bluffSelectIdx: payload.idx
+        bluffSelectIdx: payload.idx,
       };
     }
 
     case "RESOLVE_BLUFF_PICK": {
       const { cardIndex, forcePickerLoser } = payload;
-      const lastMove = state.pile[state.pile.length - 1];
-      const pickedCard = lastMove.cards[cardIndex];
+      const lastPlayedMove = state.pile[state.pile.length - 1];
+      if (!lastPlayedMove) return state;
+
+      const pickedCard = lastPlayedMove.cards[cardIndex] || lastPlayedMove.cards[0];
       const isBluff = !pickedCard.endsWith(`_${state.roundRank}`);
 
-      // If timeout (forcePickerLoser), picker always takes it. 
-      // Otherwise, usual logic (if isBluff caught -> target takes it, else picker takes it).
-      const loserId = forcePickerLoser ? state.bluffPickerId : (isBluff ? state.bluffTargetId : state.bluffPickerId);
-      const winnerOfBluffId = isBluff && !forcePickerLoser ? state.bluffPickerId : state.bluffTargetId;
+      // FIX Bug 4: timeout means picker always takes the pile
+      // Otherwise: bluff caught → target (card player) loses; honest → picker loses
+      const loserId = forcePickerLoser
+        ? state.bluffPickerId
+        : isBluff
+          ? state.bluffTargetId
+          : state.bluffPickerId;
+
+      const winnerOfBluffId = forcePickerLoser
+        ? state.bluffTargetId
+        : isBluff
+          ? state.bluffPickerId  // Caller was right
+          : state.bluffTargetId; // Target was honest, they get next turn
 
       const pickerPlayer = state.players.find(p => p.id === state.bluffPickerId);
       const targetPlayer = state.players.find(p => p.id === state.bluffTargetId);
@@ -179,51 +217,59 @@ function reducer(state, action) {
         return p;
       });
 
-      // Check if ANY player now has 0 cards and isn't ranked (Winning condition)
-      // Check if ANY player now has 0 cards and isn't ranked (Winning condition)
-      const finalRanking = state.ranking.filter(r => r.id !== loserId);
-      
-      // The winner of the challenge starts the next phase if they are still in the game.
-      // If the winner just finished their cards, the turn moves to the next eligible player.
-      const winnerIsStillIn = !finalRanking.find(r => r.id === winnerOfBluffId);
-      const nextTurnId = winnerIsStillIn ? winnerOfBluffId : getNextPlayerId(newPlayers, winnerOfBluffId, finalRanking);
+      // FIX Bug 2: Check for newly-empty-handed winners BEFORE computing nextTurnId
+      // Start from current ranking minus the loser (they got cards back, so remove from ranking)
+      let finalRanking = state.ranking.filter(r => r.id !== loserId);
+
+      // Add any player who now has 0 cards and isn't ranked
       newPlayers.forEach(p => {
         if (p.cardCount === 0 && !finalRanking.find(r => r.id === p.id)) {
-           finalRanking.push({
-             id: p.id,
-             name: p.name,
-             avatar: p.avatar,
-             rankPos: finalRanking.length + 1
-           });
+          finalRanking.push({
+            id: p.id,
+            name: p.name,
+            avatar: p.avatar,
+            rankPos: finalRanking.length + 1,
+          });
         }
       });
+
+      // NOW compute next turn (after ranking is updated)
+      const eligibleForNextTurn = newPlayers.filter(p => !finalRanking.find(r => r.id === p.id));
+      const winnerIsStillEligible = eligibleForNextTurn.find(p => p.id === winnerOfBluffId);
+      const nextTurnId = winnerIsStillEligible
+        ? winnerOfBluffId
+        : getNextPlayerId(newPlayers, winnerOfBluffId, finalRanking);
 
       const finalPlayersInGame = newPlayers.filter(p => !finalRanking.find(r => r.id === p.id));
       const gameIsActuallyEnded = finalPlayersInGame.length <= 1;
 
-      // Handle the last person if game ended
+      // If only 1 person left unranked, they are the loser
       if (gameIsActuallyEnded && finalPlayersInGame.length === 1) {
         const lastP = finalPlayersInGame[0];
-        finalRanking.push({
-          id: lastP.id,
-          name: lastP.name,
-          avatar: lastP.avatar,
-          rankPos: finalRanking.length + 1
-        });
+        if (!finalRanking.find(r => r.id === lastP.id)) {
+          finalRanking.push({
+            id: lastP.id,
+            name: lastP.name,
+            avatar: lastP.avatar,
+            rankPos: finalRanking.length + 1,
+          });
+        }
       }
 
       return {
         ...state,
-        state: GAME_STATES.ROUND_RESOLUTION, // Paused to show result
+        state: GAME_STATES.ROUND_RESOLUTION,
         hands: newHands,
         players: newPlayers,
         ranking: finalRanking,
         pile: [],
-        roundRank: null, // Round resets after bluff resolved
+        roundRank: null,        // Round resets after bluff resolved
         lastPlayerToPlay: null,
         passCount: 0,
         lastMove: null,
-        // We calculate these but don't move turn yet
+        bluffSelectIdx: null,
+        turnStartTime: Date.now(),
+        // Store resolved values for PROCEED_NEXT_TURN
         _nextTurnId: gameIsActuallyEnded ? null : nextTurnId,
         _gameEnded: gameIsActuallyEnded,
         bluffResult: {
@@ -235,10 +281,8 @@ function reducer(state, action) {
           pickedCard,
           pileCount: allPileCards.length,
           loserId,
-          assignedCards: allPileCards // Send IDs for the slider
+          assignedCards: allPileCards,
         },
-        bluffSelectIdx: null,
-        turnStartTime: Date.now(),
       };
     }
 
@@ -249,68 +293,53 @@ function reducer(state, action) {
         state: state._gameEnded ? GAME_STATES.ENDED : GAME_STATES.PLAYER_TURN,
         currentTurn: state._nextTurnId,
         turnStartTime: Date.now(),
-        // Clean up temp fields
         _nextTurnId: undefined,
         _gameEnded: undefined,
       };
     }
 
     case "PASS_TURN": {
+      // FIX Bug 3: Cannot pass when pile is empty (first move of round)
+      if (state.pile.length === 0) return state;
+      // Also validate it's actually this player's turn
+      if (state.currentTurn !== playerId) return state;
+
       const nextPassCount = state.passCount + 1;
-      const playersInGame = state.players.filter(p => !state.ranking.find(r => r.id === p.id));
-      
+      const playersInGame = state.players.filter(
+        p => !state.ranking.find(r => r.id === p.id)
+      );
+
+      // Round resets when all remaining players have passed
       const shouldResetRound = nextPassCount >= playersInGame.length;
       const nextTurnId = getNextPlayerId(state.players, state.currentTurn, state.ranking);
-      
-      // Check for winners if round is resetting (all passed)
-      let finalRanking = [...state.ranking];
-      let hasWinners = false;
-      if (shouldResetRound) {
-        state.players.forEach(p => {
-          if ((state.hands[p.id]?.length === 0 || p.cardCount === 0) && !finalRanking.find(r => r.id === p.id)) {
-            finalRanking.push({
-              id: p.id,
-              name: p.name,
-              avatar: p.avatar,
-              rankPos: finalRanking.length + 1
-            });
-            hasWinners = true;
-          }
-        });
-      }
 
-      const finalPlayersInGame = state.players.filter(p => !finalRanking.find(r => r.id === p.id));
-      const gameIsActuallyEnded = finalPlayersInGame.length <= 1;
-
-      if (gameIsActuallyEnded && finalPlayersInGame.length === 1 && hasWinners) {
-        const lastP = finalPlayersInGame[0];
-        if (!finalRanking.find(r => r.id === lastP.id)) {
-          finalRanking.push({
-            id: lastP.id,
-            name: lastP.name,
-            avatar: lastP.avatar,
-            rankPos: finalRanking.length + 1
-          });
-        }
-      }
+      const passingPlayer = state.players.find(p => p.id === playerId);
 
       if (shouldResetRound) {
+        // All passed — pile goes to side pile, last player who played starts fresh round
         const allPileCards = state.pile.flatMap(m => m.cards);
-        // Last player to play starts the new round
-        const actualNextTurnId = state.lastPlayerToPlay || getNextPlayerId(state.players, state.currentTurn, finalRanking);
+        const actualNextTurnId =
+          state.lastPlayerToPlay
+            ? (state.ranking.find(r => r.id === state.lastPlayerToPlay)
+                ? getNextPlayerId(state.players, state.lastPlayerToPlay, state.ranking)
+                : state.lastPlayerToPlay)
+            : getNextPlayerId(state.players, state.currentTurn, state.ranking);
 
         return {
           ...state,
-          state: gameIsActuallyEnded ? GAME_STATES.ENDED : GAME_STATES.PLAYER_TURN,
+          state: GAME_STATES.PLAYER_TURN,
           pile: [],
           sidePile: [...state.sidePile, ...allPileCards],
           roundRank: null,
           lastPlayerToPlay: null,
           passCount: 0,
-          currentTurn: gameIsActuallyEnded ? null : actualNextTurnId,
-          lastMove: { playerId: state.currentTurn, playerName: state.players.find(p => p.id === state.currentTurn)?.name, type: 'PASS' },
+          currentTurn: actualNextTurnId,
+          lastMove: {
+            playerId,
+            playerName: passingPlayer?.name,
+            type: "PASS",
+          },
           bluffResult: null,
-          ranking: finalRanking,
           turnStartTime: Date.now(),
         };
       }
@@ -320,7 +349,11 @@ function reducer(state, action) {
         state: GAME_STATES.PLAYER_TURN,
         currentTurn: nextTurnId,
         passCount: nextPassCount,
-        lastMove: { playerId: state.currentTurn, playerName: state.players.find(p => p.id === state.currentTurn)?.name, type: 'PASS' },
+        lastMove: {
+          playerId,
+          playerName: passingPlayer?.name,
+          type: "PASS",
+        },
         bluffResult: null,
         turnStartTime: Date.now(),
       };
@@ -340,21 +373,26 @@ function reducer(state, action) {
         nextTurn = getNextPlayerId(newPlayers, targetId, state.ranking);
       }
 
-      const playersWithCards = newPlayers.filter(p => !state.ranking.find(r => r.id === p.id));
-      const gameEnded = playersWithCards.length <= 1;
-      let newRanking = [...state.ranking];
+      // Remove from ranking if they were ranked
+      const keptRanking = state.ranking.filter(r => r.id !== targetId);
 
-      if (gameEnded && playersWithCards.length === 1) {
-        const lastPlayer = playersWithCards[0];
-        if (!newRanking.find(r => r.id === lastPlayer.id)) {
-          newRanking.push({
-            id: lastPlayer.id,
-            name: lastPlayer.name,
-            avatar: lastPlayer.avatar,
-            rankPos: newRanking.length + 1
-          });
-        }
+      const activeUnranked = newPlayers.filter(p => !keptRanking.find(r => r.id === p.id));
+      const gameEnded = activeUnranked.length <= 1;
+      let finalRanking = [...keptRanking];
+
+      if (gameEnded && activeUnranked.length === 1) {
+        const lastPlayer = activeUnranked[0];
+        finalRanking.push({
+          id: lastPlayer.id,
+          name: lastPlayer.name,
+          avatar: lastPlayer.avatar,
+          rankPos: finalRanking.length + 1,
+        });
       }
+
+      // If kicked player was the lastPlayerToPlay, reset that too
+      const newLastPlayerToPlay =
+        state.lastPlayerToPlay === targetId ? null : state.lastPlayerToPlay;
 
       return {
         ...state,
@@ -362,8 +400,36 @@ function reducer(state, action) {
         players: newPlayers,
         hands: newHands,
         sidePile: newSidePile,
-        ranking: newRanking,
+        ranking: finalRanking,
+        lastPlayerToPlay: newLastPlayerToPlay,
         currentTurn: gameEnded ? null : nextTurn,
+      };
+    }
+
+    // Host clicked "CLOSE" during an active game — reset to lobby (WAITING state)
+    // Players remain in the room; host can restart or exit from the lobby.
+    case "RESET_TO_LOBBY": {
+      const resetPlayers = state.players.map(p => ({ ...p, cardCount: 0 }));
+      return {
+        ...state,
+        state: GAME_STATES.WAITING,
+        hands: {},
+        pile: [],
+        sidePile: [],
+        roundRank: null,
+        lastPlayerToPlay: null,
+        passCount: 0,
+        currentTurn: null,
+        lastMove: null,
+        ranking: [],
+        bluffResult: null,
+        bluffPickerId: null,
+        bluffTargetId: null,
+        bluffSelectIdx: null,
+        turnStartTime: null,
+        players: resetPlayers,
+        _nextTurnId: undefined,
+        _gameEnded: undefined,
       };
     }
 
@@ -372,20 +438,27 @@ function reducer(state, action) {
   }
 }
 
+/**
+ * Returns the next eligible player ID in clockwise order.
+ * Skips players who are ranked (finished) or disconnected.
+ */
 function getNextPlayerId(players, currentId, ranking = []) {
-  const eligiblePlayers = players.filter((p) => p.isConnected && !ranking.find(r => r.id === p.id));
+  const eligiblePlayers = players.filter(
+    (p) => p.isConnected && !ranking.find(r => r.id === p.id)
+  );
   if (eligiblePlayers.length === 0) return null;
 
-  const fullPlayerList = players.filter(p => p.isConnected);
-  const currentIndex = fullPlayerList.findIndex((p) => p.id === currentId);
-  
-  for (let i = 1; i <= fullPlayerList.length; i++) {
-    const nextIdx = (currentIndex + i) % fullPlayerList.length;
-    const candidate = fullPlayerList[nextIdx];
+  const allConnected = players.filter(p => p.isConnected);
+  const currentIndex = allConnected.findIndex((p) => p.id === currentId);
+
+  for (let i = 1; i <= allConnected.length; i++) {
+    const nextIdx = (currentIndex + i) % allConnected.length;
+    const candidate = allConnected[nextIdx];
     if (eligiblePlayers.find(p => p.id === candidate.id)) {
       return candidate.id;
     }
   }
+
   return eligiblePlayers[0].id;
 }
 

@@ -18,8 +18,8 @@ export default function App() {
       <Toaster />
       
       {(status === 'IDLE' || status === 'ERROR') && (
-        roomParam && status !== 'ERROR' 
-          ? <JoinPage roomCode={roomParam} />
+        roomParam && status !== 'ERROR'
+          ? <JoinPage />
           : screen === 'JOIN' ? <JoinPage /> : <LandingPage />
       )}
 

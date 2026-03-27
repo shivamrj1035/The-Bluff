@@ -32,7 +32,6 @@ export const useGameStore = create((set, get) => ({
 
   // Game state from server
   gameState: null,
-  bluffToast: null,   // last bluff result for toast
   error: null,
 
   // UI state
@@ -75,11 +74,6 @@ export const useGameStore = create((set, get) => ({
     s.on('game_state', (state) => {
       const isDealing = state.state === 'DEALING';
       set({ gameState: state, error: null, isDealing });
-    });
-
-    s.on('bluff_result', (result) => {
-      set({ bluffToast: result });
-      setTimeout(() => set({ bluffToast: null }), 5000);
     });
 
     s.on('kicked', () => {
@@ -165,10 +159,13 @@ export const useGameStore = create((set, get) => ({
     s?.emit('restart_game', { roomId });
   },
 
+  // closeGame: host resets the active game → everyone goes back to the lobby.
+  // Does NOT disconnect — the server broadcasts WAITING state which shows the LobbyPage.
+  // From the lobby, the host can START AGAIN or LEAVE TABLE.
   closeGame: () => {
     const { socket: s, roomId } = get();
     s?.emit('close_game', { roomId });
-    set({ status: 'IDLE', gameState: null, roomId: '' });
+    // Do NOT set status to IDLE here — let the server's game_state broadcast handle routing.
   },
 
   clearSelection: () => set({ selectedCards: [] }),

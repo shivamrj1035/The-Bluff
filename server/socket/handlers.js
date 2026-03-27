@@ -30,27 +30,43 @@ function startGlobalTimer(io) {
           continue;
         }
 
-        if (room.state === GAME_STATES.PLAYER_TURN || room.state === GAME_STATES.BLUFF_WINDOW || room.state === GAME_STATES.BLUFF_PICKING || room.state === GAME_STATES.ROUND_RESOLUTION) {
-          const now = Date.now();
-          const isPicking = room.state === GAME_STATES.BLUFF_PICKING;
-          const isResolution = room.state === GAME_STATES.ROUND_RESOLUTION;
-          const limit = isPicking ? 20000 : (isResolution ? 4000 : (room.timerDuration || 60) * 1000);
-          
+        const now = Date.now();
+        const isPicking = room.state === GAME_STATES.BLUFF_PICKING;
+        const isResolution = room.state === GAME_STATES.ROUND_RESOLUTION;
+        const isPlayerTurn = room.state === GAME_STATES.PLAYER_TURN;
+
+        if (isPicking || isResolution || isPlayerTurn) {
+          const limit = isPicking
+            ? 20000
+            : isResolution
+              ? 4000
+              : (room.timerDuration || 60) * 1000;
+
           if (room.turnStartTime && now - room.turnStartTime > limit) {
-            console.log(`[TIMEOUT] Room ${roomId} turn timeout. Phase: ${room.state}`);
-            
+            console.log(`[TIMEOUT] Room ${roomId} phase: ${room.state}`);
+
             if (isPicking) {
-               room = reducer(room, { 
-                 type: "RESOLVE_BLUFF_PICK", 
-                 payload: { cardIndex: 0, forcePickerLoser: true }, 
-                 playerId: room.bluffPickerId 
-               });
+              room = reducer(room, {
+                type: "RESOLVE_BLUFF_PICK",
+                payload: { cardIndex: 0, forcePickerLoser: true },
+                playerId: room.bluffPickerId,
+              });
             } else if (isResolution) {
-               room = reducer(room, { type: "PROCEED_NEXT_TURN" });
-            } else {
-               room = reducer(room, { type: "PASS_TURN", playerId: room.currentTurn });
+              room = reducer(room, { type: "PROCEED_NEXT_TURN" });
+            } else if (isPlayerTurn && room.currentTurn) {
+              // Auto-pass on turn timeout (only if pile has cards, otherwise auto-play is needed)
+              if (room.pile && room.pile.length > 0) {
+                room = reducer(room, {
+                  type: "PASS_TURN",
+                  playerId: room.currentTurn,
+                });
+              }
+              // If pile is empty (first move), we can't pass — reset timer
+              else {
+                room.turnStartTime = Date.now();
+              }
             }
-            
+
             await saveRoom(roomId, room);
             emitState(io, roomId, room);
           }
@@ -74,10 +90,9 @@ function setupHandlers(io, socket) {
         room.hostId = socket.id;
       }
 
-      // 1. Check if name is already in use (Reconnection)
+      // 1. Reconnection: player with same name
       const existingPlayer = room.players.find((p) => p.name === playerName);
       if (existingPlayer) {
-        // Re-occupy the slot
         const oldId = existingPlayer.id;
         existingPlayer.id = socket.id;
         existingPlayer.isConnected = true;
@@ -88,19 +103,20 @@ function setupHandlers(io, socket) {
         if (room.bluffTargetId === oldId) room.bluffTargetId = socket.id;
         if (room.lastPlayerToPlay === oldId) room.lastPlayerToPlay = socket.id;
 
-        // Update hands
         if (room.hands[oldId]) {
           room.hands[socket.id] = room.hands[oldId];
           delete room.hands[oldId];
         }
 
-        // Update ranking
         room.ranking.forEach(r => { if (r.id === oldId) r.id = socket.id; });
-        
+        // Also fix lastMove if it references oldId
+        if (room.lastMove && room.lastMove.playerId === oldId) {
+          room.lastMove.playerId = socket.id;
+        }
+
       } else {
-        // 2. New Joiner
+        // 2. New joiner
         if (room.state === GAME_STATES.WAITING) {
-          // Normal join
           room.players.push({
             id: socket.id,
             name: playerName || "Player",
@@ -109,7 +125,7 @@ function setupHandlers(io, socket) {
             cardCount: 0,
           });
         } else {
-          // Game in progress - Join as SPECTATOR (don't add to players)
+          // Game in progress — spectator
           console.log(`[SPECTATOR] ${playerName} joined room ${roomId}`);
         }
       }
@@ -121,6 +137,7 @@ function setupHandlers(io, socket) {
       console.log(`[JOIN] ${playerName} (${socket.id}) → room ${roomId}`);
       emitState(io, roomId, room);
     } catch (err) {
+      console.error("[JOIN error]", err);
       socket.emit(EVENTS.ERROR, { message: "Join failed." });
     }
   });
@@ -130,11 +147,160 @@ function setupHandlers(io, socket) {
     try {
       let room = await getRoom(roomId);
       if (!room || room.hostId !== socket.id) return;
+      if (room.players.length < 2) {
+        socket.emit(EVENTS.ERROR, { message: "Need at least 2 players." });
+        return;
+      }
 
       room = reducer(room, { type: "START_GAME", playerId: socket.id });
       await saveRoom(roomId, room);
 
       io.to(roomId).emit(EVENTS.GAME_STARTED);
+      emitState(io, roomId, room);
+
+      // Transition from DEALING to PLAYER_TURN after animation
+      setTimeout(async () => {
+        let r = await getRoom(roomId);
+        if (!r || r.state !== GAME_STATES.DEALING) return;
+        r = reducer(r, { type: "BEGIN_PLAYING", playerId: socket.id });
+        await saveRoom(roomId, r);
+        emitState(io, roomId, r);
+      }, 3500);
+    } catch (err) {
+      console.error("[START_GAME error]", err);
+    }
+  });
+
+  // --- PLAY CARDS ---
+  socket.on(EVENTS.PLAY_CARDS, async ({ roomId, cardIds, declaredRank }) => {
+    try {
+      let room = await getRoom(roomId);
+      if (!room) return;
+
+      // FIX: Use validator before reducer
+      const validation = validateAction(room, socket.id, "PLAY_CARDS", { cardIds, declaredRank });
+      if (!validation.valid) {
+        socket.emit(EVENTS.ERROR, { message: validation.message });
+        return;
+      }
+
+      room = reducer(room, {
+        type: "PLAY_CARDS",
+        playerId: socket.id,
+        payload: { cardIds, declaredRank },
+      });
+      await saveRoom(roomId, room);
+      emitState(io, roomId, room);
+    } catch (err) {
+      console.error("[PLAY_CARDS error]", err);
+    }
+  });
+
+  // --- CALL BLUFF ---
+  socket.on(EVENTS.CALL_BLUFF, async ({ roomId }) => {
+    try {
+      let room = await getRoom(roomId);
+      if (!room) return;
+
+      // FIX: Use unified validator
+      const validation = validateAction(room, socket.id, "CALL_BLUFF", {});
+      if (!validation.valid) {
+        socket.emit(EVENTS.ERROR, { message: validation.message });
+        return;
+      }
+
+      room = reducer(room, { type: "CALL_BLUFF", playerId: socket.id });
+      await saveRoom(roomId, room);
+      emitState(io, roomId, room);
+    } catch (err) {
+      console.error("[CALL_BLUFF error]", err);
+    }
+  });
+
+  // --- PICK BLUFF CARD ---
+  socket.on(EVENTS.PICK_BLUFF_CARD, async ({ roomId, cardIndex }) => {
+    try {
+      let room = await getRoom(roomId);
+      if (!room || room.state !== GAME_STATES.BLUFF_PICKING || room.bluffPickerId !== socket.id)
+        return;
+
+      room = reducer(room, {
+        type: "RESOLVE_BLUFF_PICK",
+        playerId: socket.id,
+        payload: { cardIndex },
+      });
+      await saveRoom(roomId, room);
+      emitState(io, roomId, room);
+    } catch (err) {
+      console.error("[PICK_BLUFF_CARD error]", err);
+    }
+  });
+
+  // --- SELECT BLUFF CARD (HOVER SYNC) ---
+  socket.on(EVENTS.SELECT_BLUFF_CARD, async ({ roomId, idx }) => {
+    try {
+      let room = await getRoom(roomId);
+      if (!room || room.state !== GAME_STATES.BLUFF_PICKING || room.bluffPickerId !== socket.id)
+        return;
+
+      room = reducer(room, {
+        type: "SELECT_BLUFF_CARD",
+        playerId: socket.id,
+        payload: { idx },
+      });
+      await saveRoom(roomId, room);
+      emitState(io, roomId, room);
+    } catch (err) {
+      console.error("[SELECT_BLUFF_CARD error]", err);
+    }
+  });
+
+  // --- PASS TURN ---
+  // FIX Bug 5 (server): Validate currentTurn and state before passing
+  socket.on(EVENTS.PASS_TURN, async ({ roomId }) => {
+    try {
+      let room = await getRoom(roomId);
+      if (!room) return;
+
+      const validation = validateAction(room, socket.id, "PASS_TURN", {});
+      if (!validation.valid) {
+        socket.emit(EVENTS.ERROR, { message: validation.message });
+        return;
+      }
+
+      room = reducer(room, { type: "PASS_TURN", playerId: socket.id });
+      await saveRoom(roomId, room);
+      emitState(io, roomId, room);
+    } catch (err) {
+      console.error("[PASS_TURN error]", err);
+    }
+  });
+
+  // --- KICK PLAYER ---
+  socket.on(EVENTS.KICK_PLAYER, async ({ roomId, targetId }) => {
+    try {
+      let room = await getRoom(roomId);
+      if (!room || room.hostId !== socket.id) return;
+      if (targetId === socket.id) return; // Host cannot kick themselves
+
+      room = reducer(room, { type: "KICK_PLAYER", payload: { targetId } });
+      await saveRoom(roomId, room);
+
+      io.to(targetId).emit(EVENTS.KICKED);
+      emitState(io, roomId, room);
+    } catch (err) {
+      console.error("[KICK_PLAYER error]", err);
+    }
+  });
+
+  // --- RESTART GAME ---
+  socket.on(EVENTS.RESTART_GAME, async ({ roomId }) => {
+    try {
+      let room = await getRoom(roomId);
+      if (!room || room.hostId !== socket.id) return;
+
+      room = reducer(room, { type: "START_GAME", playerId: socket.id });
+      await saveRoom(roomId, room);
       emitState(io, roomId, room);
 
       setTimeout(async () => {
@@ -144,125 +310,36 @@ function setupHandlers(io, socket) {
         await saveRoom(roomId, r);
         emitState(io, roomId, r);
       }, 3500);
-    } catch (err) {}
-  });
-
-  // --- PLAY CARDS ---
-  socket.on(EVENTS.PLAY_CARDS, async ({ roomId, cardIds, declaredRank }) => {
-    try {
-      let room = await getRoom(roomId);
-      if (!room || room.currentTurn !== socket.id) return;
-
-      room = reducer(room, {
-        type: "PLAY_CARDS",
-        playerId: socket.id,
-        payload: { cardIds, declaredRank },
-      });
-      await saveRoom(roomId, room);
-      emitState(io, roomId, room);
-    } catch (err) {}
-  });
-
-  // --- CALL BLUFF ---
-  socket.on(EVENTS.CALL_BLUFF, async ({ roomId }) => {
-    try {
-      let room = await getRoom(roomId);
-      if (!room || (room.state !== GAME_STATES.PLAYER_TURN && room.state !== GAME_STATES.BLUFF_WINDOW)) return;
-      if (room.currentTurn !== socket.id) return;
-
-      room = reducer(room, { type: "CALL_BLUFF", playerId: socket.id });
-      await saveRoom(roomId, room);
-      emitState(io, roomId, room);
-    } catch (err) {}
-  });
-
-  // --- PICK BLUFF CARD ---
-  socket.on(EVENTS.PICK_BLUFF_CARD, async ({ roomId, cardIndex }) => {
-    try {
-      let room = await getRoom(roomId);
-      if (!room || room.state !== GAME_STATES.BLUFF_PICKING || room.bluffPickerId !== socket.id) return;
-
-      room = reducer(room, {
-        type: "RESOLVE_BLUFF_PICK",
-        playerId: socket.id,
-        payload: { cardIndex },
-      });
-      await saveRoom(roomId, room);
-      emitState(io, roomId, room);
-    } catch (err) {}
-  });
-
-  // --- SELECT BLUFF CARD (HOVER) ---
-  socket.on(EVENTS.SELECT_BLUFF_CARD, async ({ roomId, idx }) => {
-    try {
-      let room = await getRoom(roomId);
-      if (!room || room.state !== GAME_STATES.BLUFF_PICKING || room.bluffPickerId !== socket.id) return;
-
-      room = reducer(room, {
-        type: "SELECT_BLUFF_CARD",
-        playerId: socket.id,
-        payload: { idx },
-      });
-      await saveRoom(roomId, room);
-      emitState(io, roomId, room);
-    } catch (err) {}
-  });
-
-  // --- PASS TURN ---
-  socket.on(EVENTS.PASS_TURN, async ({ roomId }) => {
-    try {
-      let room = await getRoom(roomId);
-      if (!room) return;
-
-      room = reducer(room, { type: "PASS_TURN", playerId: socket.id });
-      await saveRoom(roomId, room);
-      emitState(io, roomId, room);
-    } catch (err) {}
-  });
-
-  // --- KICK PLAYER ---
-  socket.on(EVENTS.KICK_PLAYER, async ({ roomId, targetId }) => {
-    try {
-      let room = await getRoom(roomId);
-      if (!room || room.hostId !== socket.id) return;
-
-      room = reducer(room, { type: "KICK_PLAYER", payload: { targetId } });
-      await saveRoom(roomId, room);
-      
-      io.to(targetId).emit(EVENTS.KICKED);
-      emitState(io, roomId, room);
-    } catch (err) {}
-  });
-
-  // --- RESTART GAME ---
-  socket.on(EVENTS.RESTART_GAME, async ({ roomId }) => {
-    try {
-      let room = await getRoom(roomId);
-      if (!room || room.hostId !== socket.id) return;
-
-      // Start fresh
-      room = reducer(room, { type: "START_GAME", playerId: socket.id });
-      await saveRoom(roomId, room);
-      emitState(io, roomId, room);
-    } catch (err) {}
+    } catch (err) {
+      console.error("[RESTART_GAME error]", err);
+    }
   });
 
   // --- CLOSE GAME ---
+  // Host ending active game → sends everyone back to lobby (WAITING state).
+  // Room is NOT deleted — everyone stays connected and host can restart or leave from the lobby.
   socket.on(EVENTS.CLOSE_GAME, async ({ roomId }) => {
-    if (socket.id.startsWith("TEMP")) return; // guard
     try {
       let room = await getRoom(roomId);
       if (!room || room.hostId !== socket.id) return;
 
-      await redis.del(`room:${roomId}`);
-      activeRooms.delete(roomId);
-      io.to(roomId).emit('room_closed');
-    } catch (err) {}
+      // Reset game state to WAITING — all players stay in the room
+      room = reducer(room, { type: "RESET_TO_LOBBY" });
+      await saveRoom(roomId, room);
+      // Broadcast new WAITING state to all players — client will show LobbyPage
+      emitState(io, roomId, room);
+    } catch (err) {
+      console.error("[CLOSE_GAME error]", err);
+    }
   });
 
   // --- DISCONNECT ---
   socket.on("disconnect", async () => {
-    // Basic leave/disconnect logic (could be improved to mark as disconnected)
+    // Mark player as disconnected; they can reconnect using same name
+    try {
+      // We don't know which room they were in — client reconnects via join_room
+      console.log(`[DISCONNECT] ${socket.id}`);
+    } catch (err) {}
   });
 }
 
