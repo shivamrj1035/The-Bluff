@@ -2,7 +2,6 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from '../components/Toast';
 import { useGameStore } from '../store/useGameStore';
-import { useSound } from '../hooks/useSound';
 import Card from '../components/Card';
 import DealAnimation from '../components/DealAnimation';
 import Avatar, { TrophyIcon, TrashIcon, MaskIcon } from '../components/Icons';
@@ -36,7 +35,6 @@ export default function GameBoard() {
     passTurn, kickPlayer, restartGame, closeGame, disconnect
   } = useGameStore();
 
-  const { play } = useSound();
 
   // ── ALL STATE AND REFS MUST COME BEFORE ANY CONDITIONAL RETURNS ──
   const [dealDone, setDealDone] = useState(gameState?.state !== 'DEALING');
@@ -156,19 +154,6 @@ export default function GameBoard() {
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
   }, [gameState?.turnStartTime, gameState?.state]);
-
-  // Sound effects
-  useEffect(() => {
-    if (gameState?.lastMove?.type !== 'PASS') play('click');
-  }, [gameState?.lastMove]);
-
-  useEffect(() => {
-    if (gameState?.currentTurn === playerId && gameState?.state === 'PLAYER_TURN') play('click');
-  }, [gameState?.currentTurn, gameState?.state]);
-
-  useEffect(() => {
-    if (gameState?.state === 'BLUFF_PICKING') play('click');
-  }, [gameState?.state]);
 
   // ── DERIVED STATE — safe after all hooks ──
   // FIX Bug 5: Early return MUST come after all hook calls
