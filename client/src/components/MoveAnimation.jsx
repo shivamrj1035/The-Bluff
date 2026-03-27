@@ -6,29 +6,29 @@ export default function MoveAnimation({ fromPos, toPos, count, onComplete }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 100 }}>
-      {[...Array(Math.min(count, 5))].map((_, i) => (
+      {[...Array(1)].map((_, i) => (
         <motion.div
           key={i}
-          initial={{ 
-            top: fromPos.top || 'auto', 
-            left: fromPos.left || '50%', 
+          initial={{
+            top: fromPos.top || 'auto',
+            left: fromPos.left || '50%',
             right: fromPos.right || 'auto',
             bottom: fromPos.bottom || 'auto',
             transform: fromPos.transform || 'translate(-50%, -50%)',
             opacity: 1,
-            scale: 0.6
+            scale: 0.8
           }}
-          animate={{ 
-            top: toPos.top || '50%', 
+          animate={{
+            top: toPos.top || '50%',
             left: toPos.left || '50%',
             right: toPos.right || 'auto',
             bottom: toPos.bottom || 'auto',
             transform: toPos.transform || 'translate(-50%, -50%)',
-            opacity: 0,
-            scale: 0.4
+            opacity: 0.7,
+            scale: 0.6
           }}
-          transition={{ 
-            duration: 0.6, 
+          transition={{
+            duration: 1.5,
             delay: i * 0.1,
             ease: "easeInOut"
           }}

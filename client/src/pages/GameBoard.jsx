@@ -8,6 +8,7 @@ import DealAnimation from '../components/DealAnimation';
 import Avatar, { TrophyIcon, TrashIcon, MaskIcon } from '../components/Icons';
 
 import MoveAnimation from '../components/MoveAnimation';
+import FloatingAction from '../components/FloatingAction';
 
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
 
@@ -44,6 +45,7 @@ export default function GameBoard() {
   const [isPortrait, setIsPortrait] = useState(window.innerHeight > window.innerWidth);
   const [showMobileHand, setShowMobileHand] = useState(false);
   const [activeAnimation, setActiveAnimation] = useState(null);
+  const [floatingAction, setFloatingAction] = useState(null);
 
   useEffect(() => {
     const handleResize = () => setIsPortrait(window.innerHeight > window.innerWidth);
@@ -64,20 +66,34 @@ export default function GameBoard() {
     return rotated.filter(p => p.id !== playerId);
   }, [gameState?.players, playerId]);
 
-  // Handle animations for throwing cards
+  // Handle animations for throwing cards & PASS text
   useEffect(() => {
     if (gameState?.lastMove) {
-      const { playerId: moverId, count } = gameState.lastMove;
+      const { playerId: moverId, count, type, playerName, declaredRank } = gameState.lastMove;
       const isMe = moverId === playerId;
       const seatIdx = seatedPlayers.findIndex(p => p.id === moverId);
       if (!isMe && seatIdx === -1) return;
 
       const fromPos = isMe ? { bottom: '0px', left: '50%' } : SEATS[seatIdx % SEATS.length];
-      setActiveAnimation({
-        from: fromPos,
-        to: { top: isPortrait ? '45%' : '44%', left: '50%' },
-        count
-      });
+      const toPos = { top: isPortrait ? '45%' : '44%', left: '50%' };
+
+      if (type === 'PASS') {
+        setFloatingAction({
+          from: fromPos,
+          to: toPos,
+          text: `${playerName} Passed Turn`,
+          type: 'PASS'
+        });
+      } else {
+        // Normal play
+        setActiveAnimation({ from: fromPos, to: toPos, count });
+        setFloatingAction({
+          from: fromPos,
+          to: toPos,
+          text: `${playerName} Played ${count} Cards`,
+          type: 'PLAY'
+        });
+      }
     }
   }, [gameState?.lastMove]);
 
@@ -150,15 +166,15 @@ export default function GameBoard() {
   // Sounds for turn and moves
   const lastMoveId = lastMove?.id || '';
   useEffect(() => {
-    if (lastMove) play('card_play');
+    if (lastMove) play('click');
   }, [lastMoveId, play]);
 
   useEffect(() => {
-    if (isMyTurn && state === 'PLAYING') play('turn_ding');
+    if (isMyTurn && state === 'PLAYER_TURN') play('click');
   }, [isMyTurn, state, play]);
 
   useEffect(() => {
-    if (isPickingPhase) play('bluff_alert');
+    if (isPickingPhase) play('click');
   }, [isPickingPhase, play]);
   const totalPileCards = pile?.reduce((s, m) => s + m.count, 0) || 0;
   const currentPlayer = players.find(p => p.id === currentTurn);
@@ -394,9 +410,15 @@ export default function GameBoard() {
                 <button onClick={() => kickPlayer(player.id)} style={{ position: 'absolute', top: -8, right: -8, background: '#ef4444', color: '#fff', width: 20, height: 20, borderRadius: '50%', fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, border: '2px solid #000', cursor: 'pointer' }}>✕</button>
               )}
               {playerWinner && (
-                <div style={{ position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <TrophyIcon size={18} />
-                  <span style={{ fontSize: '0.55rem', fontWeight: 900, color: '#f59e0b', background: '#000', padding: '1px 3px', borderRadius: 4, marginTop: -4 }}>#{winRank}</span>
+                <div style={{
+                  position: 'absolute', inset: -10,
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  background: 'rgba(0,0,0,0.6)', borderRadius: 12, zIndex: 100,
+                  backdropFilter: 'blur(4px)', border: '2px solid #f59e0b',
+                  animation: 'blink 1.5s infinite alternate'
+                }}>
+                  <TrophyIcon size={isActive ? 48 : 32} />
+                  <span style={{ fontSize: '1rem', fontWeight: 900, color: '#f59e0b' }}>#{winRank}</span>
                 </div>
               )}
             </div>
@@ -430,8 +452,8 @@ export default function GameBoard() {
               /* Mobile Sliding Layout */
               <div style={{
                 width: '100vw', display: 'flex', overflowX: 'auto', overflowY: 'visible',
-                padding: '20px 40px 60px', scrollBehavior: 'smooth', gap: '12px',
-                alignItems: 'flex-end', justifyContent: 'flex-start',
+                padding: '20px 60px 80px', scrollBehavior: 'smooth', gap: '16px',
+                alignItems: 'flex-end', justifyContent: myHand.length < 5 ? 'center' : 'flex-start',
                 scrollbarWidth: 'none', msOverflowStyle: 'none'
               }} className="no-scrollbar">
                 {myHand.map((cardId, i) => {
@@ -803,6 +825,35 @@ export default function GameBoard() {
         </div>
       </div>
 
+      <FloatingAction
+        fromPos={floatingAction?.from}
+        toPos={floatingAction?.to}
+        text={floatingAction?.text}
+        type={floatingAction?.type}
+        onComplete={() => setFloatingAction(null)}
+      />
+
+      <div style={{ position: 'fixed', bottom: 10, right: 15, zIndex: 100, opacity: 0.3 }}>
+        <p style={{ color: '#fff', fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.1em', margin: 0 }}>
+          © DEVELOPED BY SHIVAM JAYSWAL
+        </p>
+      </div>
+
+      <style>{`
+        @keyframes blink {
+          from { opacity: 1; transform: scale(1); }
+          to { opacity: 0.5; transform: scale(1.05); }
+        }
+        .active-pulse {
+          box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.7);
+          animation: pulse-border 2s infinite;
+        }
+        @keyframes pulse-border {
+          0% { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.7); }
+          70% { box-shadow: 0 0 0 15px rgba(124, 58, 237, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0); }
+        }
+      `}</style>
     </div>
   );
 }

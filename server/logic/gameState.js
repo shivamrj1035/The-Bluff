@@ -183,7 +183,10 @@ function reducer(state, action) {
       // Check if ANY player now has 0 cards and isn't ranked (Winning condition)
       const finalRanking = state.ranking.filter(r => r.id !== loserId);
       
-      const nextTurnId = getNextPlayerId(newPlayers, winnerOfBluffId, finalRanking);
+      // The winner of the challenge starts the next phase if they are still in the game.
+      // If the winner just finished their cards, the turn moves to the next eligible player.
+      const winnerIsStillIn = !finalRanking.find(r => r.id === winnerOfBluffId);
+      const nextTurnId = winnerIsStillIn ? winnerOfBluffId : getNextPlayerId(newPlayers, winnerOfBluffId, finalRanking);
       newPlayers.forEach(p => {
         if (p.cardCount === 0 && !finalRanking.find(r => r.id === p.id)) {
            finalRanking.push({
@@ -305,7 +308,7 @@ function reducer(state, action) {
           lastPlayerToPlay: null,
           passCount: 0,
           currentTurn: gameIsActuallyEnded ? null : actualNextTurnId,
-          lastMove: null,
+          lastMove: { playerId: state.currentTurn, playerName: state.players.find(p => p.id === state.currentTurn)?.name, type: 'PASS' },
           bluffResult: null,
           ranking: finalRanking,
           turnStartTime: Date.now(),
@@ -317,6 +320,7 @@ function reducer(state, action) {
         state: GAME_STATES.PLAYER_TURN,
         currentTurn: nextTurnId,
         passCount: nextPassCount,
+        lastMove: { playerId: state.currentTurn, playerName: state.players.find(p => p.id === state.currentTurn)?.name, type: 'PASS' },
         bluffResult: null,
         turnStartTime: Date.now(),
       };

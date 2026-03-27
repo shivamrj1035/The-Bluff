@@ -55,6 +55,9 @@ export default function LandingPage() {
           </button>
         </div>
 
+        <p style={{ marginTop: '24px', fontSize: '0.7rem', color: '#4b5563', fontWeight: 600, letterSpacing: '0.05em' }}>
+          DEVELOPED BY SHIVAM JAYSWAL
+        </p>
       </motion.div>
     </div>
   );

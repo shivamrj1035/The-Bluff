@@ -25,6 +25,10 @@ export default function JoinPage() {
     if (!name.trim()) return toast.error('Enter your name');
     if (!roomId.trim()) return toast.error('Enter Room ID');
 
+    // Update URL without reload
+    const newUrl = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
+    window.history.pushState({ path: newUrl }, '', newUrl);
+
     setIdentity(name, 'P');
     connect(roomId);
   };
