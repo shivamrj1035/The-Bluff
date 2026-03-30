@@ -406,9 +406,15 @@ export default function GameBoard() {
                 <p style={{ fontSize: '0.75rem', fontWeight: 900, color: '#fff', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '75px' }}>
                   {player.name.toUpperCase()}
                 </p>
-                {/* FIX Bug 12: Show card count only if not a winner */}
                 {!playerWinner && (
-                  <p style={{ fontSize: '0.65rem', color: '#6b7280', fontWeight: 800, margin: 0 }}>{hc} CARDS</p>
+                  <p style={{
+                    fontSize: '0.65rem',
+                    color: hc === 0 ? '#f59e0b' : '#6b7280',
+                    fontWeight: 800, margin: 0,
+                    animation: hc === 0 ? 'pulse 1s infinite' : 'none'
+                  }}>
+                    {hc === 0 ? 'WINNER PENDING...' : `${hc} CARDS`}
+                  </p>
                 )}
                 {playerWinner && (
                   <p style={{ fontSize: '0.65rem', color: '#f59e0b', fontWeight: 900, margin: 0 }}>FINISHED #{winRank}</p>
