@@ -26,8 +26,9 @@ const EVENTS = {
   LEAVE_ROOM: "leave_room",
   KICK_PLAYER: "kick_player",         // NEW: host removes player
   RESTART_GAME: "restart_game",       // NEW: host restarts from ranking
-  CLOSE_GAME: "close_game",           // NEW: host closes room
-  PROCEED_NEXT_TURN: "proceed_next_turn", // NEW: internal/timer to end resolution
+  CLOSE_GAME: "close_game",           // host closes room
+  PROCEED_NEXT_TURN: "proceed_next_turn", // internal/timer to end resolution
+  REORDER_PLAYERS: "reorder_players",   // host reorders player turn order
 
   // Server -> Client
   GAME_STATE: "game_state",
@@ -39,7 +40,8 @@ const EVENTS = {
   DEALING_START: "dealing_start",
   BLUFF_RESULT: "bluff_result",
   ROOM_INFO: "room_info",
-  GAME_OVER: "game_over",             // NEW: total game ended
+  GAME_OVER: "game_over",             // total game ended
+  HOST_TRANSFERRED: "host_transferred", // host changed due to disconnect
 };
 
 module.exports = {

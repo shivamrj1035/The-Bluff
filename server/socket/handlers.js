@@ -19,6 +19,9 @@ async function saveRoom(roomId, room) {
 const activeRooms = new Set();
 let timerInterval = null;
 
+// Maps socket.id -> roomId so we can look up the room on disconnect
+const socketRoomMap = new Map();
+
 function startGlobalTimer(io) {
   if (timerInterval) return;
   timerInterval = setInterval(async () => {
@@ -78,6 +81,17 @@ function startGlobalTimer(io) {
   }, 2000);
 }
 
+/**
+ * Picks the next connected player to become host.
+ * Excludes the departing host.
+ */
+function pickNewHost(room, departingSocketId) {
+  const candidate = room.players.find(
+    (p) => p.id !== departingSocketId && p.isConnected
+  );
+  return candidate ? candidate.id : null;
+}
+
 function setupHandlers(io, socket) {
   startGlobalTimer(io);
 
@@ -108,11 +122,17 @@ function setupHandlers(io, socket) {
           delete room.hands[oldId];
         }
 
-        room.ranking.forEach(r => { if (r.id === oldId) r.id = socket.id; });
+        room.ranking.forEach((r) => {
+          if (r.id === oldId) r.id = socket.id;
+        });
+
         // Also fix lastMove if it references oldId
         if (room.lastMove && room.lastMove.playerId === oldId) {
           room.lastMove.playerId = socket.id;
         }
+
+        // Update socketRoomMap for new socket id
+        socketRoomMap.delete(oldId);
 
       } else {
         // 2. New joiner
@@ -129,6 +149,9 @@ function setupHandlers(io, socket) {
           console.log(`[SPECTATOR] ${playerName} joined room ${roomId}`);
         }
       }
+
+      // Track this socket → room mapping
+      socketRoomMap.set(socket.id, roomId);
 
       await saveRoom(roomId, room);
       activeRooms.add(roomId);
@@ -171,13 +194,30 @@ function setupHandlers(io, socket) {
     }
   });
 
+  // --- REORDER PLAYERS (host only, lobby only) ---
+  socket.on(EVENTS.REORDER_PLAYERS, async ({ roomId, orderedIds }) => {
+    try {
+      let room = await getRoom(roomId);
+      if (!room || room.hostId !== socket.id) return;
+      if (room.state !== GAME_STATES.WAITING) return;
+
+      room = reducer(room, {
+        type: "REORDER_PLAYERS",
+        payload: { orderedIds },
+      });
+      await saveRoom(roomId, room);
+      emitState(io, roomId, room);
+    } catch (err) {
+      console.error("[REORDER_PLAYERS error]", err);
+    }
+  });
+
   // --- PLAY CARDS ---
   socket.on(EVENTS.PLAY_CARDS, async ({ roomId, cardIds, declaredRank }) => {
     try {
       let room = await getRoom(roomId);
       if (!room) return;
 
-      // FIX: Use validator before reducer
       const validation = validateAction(room, socket.id, "PLAY_CARDS", { cardIds, declaredRank });
       if (!validation.valid) {
         socket.emit(EVENTS.ERROR, { message: validation.message });
@@ -202,7 +242,6 @@ function setupHandlers(io, socket) {
       let room = await getRoom(roomId);
       if (!room) return;
 
-      // FIX: Use unified validator
       const validation = validateAction(room, socket.id, "CALL_BLUFF", {});
       if (!validation.valid) {
         socket.emit(EVENTS.ERROR, { message: validation.message });
@@ -256,7 +295,6 @@ function setupHandlers(io, socket) {
   });
 
   // --- PASS TURN ---
-  // FIX Bug 5 (server): Validate currentTurn and state before passing
   socket.on(EVENTS.PASS_TURN, async ({ roomId }) => {
     try {
       let room = await getRoom(roomId);
@@ -317,16 +355,13 @@ function setupHandlers(io, socket) {
 
   // --- CLOSE GAME ---
   // Host ending active game → sends everyone back to lobby (WAITING state).
-  // Room is NOT deleted — everyone stays connected and host can restart or leave from the lobby.
   socket.on(EVENTS.CLOSE_GAME, async ({ roomId }) => {
     try {
       let room = await getRoom(roomId);
       if (!room || room.hostId !== socket.id) return;
 
-      // Reset game state to WAITING — all players stay in the room
       room = reducer(room, { type: "RESET_TO_LOBBY" });
       await saveRoom(roomId, room);
-      // Broadcast new WAITING state to all players — client will show LobbyPage
       emitState(io, roomId, room);
     } catch (err) {
       console.error("[CLOSE_GAME error]", err);
@@ -335,11 +370,57 @@ function setupHandlers(io, socket) {
 
   // --- DISCONNECT ---
   socket.on("disconnect", async () => {
-    // Mark player as disconnected; they can reconnect using same name
     try {
-      // We don't know which room they were in — client reconnects via join_room
       console.log(`[DISCONNECT] ${socket.id}`);
-    } catch (err) {}
+
+      const roomId = socketRoomMap.get(socket.id);
+      socketRoomMap.delete(socket.id);
+
+      if (!roomId) return; // Not in any room
+
+      let room = await getRoom(roomId);
+      if (!room) return;
+
+      // Find and mark the player as disconnected
+      const player = room.players.find((p) => p.id === socket.id);
+      if (player) {
+        player.isConnected = false;
+      }
+
+      // Check if all players are disconnected — if so, clean up
+      const connectedPlayers = room.players.filter((p) => p.isConnected);
+      if (connectedPlayers.length === 0) {
+        await redis.del(`room:${roomId}`);
+        activeRooms.delete(roomId);
+        console.log(`[ROOM DELETED] ${roomId} — all players disconnected`);
+        return;
+      }
+
+      // If the disconnecting player was the host, transfer host
+      if (room.hostId === socket.id) {
+        const newHostId = pickNewHost(room, socket.id);
+        if (newHostId) {
+          room = reducer(room, {
+            type: "TRANSFER_HOST",
+            payload: { newHostId },
+          });
+
+          const newHost = room.players.find((p) => p.id === newHostId);
+          console.log(`[HOST TRANSFER] ${roomId}: ${socket.id} → ${newHostId} (${newHost?.name})`);
+
+          // Notify all clients that the host changed
+          io.to(roomId).emit(EVENTS.HOST_TRANSFERRED, {
+            newHostId,
+            newHostName: newHost?.name || "Unknown",
+          });
+        }
+      }
+
+      await saveRoom(roomId, room);
+      emitState(io, roomId, room);
+    } catch (err) {
+      console.error("[DISCONNECT error]", err);
+    }
   });
 }
 

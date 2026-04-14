@@ -61,6 +61,7 @@ export const useGameStore = create((set, get) => ({
     s.off('kicked');
     s.off('disconnect');
     s.off('reconnect');
+    s.off('host_transferred');
 
     set({ status: 'CONNECTING', roomId, error: null, socket: s });
 
@@ -87,6 +88,10 @@ export const useGameStore = create((set, get) => ({
 
     s.on('room_closed', () => {
       set({ status: 'IDLE', gameState: null, roomId: '', screen: 'LANDING' });
+    });
+
+    s.on('host_transferred', ({ newHostId, newHostName }) => {
+      set({ hostTransferredName: newHostName, hostTransferredId: newHostId });
     });
 
     s.on('disconnect', () => {
@@ -152,6 +157,11 @@ export const useGameStore = create((set, get) => ({
   kickPlayer: (targetId) => {
     const { socket: s, roomId } = get();
     s?.emit('kick_player', { roomId, targetId });
+  },
+
+  reorderPlayers: (orderedIds) => {
+    const { socket: s, roomId } = get();
+    s?.emit('reorder_players', { roomId, orderedIds });
   },
 
   restartGame: () => {

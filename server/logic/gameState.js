@@ -6,7 +6,7 @@ function createRoom(roomId) {
     roomId,
     state: GAME_STATES.WAITING,
     hostId: null,
-    players: [],
+    players: [],        // ordered array — host can reorder in lobby
     hands: {},
     pile: [],
     sidePile: [],
@@ -463,6 +463,35 @@ function reducer(state, action) {
         _nextTurnId: undefined,
         _gameEnded: undefined,
       };
+    }
+
+    case "TRANSFER_HOST": {
+      const { newHostId } = payload;
+      // Only transfer if the new host is actually a connected player in the room
+      const isValidHost = state.players.find(p => p.id === newHostId && p.isConnected);
+      if (!isValidHost) return state;
+      return { ...state, hostId: newHostId };
+    }
+
+    case "REORDER_PLAYERS": {
+      // Only valid in WAITING state (lobby)
+      if (state.state !== GAME_STATES.WAITING) return state;
+      const { orderedIds } = payload;
+      if (!Array.isArray(orderedIds)) return state;
+
+      // Validate: orderedIds must contain exactly the same player ids as current
+      const currentIds = new Set(state.players.map(p => p.id));
+      const newIds = new Set(orderedIds);
+      if (currentIds.size !== newIds.size) return state;
+      for (const id of newIds) {
+        if (!currentIds.has(id)) return state;
+      }
+
+      // Rebuild players array in the new order
+      const playerMap = Object.fromEntries(state.players.map(p => [p.id, p]));
+      const reorderedPlayers = orderedIds.map(id => playerMap[id]).filter(Boolean);
+
+      return { ...state, players: reorderedPlayers };
     }
 
     default:
