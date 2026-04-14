@@ -16,8 +16,11 @@ export default function LobbyPage() {
 
   // ✅ FIX: Use gameState.myId (embedded by server) instead of store's playerId
   // This avoids race conditions where playerId hasn't been set yet in the store
-  const myId = gameState?.myId;
-  const isHost = gameState?.hostId === myId;
+  // ✅ Guard: explicitly require gameState to be non-null.
+  // Without this, undefined === undefined gives a false-positive isHost=true
+  // when gameState is null (socket connected but game_state not yet received).
+  const myId = gameState?.myId ?? null;
+  const isHost = Boolean(gameState && myId && gameState.hostId === myId);
   const canStart = players.length >= 2;
 
   // Toast when host changes
@@ -52,6 +55,32 @@ export default function LobbyPage() {
     [newPlayers[idx], newPlayers[swapIdx]] = [newPlayers[swapIdx], newPlayers[idx]];
     reorderPlayers(newPlayers.map((p) => p.id));
   };
+
+  // ⚡ If connected but no game_state yet — show a loading spinner
+  // This prevents the fake empty lobby (0/8 players) from appearing
+  if (!gameState) {
+    return (
+      <div style={{
+        height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        background: 'radial-gradient(ellipse at 50% 0%, #1a0a3d 0%, #0c0c1a 60%, #060614 100%)',
+        gap: 20,
+      }}>
+        <div style={{
+          width: 48, height: 48, border: '4px solid #7c3aed',
+          borderTopColor: 'transparent', borderRadius: '50%',
+          animation: 'spin 0.8s linear infinite',
+        }} />
+        <p style={{ color: '#a78bfa', fontWeight: 800, fontSize: '1rem', letterSpacing: '.1em' }}>
+          JOINING ROOM...
+        </p>
+        <p style={{ color: '#4b5563', fontWeight: 600, fontSize: '.75rem' }}>
+          Connecting to game server
+        </p>
+        <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
 
   return (
     <div style={{

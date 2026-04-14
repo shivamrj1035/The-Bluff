@@ -17,7 +17,38 @@
 
 ---
 
-## Session: 2026-04-14 — Private Table Management Overhaul
+## Session: 2026-04-14 (Part 2) — "0/8 Players" Deployment Bug
+
+### Problem
+After deploying, users see the room lobby with 0/8 players — nobody appears, including the room creator.
+
+### Root Cause 1: VITE_SOCKET_URL not set on Vercel
+`useGameStore.js`:
+```js
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || '/';
+```
+On Vercel, `VITE_SOCKET_URL` is not set in Environment Variables → defaults to `/` → socket tries to connect to `the-bluff-by-shivam.vercel.app` (serverless, no persistent WS) → `join_room` never reaches the Node.js backend → no `game_state` event → players array stays empty.
+
+Locally, Vite's dev proxy in `vite.config.js` forwards `/socket.io` → `localhost:4000`, so it works locally but not in production.
+
+**Fix:** Set `VITE_SOCKET_URL=https://your-backend-url` in Vercel Environment Variables. Server must be hosted separately (Railway, Render, etc.).
+
+### Root Cause 2: isHost false-positive when gameState is null
+`LobbyPage.jsx` was computing:
+```js
+const isHost = gameState?.hostId === gameState?.myId;  // undefined===undefined = true!
+```
+Fixed to:
+```js
+const isHost = Boolean(gameState && myId && gameState.hostId === myId);
+```
+Also added a "JOINING ROOM..." spinner screen that shows when `gameState` is null, preventing the empty lobby ghost-state from appearing.
+
+### Fix: Server must be restarted after code changes
+
+---
+
+
 
 ### Problems Reported
 1. **"Waiting for Host" bug** — When the room creator joins their own table, they see "WAITING FOR HOST..." instead of the START SESSION button.
