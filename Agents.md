@@ -17,7 +17,53 @@
 
 ---
 
-## Session: 2026-04-14 (Part 2) — "0/8 Players" Deployment Bug
+## Session: 2026-04-14 (Part 3) — Redis Free Tier Exhaustion Fix
+
+### Problem
+Upstash free tier hit: 574K commands / 500K limit.
+- **Reads: 560K** — caused by the global timer calling `getRoom()` (a Redis GET) every 2 seconds
+  per active room. With 5 rooms: 5 × 30/min × 60 × 24 = 216,000 reads/day.
+- **Writes: 14K** — every socket action (play, pass, bluff, etc.) saved to Redis immediately.
+
+### Fix: In-Memory Cache Layer with Periodic Redis Flush
+
+**File:** `server/socket/handlers.js`
+
+Architecture change:
+```
+Before: Every read/write → Redis (network round-trip, counts against limit)
+After:  Every read/write → roomCache (in-memory JS Map, zero network)
+        Dirty rooms flushed to Redis every 30 seconds (backup only)
+        Redis read only on cold-start cache miss (once per room per process restart)
+```
+
+New functions replacing old `getRoom`/`saveRoom`:
+| Function | Before | After |
+|---|---|---|
+| `getRoom(id)` | Redis GET every call | Check `roomCache` Map first; Redis only on miss |
+| `saveRoom(id, room)` | Redis SET every call | Write to `roomCache`, add to `dirtyRooms` Set |
+| `deleteRoom(id)` | (new) | Remove from cache + Redis |
+| Timer loop | `async` with `await getRoom` per room | Synchronous `getRoomFromCache` — zero Redis |
+| HTTP `/room/:id` | Redis GET | Cache lookup first |
+
+**Redis flush interval:** 30 seconds (configurable via `FLUSH_INTERVAL_MS`)
+
+### Estimated Redis Reduction
+| Source | Before | After |
+|---|---|---|
+| Timer (5 rooms) | ~5 reads/2s = 216K reads/day | 0 reads |
+| Socket actions | 2 cmds/action | 0 real-time, ~1 per 30s |
+| Cold start | 1 read | 1 read (same) |
+| **Total/month** | **~560K+** | **~1–5K** |
+
+### Files Changed
+- `server/socket/handlers.js` — cache layer, sync timer, flush interval
+- `server/redisClient.js` — added `del` method
+- `server/index.js` — HTTP endpoint uses `getRoomForHttp` (cache, no Redis)
+
+---
+
+
 
 ### Problem
 After deploying, users see the room lobby with 0/8 players — nobody appears, including the room creator.

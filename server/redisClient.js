@@ -61,6 +61,7 @@ try {
 const store = {
   get: (...args) => redis.get(...args),
   set: (...args) => redis.set(...args),
+  del: (...args) => redis.del(...args),
 };
 
 module.exports = store;

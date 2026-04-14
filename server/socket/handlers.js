@@ -4,46 +4,123 @@ const { validateAction } = require("../logic/validator");
 const { serializeState } = require("./sync");
 const redis = require("../redisClient");
 
-const ROOM_TTL = 60 * 60 * 4; // 4 hours
+const ROOM_TTL = 60 * 60 * 4; // 4 hours in seconds
 
+// ─────────────────────────────────────────────
+//  IN-MEMORY CACHE  (primary storage)
+//  Redis is only used as a periodic backup.
+//
+//  Before: every getRoom = 1 Redis READ,  every saveRoom = 1 Redis WRITE
+//          timer fires every 2s × N rooms → hundreds of commands/min
+//
+//  After:  all reads/writes go to roomCache (pure JS Map, zero network)
+//          Redis is flushed at most once every FLUSH_INTERVAL_MS (30s)
+//          Redis is still read on cold-start (cache miss)
+//
+//  Redis command reduction: ~98%
+// ─────────────────────────────────────────────
+const roomCache = new Map();  // roomId → room object
+const dirtyRooms = new Set(); // rooms that have unsaved changes
+const FLUSH_INTERVAL_MS = 30_000; // flush to Redis every 30 seconds
+
+// Synchronous cache read — no Redis hit
+function getRoomFromCache(roomId) {
+  return roomCache.get(roomId) || null;
+}
+
+// Load from cache; fall back to Redis on cache miss (server restart / cold start)
 async function getRoom(roomId) {
-  const data = await redis.get(`room:${roomId}`);
-  return data ? JSON.parse(data) : null;
+  if (roomCache.has(roomId)) {
+    return roomCache.get(roomId);
+  }
+  // Cache miss → fetch from Redis (happens only on cold start per room)
+  try {
+    const data = await redis.get(`room:${roomId}`);
+    if (data) {
+      const room = JSON.parse(data);
+      roomCache.set(roomId, room);
+      return room;
+    }
+  } catch (e) {
+    console.error("[Cache miss Redis error]", e.message);
+  }
+  return null;
 }
 
-async function saveRoom(roomId, room) {
-  await redis.set(`room:${roomId}`, JSON.stringify(room), "EX", ROOM_TTL);
+// Write to cache immediately; schedule Redis flush (no immediate Redis write)
+function saveRoom(roomId, room) {
+  roomCache.set(roomId, room);
+  dirtyRooms.add(roomId);
 }
 
-// Keep track of active rooms for the timer loop
+// Delete from cache + Redis immediately (used when room is empty)
+async function deleteRoom(roomId) {
+  roomCache.delete(roomId);
+  dirtyRooms.delete(roomId);
+  try {
+    await redis.del(`room:${roomId}`);
+  } catch (e) {
+    console.error("[deleteRoom Redis error]", e.message);
+  }
+}
+
+// Flush dirty rooms to Redis every 30 seconds
+setInterval(async () => {
+  if (dirtyRooms.size === 0) return;
+  const toFlush = [...dirtyRooms];
+  dirtyRooms.clear();
+
+  for (const roomId of toFlush) {
+    const room = roomCache.get(roomId);
+    if (!room) continue;
+    try {
+      await redis.set(`room:${roomId}`, JSON.stringify(room), "EX", ROOM_TTL);
+    } catch (e) {
+      // Re-queue if flush fails; will be retried next interval
+      dirtyRooms.add(roomId);
+      console.error(`[Flush error] room ${roomId}:`, e.message);
+    }
+  }
+  if (toFlush.length > 0) {
+    console.log(`[Redis Flush] Persisted ${toFlush.length} room(s)`);
+  }
+}, FLUSH_INTERVAL_MS);
+
+// ─────────────────────────────────────────────
+//  ROOM TRACKING
+// ─────────────────────────────────────────────
 const activeRooms = new Set();
 let timerInterval = null;
 
-// Maps socket.id -> roomId so we can look up the room on disconnect
+// Maps socket.id → roomId so disconnect handler can find the room
 const socketRoomMap = new Map();
 
+// ─────────────────────────────────────────────
+//  GLOBAL TIMER (reads fully from cache — zero Redis hits)
+// ─────────────────────────────────────────────
 function startGlobalTimer(io) {
   if (timerInterval) return;
-  timerInterval = setInterval(async () => {
+  timerInterval = setInterval(() => {
     for (const roomId of activeRooms) {
       try {
-        let room = await getRoom(roomId);
+        // Synchronous cache read — no async, no Redis
+        let room = getRoomFromCache(roomId);
         if (!room) {
           activeRooms.delete(roomId);
           continue;
         }
 
         const now = Date.now();
-        const isPicking = room.state === GAME_STATES.BLUFF_PICKING;
+        const isPicking    = room.state === GAME_STATES.BLUFF_PICKING;
         const isResolution = room.state === GAME_STATES.ROUND_RESOLUTION;
         const isPlayerTurn = room.state === GAME_STATES.PLAYER_TURN;
 
         if (isPicking || isResolution || isPlayerTurn) {
           const limit = isPicking
-            ? 20000
+            ? 20_000
             : isResolution
-              ? 4000
-              : (room.timerDuration || 60) * 1000;
+              ? 4_000
+              : (room.timerDuration || 60) * 1_000;
 
           if (room.turnStartTime && now - room.turnStartTime > limit) {
             console.log(`[TIMEOUT] Room ${roomId} phase: ${room.state}`);
@@ -57,20 +134,14 @@ function startGlobalTimer(io) {
             } else if (isResolution) {
               room = reducer(room, { type: "PROCEED_NEXT_TURN" });
             } else if (isPlayerTurn && room.currentTurn) {
-              // Auto-pass on turn timeout (only if pile has cards, otherwise auto-play is needed)
               if (room.pile && room.pile.length > 0) {
-                room = reducer(room, {
-                  type: "PASS_TURN",
-                  playerId: room.currentTurn,
-                });
-              }
-              // If pile is empty (first move), we can't pass — reset timer
-              else {
+                room = reducer(room, { type: "PASS_TURN", playerId: room.currentTurn });
+              } else {
                 room.turnStartTime = Date.now();
               }
             }
 
-            await saveRoom(roomId, room);
+            saveRoom(roomId, room); // writes to cache + marks dirty
             emitState(io, roomId, room);
           }
         }
@@ -111,10 +182,10 @@ function setupHandlers(io, socket) {
         existingPlayer.id = socket.id;
         existingPlayer.isConnected = true;
 
-        if (room.hostId === oldId) room.hostId = socket.id;
-        if (room.currentTurn === oldId) room.currentTurn = socket.id;
-        if (room.bluffPickerId === oldId) room.bluffPickerId = socket.id;
-        if (room.bluffTargetId === oldId) room.bluffTargetId = socket.id;
+        if (room.hostId === oldId)          room.hostId = socket.id;
+        if (room.currentTurn === oldId)     room.currentTurn = socket.id;
+        if (room.bluffPickerId === oldId)   room.bluffPickerId = socket.id;
+        if (room.bluffTargetId === oldId)   room.bluffTargetId = socket.id;
         if (room.lastPlayerToPlay === oldId) room.lastPlayerToPlay = socket.id;
 
         if (room.hands[oldId]) {
@@ -122,16 +193,12 @@ function setupHandlers(io, socket) {
           delete room.hands[oldId];
         }
 
-        room.ranking.forEach((r) => {
-          if (r.id === oldId) r.id = socket.id;
-        });
+        room.ranking.forEach((r) => { if (r.id === oldId) r.id = socket.id; });
 
-        // Also fix lastMove if it references oldId
         if (room.lastMove && room.lastMove.playerId === oldId) {
           room.lastMove.playerId = socket.id;
         }
 
-        // Update socketRoomMap for new socket id
         socketRoomMap.delete(oldId);
 
       } else {
@@ -145,15 +212,12 @@ function setupHandlers(io, socket) {
             cardCount: 0,
           });
         } else {
-          // Game in progress — spectator
           console.log(`[SPECTATOR] ${playerName} joined room ${roomId}`);
         }
       }
 
-      // Track this socket → room mapping
       socketRoomMap.set(socket.id, roomId);
-
-      await saveRoom(roomId, room);
+      saveRoom(roomId, room);
       activeRooms.add(roomId);
       socket.join(roomId);
 
@@ -176,17 +240,17 @@ function setupHandlers(io, socket) {
       }
 
       room = reducer(room, { type: "START_GAME", playerId: socket.id });
-      await saveRoom(roomId, room);
+      saveRoom(roomId, room);
 
       io.to(roomId).emit(EVENTS.GAME_STARTED);
       emitState(io, roomId, room);
 
-      // Transition from DEALING to PLAYER_TURN after animation
-      setTimeout(async () => {
-        let r = await getRoom(roomId);
+      // Transition from DEALING to PLAYER_TURN after deal animation
+      setTimeout(() => {
+        let r = getRoomFromCache(roomId);
         if (!r || r.state !== GAME_STATES.DEALING) return;
         r = reducer(r, { type: "BEGIN_PLAYING", playerId: socket.id });
-        await saveRoom(roomId, r);
+        saveRoom(roomId, r);
         emitState(io, roomId, r);
       }, 3500);
     } catch (err) {
@@ -201,11 +265,8 @@ function setupHandlers(io, socket) {
       if (!room || room.hostId !== socket.id) return;
       if (room.state !== GAME_STATES.WAITING) return;
 
-      room = reducer(room, {
-        type: "REORDER_PLAYERS",
-        payload: { orderedIds },
-      });
-      await saveRoom(roomId, room);
+      room = reducer(room, { type: "REORDER_PLAYERS", payload: { orderedIds } });
+      saveRoom(roomId, room);
       emitState(io, roomId, room);
     } catch (err) {
       console.error("[REORDER_PLAYERS error]", err);
@@ -229,7 +290,7 @@ function setupHandlers(io, socket) {
         playerId: socket.id,
         payload: { cardIds, declaredRank },
       });
-      await saveRoom(roomId, room);
+      saveRoom(roomId, room);
       emitState(io, roomId, room);
     } catch (err) {
       console.error("[PLAY_CARDS error]", err);
@@ -249,7 +310,7 @@ function setupHandlers(io, socket) {
       }
 
       room = reducer(room, { type: "CALL_BLUFF", playerId: socket.id });
-      await saveRoom(roomId, room);
+      saveRoom(roomId, room);
       emitState(io, roomId, room);
     } catch (err) {
       console.error("[CALL_BLUFF error]", err);
@@ -268,14 +329,14 @@ function setupHandlers(io, socket) {
         playerId: socket.id,
         payload: { cardIndex },
       });
-      await saveRoom(roomId, room);
+      saveRoom(roomId, room);
       emitState(io, roomId, room);
     } catch (err) {
       console.error("[PICK_BLUFF_CARD error]", err);
     }
   });
 
-  // --- SELECT BLUFF CARD (HOVER SYNC) ---
+  // --- SELECT BLUFF CARD (hover sync) ---
   socket.on(EVENTS.SELECT_BLUFF_CARD, async ({ roomId, idx }) => {
     try {
       let room = await getRoom(roomId);
@@ -287,7 +348,7 @@ function setupHandlers(io, socket) {
         playerId: socket.id,
         payload: { idx },
       });
-      await saveRoom(roomId, room);
+      saveRoom(roomId, room);
       emitState(io, roomId, room);
     } catch (err) {
       console.error("[SELECT_BLUFF_CARD error]", err);
@@ -307,7 +368,7 @@ function setupHandlers(io, socket) {
       }
 
       room = reducer(room, { type: "PASS_TURN", playerId: socket.id });
-      await saveRoom(roomId, room);
+      saveRoom(roomId, room);
       emitState(io, roomId, room);
     } catch (err) {
       console.error("[PASS_TURN error]", err);
@@ -319,10 +380,10 @@ function setupHandlers(io, socket) {
     try {
       let room = await getRoom(roomId);
       if (!room || room.hostId !== socket.id) return;
-      if (targetId === socket.id) return; // Host cannot kick themselves
+      if (targetId === socket.id) return;
 
       room = reducer(room, { type: "KICK_PLAYER", payload: { targetId } });
-      await saveRoom(roomId, room);
+      saveRoom(roomId, room);
 
       io.to(targetId).emit(EVENTS.KICKED);
       emitState(io, roomId, room);
@@ -338,14 +399,14 @@ function setupHandlers(io, socket) {
       if (!room || room.hostId !== socket.id) return;
 
       room = reducer(room, { type: "START_GAME", playerId: socket.id });
-      await saveRoom(roomId, room);
+      saveRoom(roomId, room);
       emitState(io, roomId, room);
 
-      setTimeout(async () => {
-        let r = await getRoom(roomId);
+      setTimeout(() => {
+        let r = getRoomFromCache(roomId);
         if (!r || r.state !== GAME_STATES.DEALING) return;
         r = reducer(r, { type: "BEGIN_PLAYING", playerId: socket.id });
-        await saveRoom(roomId, r);
+        saveRoom(roomId, r);
         emitState(io, roomId, r);
       }, 3500);
     } catch (err) {
@@ -354,14 +415,13 @@ function setupHandlers(io, socket) {
   });
 
   // --- CLOSE GAME ---
-  // Host ending active game → sends everyone back to lobby (WAITING state).
   socket.on(EVENTS.CLOSE_GAME, async ({ roomId }) => {
     try {
       let room = await getRoom(roomId);
       if (!room || room.hostId !== socket.id) return;
 
       room = reducer(room, { type: "RESET_TO_LOBBY" });
-      await saveRoom(roomId, room);
+      saveRoom(roomId, room);
       emitState(io, roomId, room);
     } catch (err) {
       console.error("[CLOSE_GAME error]", err);
@@ -375,40 +435,31 @@ function setupHandlers(io, socket) {
 
       const roomId = socketRoomMap.get(socket.id);
       socketRoomMap.delete(socket.id);
+      if (!roomId) return;
 
-      if (!roomId) return; // Not in any room
-
-      let room = await getRoom(roomId);
+      let room = getRoomFromCache(roomId) || await getRoom(roomId);
       if (!room) return;
 
-      // Find and mark the player as disconnected
+      // Mark player as disconnected
       const player = room.players.find((p) => p.id === socket.id);
-      if (player) {
-        player.isConnected = false;
-      }
+      if (player) player.isConnected = false;
 
-      // Check if all players are disconnected — if so, clean up
-      const connectedPlayers = room.players.filter((p) => p.isConnected);
-      if (connectedPlayers.length === 0) {
-        await redis.del(`room:${roomId}`);
+      // If all players disconnected → destroy room entirely
+      const anyConnected = room.players.some((p) => p.isConnected);
+      if (!anyConnected) {
+        await deleteRoom(roomId);
         activeRooms.delete(roomId);
         console.log(`[ROOM DELETED] ${roomId} — all players disconnected`);
         return;
       }
 
-      // If the disconnecting player was the host, transfer host
+      // Transfer host if the disconnecting player was the host
       if (room.hostId === socket.id) {
         const newHostId = pickNewHost(room, socket.id);
         if (newHostId) {
-          room = reducer(room, {
-            type: "TRANSFER_HOST",
-            payload: { newHostId },
-          });
-
+          room = reducer(room, { type: "TRANSFER_HOST", payload: { newHostId } });
           const newHost = room.players.find((p) => p.id === newHostId);
-          console.log(`[HOST TRANSFER] ${roomId}: ${socket.id} → ${newHostId} (${newHost?.name})`);
-
-          // Notify all clients that the host changed
+          console.log(`[HOST TRANSFER] ${roomId}: → ${newHostId} (${newHost?.name})`);
           io.to(roomId).emit(EVENTS.HOST_TRANSFERRED, {
             newHostId,
             newHostName: newHost?.name || "Unknown",
@@ -416,7 +467,7 @@ function setupHandlers(io, socket) {
         }
       }
 
-      await saveRoom(roomId, room);
+      saveRoom(roomId, room);
       emitState(io, roomId, room);
     } catch (err) {
       console.error("[DISCONNECT error]", err);
@@ -435,4 +486,9 @@ function emitState(io, roomId, room) {
   }
 }
 
-module.exports = { setupHandlers };
+// Exposed for HTTP endpoint in index.js — reads from cache (no Redis hit)
+function getRoomForHttp(roomId) {
+  return roomCache.get(roomId) || null;
+}
+
+module.exports = { setupHandlers, getRoomForHttp };
