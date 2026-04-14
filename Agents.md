@@ -17,7 +17,20 @@
 
 ---
 
-## Session: 2026-04-14 (Part 4) — Real-time Chat Implementation
+## Session: 2026-04-14 (Part 5) — Build Error Fix (Duplicate Declarations)
+
+### Problem
+`npm run build` failed with errors: `The symbol "myId" has already been declared`, etc. in `LobbyPage.jsx`.
+
+### Root Cause
+During the race condition fix and chat integration, the variables `myId`, `isHost`, and `canStart` were accidentally declared twice in the same scope.
+
+### Fix
+Removed the redundant declarations in `LobbyPage.jsx`.
+
+---
+
+
 
 ### Feature Goal
 Implement a real-time chat system where messages appear as floating speech bubbles over player avatars for 5.5 seconds.

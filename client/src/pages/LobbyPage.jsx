@@ -16,9 +16,6 @@ export default function LobbyPage() {
   const prevHostTransfer = useRef(null);
 
   const players = gameState?.players || [];
-  const myId = gameState?.myId ?? null;
-  const isHost = Boolean(gameState && myId && gameState.hostId === myId);
-  const canStart = players.length >= 2;
 
   // Helper: get active chat messages for a specific player
   const getMsgs = (pid) => chatMessages.filter(m => m.senderId === pid);
