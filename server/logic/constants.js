@@ -29,6 +29,7 @@ const EVENTS = {
   CLOSE_GAME: "close_game",           // host closes room
   PROCEED_NEXT_TURN: "proceed_next_turn", // internal/timer to end resolution
   REORDER_PLAYERS: "reorder_players",   // host reorders player turn order
+  CHAT_MESSAGE: "chat_message",          // player sends/receives a chat message
 
   // Server -> Client
   GAME_STATE: "game_state",
@@ -42,6 +43,7 @@ const EVENTS = {
   ROOM_INFO: "room_info",
   GAME_OVER: "game_over",             // total game ended
   HOST_TRANSFERRED: "host_transferred", // host changed due to disconnect
+  CHAT_BROADCAST: "chat_broadcast",      // server broadcasts chat to room
 };
 
 module.exports = {

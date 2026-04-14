@@ -3,16 +3,25 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../store/useGameStore';
 import { toast } from '../components/Toast';
 import Avatar from '../components/Icons';
+import ChatBubble from '../components/ChatBubble';
+import ChatInput from '../components/ChatInput';
 
 export default function LobbyPage() {
   const {
     gameState, startGame, roomId, disconnect, kickPlayer,
     reorderPlayers, hostTransferredName, hostTransferredId,
+    chatMessages,
   } = useGameStore();
   const [copied, setCopied] = useState(false);
   const prevHostTransfer = useRef(null);
 
   const players = gameState?.players || [];
+  const myId = gameState?.myId ?? null;
+  const isHost = Boolean(gameState && myId && gameState.hostId === myId);
+  const canStart = players.length >= 2;
+
+  // Helper: get active chat messages for a specific player
+  const getMsgs = (pid) => chatMessages.filter(m => m.senderId === pid);
 
   // ✅ FIX: Use gameState.myId (embedded by server) instead of store's playerId
   // This avoids race conditions where playerId hasn't been set yet in the store
@@ -163,7 +172,10 @@ export default function LobbyPage() {
                     {i + 1}
                   </div>
 
-                  <Avatar name={p.name} size={38} />
+                  <div style={{ position: 'relative' }}>
+                    <Avatar name={p.name} size={38} />
+                    <ChatBubble messages={getMsgs(p.id)} isMe={p.id === myId} position="top" />
+                  </div>
 
                   <div style={{ flex: 1 }}>
                     <p style={{ fontWeight: 900, fontSize: '.95rem', margin: 0 }}>
@@ -232,6 +244,11 @@ export default function LobbyPage() {
                 </motion.div>
               ))}
             </AnimatePresence>
+          </div>
+
+          {/* Inline Chat Input */}
+          <div style={{ marginTop: 16 }}>
+             <ChatInput compact={false} />
           </div>
 
           {/* Host controls / waiting message */}

@@ -17,7 +17,47 @@
 
 ---
 
-## Session: 2026-04-14 (Part 3) — Redis Free Tier Exhaustion Fix
+## Session: 2026-04-14 (Part 4) — Real-time Chat Implementation
+
+### Feature Goal
+Implement a real-time chat system where messages appear as floating speech bubbles over player avatars for 5.5 seconds.
+
+### Implementation Details
+
+#### 1. Server-side (Ephemeral Broadcast)
+- Added `CHAT_MESSAGE` event to `constants.js`.
+- Implemented `CHAT_MESSAGE` handler in `handlers.js`.
+- **Logic:** Server receives message, validates room/player, sanitizes text (max 120 chars), and broadcasts `CHAT_BROADCAST` to all room members.
+- **Optimization:** Chat is entirely ephemeral and is **never saved to Redis**, saving on command limits.
+
+#### 2. Client-side (State & UI)
+- **`useGameStore.js`**: Added `chatMessages` array and `sendChat` action. Added listener for `chat_broadcast`.
+- **Auto-Cleanup**: Client-side logic removes message from store after 5.5 seconds to trigger exit animations.
+- **`ChatBubble.jsx`**: A new component using `framer-motion` to render speech bubbles with spring animations and glassmorphism styling.
+- **`ChatInput.jsx`**: A reusable input component with two modes:
+  - `compact`: A small icon button that expands on click (used in `GameBoard`).
+  - `inline`: A full-width input bar (used in `LobbyPage`).
+
+#### 3. Integration
+- Integrated `ChatBubble` into:
+  - `GameBoard.jsx` (over opponent cards and my HUD avatar).
+  - `LobbyPage.jsx` (over each player row's avatar).
+- Integrated `ChatInput` into:
+  - `GameBoard.jsx` HUD (compact mode).
+  - `LobbyPage.jsx` (inline mode).
+
+### Files Changed
+- `server/logic/constants.js` — added chat events.
+- `server/socket/handlers.js` — added chat broadcast handler.
+- `client/src/store/useGameStore.js` — added chat state/actions.
+- `client/src/components/ChatBubble.jsx` [NEW] — UI for speech bubbles.
+- `client/src/components/ChatInput.jsx` [NEW] — UI for chat entering.
+- `client/src/pages/GameBoard.jsx` — integrated bubbles and input.
+- `client/src/pages/LobbyPage.jsx` — integrated bubbles and input.
+
+---
+
+
 
 ### Problem
 Upstash free tier hit: 574K commands / 500K limit.

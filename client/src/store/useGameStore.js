@@ -38,6 +38,9 @@ export const useGameStore = create((set, get) => ({
   screen: 'LANDING', // 'LANDING' | 'JOIN'
   selectedCards: [],
   isDealing: false,
+  chatMessages: [],      // { id, senderId, senderName, message, ts }
+  hostTransferredName: null,
+  hostTransferredId: null,
 
   // --- Identity ---
   setIdentity: (name, av) => {
@@ -62,6 +65,7 @@ export const useGameStore = create((set, get) => ({
     s.off('disconnect');
     s.off('reconnect');
     s.off('host_transferred');
+    s.off('chat_broadcast');
 
     set({ status: 'CONNECTING', roomId, error: null, socket: s });
 
@@ -92,6 +96,16 @@ export const useGameStore = create((set, get) => ({
 
     s.on('host_transferred', ({ newHostId, newHostName }) => {
       set({ hostTransferredName: newHostName, hostTransferredId: newHostId });
+    });
+
+    s.on('chat_broadcast', ({ senderId, senderName, message, ts }) => {
+      const msgId = `${senderId}-${ts}`;
+      const newMsg = { id: msgId, senderId, senderName, message, ts };
+      set((state) => ({ chatMessages: [...state.chatMessages, newMsg] }));
+      // Auto-remove after 5.5 seconds
+      setTimeout(() => {
+        set((state) => ({ chatMessages: state.chatMessages.filter(m => m.id !== msgId) }));
+      }, 5500);
     });
 
     s.on('disconnect', () => {
@@ -162,6 +176,12 @@ export const useGameStore = create((set, get) => ({
   reorderPlayers: (orderedIds) => {
     const { socket: s, roomId } = get();
     s?.emit('reorder_players', { roomId, orderedIds });
+  },
+
+  sendChat: (message) => {
+    const { socket: s, roomId } = get();
+    if (!message?.trim()) return;
+    s?.emit('chat_message', { roomId, message: message.trim() });
   },
 
   restartGame: () => {

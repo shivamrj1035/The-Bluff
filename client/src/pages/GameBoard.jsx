@@ -7,6 +7,8 @@ import DealAnimation from '../components/DealAnimation';
 import Avatar, { TrophyIcon, TrashIcon, MaskIcon } from '../components/Icons';
 import MoveAnimation from '../components/MoveAnimation';
 import FloatingAction from '../components/FloatingAction';
+import ChatBubble from '../components/ChatBubble';
+import ChatInput from '../components/ChatInput';
 
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
 
@@ -32,8 +34,11 @@ export default function GameBoard() {
   const {
     gameState, playerId, bluffToast,
     selectedCards, toggleCard, playCards, callBluff, pickBluffCard, selectBluffCard,
-    passTurn, kickPlayer, restartGame, closeGame, disconnect
+    passTurn, kickPlayer, restartGame, closeGame, disconnect, chatMessages,
   } = useGameStore();
+
+  // Helper: get active chat messages for a specific player
+  const getMsgs = (pid) => chatMessages.filter(m => m.senderId === pid);
 
 
   // ── ALL STATE AND REFS MUST COME BEFORE ANY CONDITIONAL RETURNS ──
@@ -444,6 +449,11 @@ export default function GameBoard() {
               )}
             </div>
 
+            {/* Chat bubble — floats above this opponent's player card */}
+            <div style={{ position: 'absolute', top: '-58px', left: '50%', transform: 'translateX(-50%)', width: '100%', pointerEvents: 'none' }}>
+              <ChatBubble messages={getMsgs(player.id)} isMe={false} position="top" />
+            </div>
+
             {/* Mini face-down cards */}
             {!playerWinner && hc > 0 && (
               <div style={{ position: 'relative', height: '36px', width: '100%', display: 'flex', justifyContent: 'center', marginTop: 2 }}>
@@ -457,7 +467,7 @@ export default function GameBoard() {
                   <div style={{ position: 'absolute', right: -12, top: 0, fontSize: '.6rem', fontWeight: 900, color: '#9ca3af' }}>+{hc - 5}</div>
                 )}
               </div>
-            )}
+                )}
           </motion.div>
         );
       })}
@@ -547,7 +557,7 @@ export default function GameBoard() {
       <div className="hud">
         <div style={{ width: '100%', maxWidth: '1000px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: isPortrait ? '8px' : '24px' }}>
 
-          {/* My Info */}
+          {/* My Info + my chat bubble */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: 'auto' }}>
             <div style={{ position: 'relative' }}>
               <Avatar name={myInfo?.name || '?'} size={isPortrait ? 28 : 38} fontSize="1rem" />
@@ -556,6 +566,8 @@ export default function GameBoard() {
                   <TrophyIcon size={12} />
                 </div>
               )}
+              {/* My chat bubble — appears above my avatar in the HUD */}
+              <ChatBubble messages={getMsgs(playerId)} isMe={true} position="bottom" />
             </div>
             <div style={{ textAlign: 'left' }}>
               <p style={{ fontSize: isPortrait ? '0.7rem' : '0.8rem', fontWeight: 900, color: '#fff', margin: 0, textTransform: 'uppercase' }}>
@@ -666,6 +678,9 @@ export default function GameBoard() {
                 CLOSE
               </button>
             )}
+
+            {/* Compact chat button — always accessible in HUD */}
+            {!isEnded && <ChatInput compact={true} />}
           </div>
         </div>
       </div>

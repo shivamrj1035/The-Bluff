@@ -428,6 +428,33 @@ function setupHandlers(io, socket) {
     }
   });
 
+  // --- CHAT MESSAGE ---
+  // No Redis storage — chat is ephemeral, broadcast only to current room members
+  socket.on(EVENTS.CHAT_MESSAGE, ({ roomId, message }) => {
+    try {
+      const room = getRoomFromCache(roomId);
+      if (!room) return;
+
+      const player = room.players.find((p) => p.id === socket.id);
+      if (!player) return; // must be a joined player (not spectator)
+
+      const text = String(message || "").trim().slice(0, 120); // max 120 chars
+      if (!text) return;
+
+      // Broadcast to everyone in the room (including sender so they see their own bubble)
+      io.to(roomId).emit(EVENTS.CHAT_BROADCAST, {
+        senderId: socket.id,
+        senderName: player.name,
+        message: text,
+        ts: Date.now(),
+      });
+
+      console.log(`[CHAT] ${player.name} in ${roomId}: "${text}"`);
+    } catch (err) {
+      console.error("[CHAT_MESSAGE error]", err);
+    }
+  });
+
   // --- DISCONNECT ---
   socket.on("disconnect", async () => {
     try {
