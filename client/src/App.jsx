@@ -1,26 +1,38 @@
-import React from 'react';
-import { Toaster } from './components/Toast';
-import { useGameStore } from './store/useGameStore';
+import React, { useEffect } from 'react';
+import { Toaster } from './components/common/Toast';
 import LandingPage from './pages/LandingPage';
-import JoinPage from './pages/JoinPage';
-import LobbyPage from './pages/LobbyPage';
-import GameBoard from './pages/GameBoard';
+import JoinPage from './games/bluff/pages/JoinPage';
+import LobbyPage from './games/bluff/pages/LobbyPage';
+import GameBoard from './games/bluff/pages/GameBoard';
+import ExploreGamesPage from './pages/ExploreGamesPage';
+import BluffEntryPage from './games/bluff/pages/BluffEntryPage';
+import { useGameStore } from './games/bluff/store/useGameStore';
 
 export default function App() {
-  const { status, gameState, screen } = useGameStore();
+  const { status, gameState, screen, initAuth } = useGameStore();
+
+  // Initialize Supabase auth once on mount
+  useEffect(() => {
+    initAuth();
+  }, []);
 
   const params = new URLSearchParams(window.location.search);
   const roomParam = params.get('room');
+  const gameParam = (params.get('game') || 'bluff').toLowerCase();
+  const shouldOpenBluffJoin = Boolean(roomParam) && (gameParam === 'bluff');
 
   // Inlined rendering logic for stability
   return (
     <>
       <Toaster />
-      
+
       {(status === 'IDLE' || status === 'ERROR') && (
-        roomParam && status !== 'ERROR'
+        shouldOpenBluffJoin && status !== 'ERROR'
           ? <JoinPage />
-          : screen === 'JOIN' ? <JoinPage /> : <LandingPage />
+          : screen === 'BLUFF_ENTRY' ? <BluffEntryPage />
+          : screen === 'JOIN' ? <JoinPage />
+          : screen === 'EXPLORE' ? <ExploreGamesPage />
+          : <LandingPage />
       )}
 
       {(status === 'CONNECTING' || status === 'RECONNECTING') && (

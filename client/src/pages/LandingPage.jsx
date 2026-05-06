@@ -1,64 +1,336 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { useGameStore } from '../store/useGameStore';
-import { toast } from '../components/Toast';
-import Avatar from '../components/Icons';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useGameStore } from '../games/bluff/store/useGameStore';
+import AuthDialog from '../components/common/AuthDialog';
+import {
+  SpadeIcon, HeartIcon, DiamondIcon,
+  GridIcon, EnergyIcon, LockIcon,
+  ShieldIcon, GiftIcon, PlayIcon,
+  ArrowRightIcon, UsersIcon, TrophyIcon,
+  ChevronDownIcon, CrownIcon, LogOutIcon
+} from '../components/common/Icons';
 
 export default function LandingPage() {
-  const { setIdentity, connect, playerName: storedName } = useGameStore();
-  const [name, setName] = useState(storedName);
+  const { setScreen, playerName, avatar, user, profile, signOut } = useGameStore();
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
-  const handleCreate = () => {
-    if (!name.trim()) return toast.error('Enter your name');
+  const metrics = [
+    { value: '2.3K+', label: 'players online' },
+    { value: '120+', label: 'live rooms' },
+    { value: '4', label: 'card titles' }
+  ];
 
-    // Create random room ID
-    const rid = Math.random().toString(36).substring(2, 8).toUpperCase();
-    setIdentity(name, 'P');
-    connect(rid);
-  };
+  const highlights = [
+    {
+      icon: <UsersIcon size={20} />,
+      title: 'Quick multiplayer',
+      text: 'Jump into active tables in seconds.'
+    },
+    {
+      icon: <ShieldIcon size={20} />,
+      title: 'Smooth fair play',
+      text: 'Clean rounds, secure rooms and balanced flow.'
+    },
+    {
+      icon: <TrophyIcon size={20} />,
+      title: 'Competitive climb',
+      text: 'Track wins and build your table reputation.'
+    }
+  ];
+
+  const games = [
+    {
+      id: 'bluff',
+      title: 'Bluff',
+      desc: 'Classic Bluff Card Game',
+      icon: <SpadeIcon size={48} color="#a78bfa" />,
+      status: 'READY TO PLAY',
+      statusColor: '#10b981',
+      active: true,
+      avatars: ['S', 'P', 'G']
+    },
+    {
+      id: 'joker',
+      title: 'Joker Game',
+      desc: 'Strategy Card Game',
+      icon: <CrownIcon size={48} color="#f59e0b" />,
+      status: 'UNDER DEVELOPMENT',
+      statusColor: '#f59e0b',
+      active: false
+    },
+    {
+      id: 'uno',
+      title: 'Uno',
+      desc: 'Classic Family Game',
+      icon: <HeartIcon size={48} color="#ef4444" />,
+      status: 'UNDER DEVELOPMENT',
+      statusColor: '#f59e0b',
+      active: false
+    },
+    {
+      id: 'uno-flip',
+      title: 'Uno Flip',
+      desc: 'Uno with a Twist',
+      icon: <DiamondIcon size={48} color="#06b6d4" />,
+      status: 'UNDER DEVELOPMENT',
+      statusColor: '#f59e0b',
+      active: false
+    }
+  ];
 
   return (
-    <div style={{
-      height: '100vh', width: '100vw', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'radial-gradient(circle at 50% 0%, #1a013d 0%, #0c0c1a 70%, #000 100%)',
-      padding: '0 20px'
-    }}>
-      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }} className="panel" style={{ width: '100%', maxWidth: '380px', textAlign: 'center' }}>
+    <div className="landing-wrapper">
+      <div className="lp-bg-orb lp-bg-orb-left" />
+      <div className="lp-bg-orb lp-bg-orb-right" />
+      <div className="lp-bg-curve" />
 
-        <div style={{ marginBottom: '30px' }}>
-          <h2 style={{ fontSize: '0.75rem', fontWeight: 900, color: '#7c3aed', letterSpacing: '0.4em', textTransform: 'uppercase', marginBottom: '8px' }}>Welcome To</h2>
-          <h1 style={{ fontSize: '2.5rem', fontWeight: 900, letterSpacing: '0.1em', background: 'linear-gradient(135deg, #fff 0%, #a78bfa 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', filter: 'drop-shadow(0 0 16px rgba(124,58,237,0.4))' }}>THE BLUFF</h1>
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '24px' }}>
-          <Avatar name={name || '?'} size={64} fontSize="1.8rem" />
-        </div>
-
-        <div style={{ textAlign: 'left', marginBottom: '30px' }}>
-          <label style={{ fontSize: '0.7rem', fontWeight: 800, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px', display: 'block' }}>Your Player Identity</label>
-          <input className="inp" placeholder="Enter your name" value={name} onChange={(e) => setName(e.target.value)} maxLength={12} style={{ textAlign: 'center', fontSize: '1.1rem', padding: '12px' }} />
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <button className="btn btn-primary" onClick={handleCreate} style={{ padding: '16px', fontSize: '1rem' }}>
-            Create Private Table
-          </button>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '6px 0' }}>
-            <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.05)' }} />
-            <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#4b5563' }}>OR</span>
-            <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.05)' }} />
+      <header className="lp-header">
+        <div className="lp-logo">
+          <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <SpadeIcon size={20} color="#fff" />
           </div>
-
-          <button onClick={() => useGameStore.getState().setScreen('JOIN')} className="btn btn-outline" style={{ padding: '15px', fontSize: '0.95rem' }}>
-            Join with Room ID
-          </button>
+          MULTIPLAYER GAMING HUB
         </div>
 
-        <p style={{ marginTop: '24px', fontSize: '0.7rem', color: '#4b5563', fontWeight: 600, letterSpacing: '0.05em' }}>
-          DEVELOPED BY SHIVAM JAYSWAL
-        </p>
+        <nav className="lp-nav">
+          <div className="lp-nav-item active">Home</div>
+          <div className="lp-nav-item" onClick={() => setScreen('EXPLORE')}>Games</div>
+          <div className="lp-nav-item">Leaderboard</div>
+          <div className="lp-nav-item">About Us</div>
+        </nav>
+
+        <div className="lp-header-actions">
+          {user ? (
+            <>
+              <div className="glass-panel" style={{ padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '8px', borderRadius: '12px' }}>
+                <EnergyIcon size={18} />
+                <span style={{ fontWeight: 800, fontSize: '0.85rem' }}>{profile?.coins || 0}</span>
+              </div>
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', position: 'relative' }}
+                onClick={() => setShowProfileMenu(!showProfileMenu)}
+              >
+                <div style={{
+                  width: '36px', height: '36px', borderRadius: '50%', background: '#f97316',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.9rem'
+                }}>
+                  {avatar || (profile?.username?.charAt(0)) || 'U'}
+                </div>
+                <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{playerName || profile?.username || 'User'}</span>
+                <ChevronDownIcon size={16} />
+
+                <AnimatePresence>
+                  {showProfileMenu && (
+                    <motion.div
+                      className="glass-panel profile-dropdown"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                    >
+                      <button className="dropdown-item" onClick={() => { setScreen('PROFILE'); setShowProfileMenu(false); }}>
+                        <UsersIcon size={16} /> My Profile
+                      </button>
+                      <button className="dropdown-item" onClick={() => { signOut(); setShowProfileMenu(false); }}>
+                        <LogOutIcon size={16} /> Sign Out
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </>
+          ) : (
+            <button className="lp-btn-login" onClick={() => setIsAuthOpen(true)}>
+              Sign In
+            </button>
+          )}
+        </div>
+      </header>
+
+      <AuthDialog isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
+
+      <section className="lp-hero">
+        <motion.div
+          className="lp-hero-content"
+          initial={{ x: -40, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ duration: 0.6 }}
+        >
+          <div className="lp-kicker">
+            <div className="lp-dot" />
+            Premium social card lounge
+          </div>
+          <h1>Compact. Fast. <span>Ready to play.</span></h1>
+          <p>
+            A tighter landing experience for card players who want instant access,
+            live tables and a cleaner multiplayer hub.
+          </p>
+          <div className="lp-hero-btns">
+            <button className="lp-btn-primary" onClick={() => setScreen('JOIN')}>
+              <PlayIcon size={20} />
+              Play Bluff Now
+            </button>
+            <button className="lp-btn-outline" onClick={() => setScreen('EXPLORE')}>
+              <GridIcon size={20} />
+              Explore Games
+            </button>
+          </div>
+          <div className="lp-metrics-row">
+            {metrics.map((metric) => (
+              <div key={metric.label} className="lp-metric-card">
+                <strong>{metric.value}</strong>
+                <span>{metric.label}</span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+
+        <motion.div
+          className="lp-hero-visual"
+          initial={{ x: 40, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ duration: 0.8 }}
+        >
+          <div className="lp-hero-panel">
+            <div className="lp-panel-top">
+              <div>
+                <span className="lp-panel-label">Featured table</span>
+                <h3>Game Arena</h3>
+              </div>
+              <div className="lp-panel-pill">
+                <UsersIcon size={16} />
+                developed by Shivam
+              </div>
+            </div>
+
+            <div className="lp-hero-image">
+              <img src="/landing_hero_premium.png" alt="Cards" />
+            </div>
+
+            <div className="lp-panel-bottom">
+              {highlights.map((item, idx) => (
+                <motion.div
+                  key={item.title}
+                  className="lp-highlight-card"
+                  initial={{ y: 18, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.25 + idx * 0.08 }}
+                >
+                  <div className="lp-highlight-icon">{item.icon}</div>
+                  <div>
+                    <h4>{item.title}</h4>
+                    <p>{item.text}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      </section>
+
+      <section className="lp-games-section">
+        <div className="header lp-section-header">
+          <div className="lp-section-title">
+            <h2>Our Games</h2>
+            <p>Shortlist your next table and jump straight in.</p>
+          </div>
+          <div className="lp-filter-pill">
+            <span>All Games</span>
+            <ChevronDownIcon size={16} />
+          </div>
+        </div>
+
+        <div className="lp-game-grid">
+          {games.map((game, idx) => (
+            <motion.div
+              key={game.id}
+              className={`lp-game-card ${game.active ? 'active' : ''}`}
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.2 + idx * 0.1 }}
+              onClick={() => game.active && setScreen('JOIN')}
+            >
+              <div className="lp-game-badge" style={{ color: game.statusColor }}>
+                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: game.statusColor }} />
+                {game.status}
+              </div>
+
+              <div className="lp-game-icon-container">
+                {game.icon}
+              </div>
+
+              <h4>{game.title}</h4>
+              <p>{game.desc}</p>
+
+              <div style={{ flex: 1 }} />
+
+              <div className="lp-card-footer">
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  {game.avatars?.map((a, i) => (
+                    <div key={i} style={{
+                      width: '24px', height: '24px', borderRadius: '50%',
+                      background: i === 0 ? '#f97316' : i === 1 ? '#10b981' : '#64748b',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '0.65rem', fontWeight: 800, border: '1.5px solid #030308'
+                    }}>
+                      {a}
+                    </div>
+                  ))}
+                </div>
+                {game.active ? (
+                  <div style={{ color: '#a78bfa', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    Play Now <ArrowRightIcon size={16} />
+                  </div>
+                ) : (
+                  <div style={{ color: '#475569', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 800 }}>
+                    Coming Soon <LockIcon size={16} />
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      <motion.div
+        className="lp-features-bar"
+        initial={{ y: 40, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.8 }}
+      >
+        <div className="lp-feature">
+          <div className="lp-feature-icon"><UsersIcon size={24} /></div>
+          <div className="lp-feature-text">
+            <h5>Real Players</h5>
+            <p>Play with real people from around the world</p>
+          </div>
+        </div>
+        <div className="lp-feature">
+          <div className="lp-feature-icon"><ShieldIcon size={24} /></div>
+          <div className="lp-feature-text">
+            <h5>Fair Play</h5>
+            <p>Our games are 100% fair and secure</p>
+          </div>
+        </div>
+        <div className="lp-feature">
+          <div className="lp-feature-icon"><TrophyIcon size={24} /></div>
+          <div className="lp-feature-text">
+            <h5>Leaderboards</h5>
+            <p>Compete and climb the global rankings</p>
+          </div>
+        </div>
+        <div className="lp-feature">
+          <div className="lp-feature-icon"><GiftIcon size={24} /></div>
+          <div className="lp-feature-text">
+            <h5>Rewards</h5>
+            <p>Win games and earn exciting rewards</p>
+          </div>
+        </div>
       </motion.div>
+
+      <footer style={{ textAlign: 'center', padding: '40px 0', borderTop: '1px solid rgba(255,255,255,0.03)', color: '#475569', fontSize: '0.85rem' }}>
+        © 2026 THE BLUFF Multiplayer Platform. All rights reserved.
+      </footer>
     </div>
   );
 }

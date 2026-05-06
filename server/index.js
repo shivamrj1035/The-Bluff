@@ -17,19 +17,35 @@ app.get("/health", (req, res) => res.json({ status: "ok" }));
 // Uses in-memory cache first, falls back to Redis
 app.get("/room/:roomId", async (req, res) => {
   try {
-    const room = getRoomForHttp(req.params.roomId);
-    if (room) {
-      return res.json({
-        exists: true,
+    const roomId = String(req.params.roomId || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+    const now = Date.now();
+    const serializeRoomMeta = (room) => {
+      const expired = Boolean(room.expiresAt && room.expiresAt <= now);
+      return {
+        exists: !expired,
+        roomId: room.roomId,
         state: room.state,
         playerCount: room.players.length,
-      });
+        maxPlayers: room.maxPlayers || 8,
+        activePlayers: room.players.filter((player) => player.isConnected).length,
+        expiresAt: room.expiresAt || null,
+        isExpired: expired,
+      };
+    };
+
+    const room = getRoomForHttp(roomId);
+    if (room) {
+      const payload = serializeRoomMeta(room);
+      if (!payload.exists) return res.status(404).json({ exists: false, isExpired: true });
+      return res.json(payload);
     }
     // Cache miss — check Redis
-    const data = await redis.get(`room:${req.params.roomId}`);
+    const data = await redis.get(`room:${roomId}`);
     if (!data) return res.status(404).json({ exists: false });
     const r = JSON.parse(data);
-    res.json({ exists: true, state: r.state, playerCount: r.players.length });
+    const payload = serializeRoomMeta(r);
+    if (!payload.exists) return res.status(404).json({ exists: false, isExpired: true });
+    res.json(payload);
   } catch (e) {
     res.status(500).json({ error: "Server error" });
   }

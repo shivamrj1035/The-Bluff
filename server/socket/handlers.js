@@ -5,6 +5,9 @@ const { serializeState } = require("./sync");
 const redis = require("../redisClient");
 
 const ROOM_TTL = 60 * 60 * 4; // 4 hours in seconds
+const ROOM_TTL_MS = ROOM_TTL * 1000;
+const EMPTY_ROOM_GRACE_MS = 5 * 60 * 1000;
+const ROOM_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 // ─────────────────────────────────────────────
 //  IN-MEMORY CACHE  (primary storage)
@@ -49,6 +52,8 @@ async function getRoom(roomId) {
 
 // Write to cache immediately; schedule Redis flush (no immediate Redis write)
 function saveRoom(roomId, room) {
+  room.lastActivityAt = Date.now();
+  room.expiresAt = room.lastActivityAt + ROOM_TTL_MS;
   roomCache.set(roomId, room);
   dirtyRooms.add(roomId);
 }
@@ -111,6 +116,26 @@ function startGlobalTimer(io) {
         }
 
         const now = Date.now();
+        if (room.emptySince && now - room.emptySince >= EMPTY_ROOM_GRACE_MS) {
+          deleteRoom(roomId).catch((err) => {
+            console.error(`[ROOM DELETE error] ${roomId}:`, err.message);
+          });
+          activeRooms.delete(roomId);
+          console.log(`[ROOM EXPIRED] ${roomId} — empty grace elapsed`);
+          continue;
+        }
+
+        if (room.expiresAt && now >= room.expiresAt) {
+          io.to(roomId).emit(EVENTS.ERROR, { message: "This table expired due to inactivity." });
+          io.to(roomId).emit("room_closed");
+          deleteRoom(roomId).catch((err) => {
+            console.error(`[ROOM DELETE error] ${roomId}:`, err.message);
+          });
+          activeRooms.delete(roomId);
+          console.log(`[ROOM EXPIRED] ${roomId} — inactive too long`);
+          continue;
+        }
+
         const isPicking    = room.state === GAME_STATES.BLUFF_PICKING;
         const isResolution = room.state === GAME_STATES.ROUND_RESOLUTION;
         const isPlayerTurn = room.state === GAME_STATES.PLAYER_TURN;
@@ -163,24 +188,71 @@ function pickNewHost(room, departingSocketId) {
   return candidate ? candidate.id : null;
 }
 
+function normalizeRoomId(rawRoomId) {
+  return String(rawRoomId || "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 8);
+}
+
+function generateRoomCode() {
+  let code = "";
+  for (let i = 0; i < 6; i += 1) {
+    code += ROOM_CODE_CHARS[Math.floor(Math.random() * ROOM_CODE_CHARS.length)];
+  }
+  return code;
+}
+
+async function generateUniqueRoomId() {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const candidate = generateRoomCode();
+    const existing = getRoomFromCache(candidate) || await getRoom(candidate);
+    if (!existing) return candidate;
+  }
+  throw new Error("Unable to generate unique room code");
+}
+
 function setupHandlers(io, socket) {
   startGlobalTimer(io);
 
   // --- JOIN ROOM ---
   socket.on(EVENTS.JOIN_ROOM, async ({ roomId, playerName, avatar }) => {
     try {
-      let room = await getRoom(roomId);
+      const normalizedRoomId = normalizeRoomId(roomId);
+      const trimmedName = String(playerName || "").trim().slice(0, 12);
+      const safeAvatar = String(avatar || "P").slice(0, 2);
+      const isCreateRequest = !normalizedRoomId;
+
+      let effectiveRoomId = normalizedRoomId;
+      if (isCreateRequest) {
+        effectiveRoomId = await generateUniqueRoomId();
+      }
+
+      let room = await getRoom(effectiveRoomId);
+
+      if (room && room.expiresAt && Date.now() >= room.expiresAt) {
+        await deleteRoom(effectiveRoomId);
+        activeRooms.delete(effectiveRoomId);
+        room = null;
+      }
+
+      if (!room && !isCreateRequest) {
+        socket.emit(EVENTS.ERROR, { message: "Table not found or expired." });
+        return;
+      }
+
       if (!room) {
-        room = createRoom(roomId);
+        room = createRoom(effectiveRoomId);
         room.hostId = socket.id;
       }
 
       // 1. Reconnection: player with same name
-      const existingPlayer = room.players.find((p) => p.name === playerName);
+      const existingPlayer = room.players.find((p) => p.name === trimmedName);
       if (existingPlayer) {
         const oldId = existingPlayer.id;
         existingPlayer.id = socket.id;
         existingPlayer.isConnected = true;
+        existingPlayer.avatar = safeAvatar || existingPlayer.avatar;
 
         if (room.hostId === oldId)          room.hostId = socket.id;
         if (room.currentTurn === oldId)     room.currentTurn = socket.id;
@@ -200,29 +272,57 @@ function setupHandlers(io, socket) {
         }
 
         socketRoomMap.delete(oldId);
+        room.emptySince = null;
 
       } else {
         // 2. New joiner
         if (room.state === GAME_STATES.WAITING) {
+          if (!trimmedName) {
+            socket.emit(EVENTS.ERROR, { message: "Enter your player name." });
+            return;
+          }
+          if (room.players.length >= (room.maxPlayers || 8)) {
+            socket.emit(EVENTS.ERROR, { message: "This table is full." });
+            return;
+          }
           room.players.push({
             id: socket.id,
-            name: playerName || "Player",
-            avatar: avatar || "P",
+            name: trimmedName,
+            avatar: safeAvatar || "P",
             isConnected: true,
             cardCount: 0,
           });
+          room.emptySince = null;
         } else {
-          console.log(`[SPECTATOR] ${playerName} joined room ${roomId}`);
+          console.log(`[SPECTATOR] ${trimmedName || "Spectator"} joined room ${effectiveRoomId}`);
         }
       }
 
-      socketRoomMap.set(socket.id, roomId);
-      saveRoom(roomId, room);
-      activeRooms.add(roomId);
-      socket.join(roomId);
+      const connectedHost = room.players.find((p) => p.id === room.hostId && p.isConnected);
+      if (!connectedHost) {
+        const fallbackHost = room.players.find((p) => p.isConnected);
+        if (fallbackHost) {
+          room.hostId = fallbackHost.id;
+        }
+      }
 
-      console.log(`[JOIN] ${playerName} (${socket.id}) → room ${roomId}`);
-      emitState(io, roomId, room);
+      socketRoomMap.set(socket.id, effectiveRoomId);
+      saveRoom(effectiveRoomId, room);
+      activeRooms.add(effectiveRoomId);
+      socket.join(effectiveRoomId);
+
+      socket.emit(EVENTS.ROOM_INFO, {
+        roomId: effectiveRoomId,
+        game: "bluff",
+        state: room.state,
+        playerCount: room.players.length,
+        maxPlayers: room.maxPlayers || 8,
+        isHost: room.hostId === socket.id,
+        inviteUrl: `?game=bluff&room=${effectiveRoomId}`,
+      });
+
+      console.log(`[JOIN] ${trimmedName || "Spectator"} (${socket.id}) → room ${effectiveRoomId}`);
+      emitState(io, effectiveRoomId, room);
     } catch (err) {
       console.error("[JOIN error]", err);
       socket.emit(EVENTS.ERROR, { message: "Join failed." });
@@ -474,9 +574,9 @@ function setupHandlers(io, socket) {
       // If all players disconnected → destroy room entirely
       const anyConnected = room.players.some((p) => p.isConnected);
       if (!anyConnected) {
-        await deleteRoom(roomId);
-        activeRooms.delete(roomId);
-        console.log(`[ROOM DELETED] ${roomId} — all players disconnected`);
+        room.emptySince = Date.now();
+        saveRoom(roomId, room);
+        console.log(`[ROOM IDLE] ${roomId} — waiting for reconnect grace window`);
         return;
       }
 
