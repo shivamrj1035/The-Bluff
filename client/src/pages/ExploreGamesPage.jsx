@@ -22,6 +22,14 @@ export default function ExploreGamesPage() {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
+  const requireAuth = (onSuccess) => {
+    if (!user) {
+      setIsAuthOpen(true);
+      return;
+    }
+    onSuccess();
+  };
+
   const tabs = ['All Games', 'Popular', 'Classic', 'Strategy', 'Party', 'Quick Play'];
 
   const games = [
@@ -267,7 +275,7 @@ export default function ExploreGamesPage() {
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: idx * 0.05 }}
-              onClick={() => game.active && setScreen('BLUFF_ENTRY')}
+              onClick={() => game.active && requireAuth(() => setScreen('BLUFF_ENTRY'))}
             >
               <div className="card-media">
                 <img src={game.image} alt={game.title} />

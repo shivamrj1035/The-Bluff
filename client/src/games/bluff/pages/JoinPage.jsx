@@ -2,12 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useGameStore } from '../store/useGameStore';
 import { toast } from '../../../components/common/Toast';
+import AuthDialog from '../../../components/common/AuthDialog';
 
 export default function JoinPage() {
-  const { setIdentity, connect, playerName: storedName, error } = useGameStore();
+  const { setIdentity, connect, playerName: storedName, error, user } = useGameStore();
   const [name, setName] = useState(storedName || '');
   const [roomId, setRoomId] = useState('');
   const [checking, setChecking] = useState(false);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
 
   useEffect(() => {
     if (error) toast.error(error);
@@ -24,6 +26,10 @@ export default function JoinPage() {
   };
 
   const handleJoin = async () => {
+    if (!user) {
+      setIsAuthOpen(true);
+      return;
+    }
     if (!name.trim()) return toast.error('Enter your name');
     if (!roomId.trim()) return toast.error('Enter Room ID');
 
@@ -53,6 +59,7 @@ export default function JoinPage() {
 
   return (
     <div className="auth-shell join-shell">
+      <AuthDialog isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
       <div className="join-orb join-orb-left" />
       <div className="join-orb join-orb-right" />
 

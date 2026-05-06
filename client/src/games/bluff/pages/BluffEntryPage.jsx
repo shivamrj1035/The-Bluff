@@ -2,12 +2,14 @@ import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useGameStore } from '../store/useGameStore';
 import { toast } from '../../../components/common/Toast';
+import AuthDialog from '../../../components/common/AuthDialog';
 
 export default function BluffEntryPage() {
   const { setScreen, setIdentity, connect, playerName: storedName, user, profile } = useGameStore();
   const [name, setName] = useState(storedName || profile?.username || '');
   const [editingName, setEditingName] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
   const nameRef = useRef(null);
 
   useEffect(() => {
@@ -15,6 +17,12 @@ export default function BluffEntryPage() {
   }, [editingName]);
 
   const avatarLetter = name?.trim()[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || '?';
+
+  const getRoomApiUrl = () => {
+    const base = import.meta.env.VITE_SOCKET_URL;
+    if (!base || base === '/') return '/room';
+    return `${String(base).replace(/\/$/, '')}/room`;
+  };
 
   const persistIdentity = async () => {
     if (!name.trim()) {
@@ -26,14 +34,41 @@ export default function BluffEntryPage() {
   };
 
   const handleCreate = async () => {
+    if (!user) {
+      setIsAuthOpen(true);
+      return;
+    }
     const ok = await persistIdentity();
     if (!ok) return;
     setLoading(true);
-    connect('');
-    setLoading(false);
+    try {
+      const response = await fetch(getRoomApiUrl(), { method: 'POST' });
+      if (!response.ok) {
+        toast.error('Unable to create table right now');
+        return;
+      }
+      const data = await response.json();
+      if (!data?.roomId) {
+        toast.error('Table code was not generated');
+        return;
+      }
+      const params = new URLSearchParams(window.location.search);
+      params.set('game', 'bluff');
+      params.set('room', data.roomId);
+      window.history.replaceState({ path: `${window.location.pathname}?${params.toString()}` }, '', `${window.location.pathname}?${params.toString()}`);
+      connect(data.roomId);
+    } catch (_err) {
+      toast.error('Unable to create table right now');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleJoinTable = async () => {
+    if (!user) {
+      setIsAuthOpen(true);
+      return;
+    }
     const ok = await persistIdentity();
     if (!ok) return;
     setScreen('JOIN');
@@ -60,6 +95,8 @@ export default function BluffEntryPage() {
         position: 'relative',
       }}
     >
+      <AuthDialog isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
+
       <div
         style={{
           position: 'absolute',

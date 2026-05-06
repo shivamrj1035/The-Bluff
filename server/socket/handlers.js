@@ -69,6 +69,15 @@ async function deleteRoom(roomId) {
   }
 }
 
+async function persistRoomImmediately(roomId, room) {
+  try {
+    await redis.set(`room:${roomId}`, JSON.stringify(room), "EX", ROOM_TTL);
+  } catch (e) {
+    dirtyRooms.add(roomId);
+    console.error(`[Persist error] room ${roomId}:`, e.message);
+  }
+}
+
 // Flush dirty rooms to Redis every 30 seconds
 setInterval(async () => {
   if (dirtyRooms.size === 0) return;
@@ -212,6 +221,15 @@ async function generateUniqueRoomId() {
   throw new Error("Unable to generate unique room code");
 }
 
+async function createTemporaryRoom() {
+  const roomId = await generateUniqueRoomId();
+  const room = createRoom(roomId);
+  saveRoom(roomId, room);
+  activeRooms.add(roomId);
+  await persistRoomImmediately(roomId, room);
+  return room;
+}
+
 function setupHandlers(io, socket) {
   startGlobalTimer(io);
 
@@ -310,6 +328,7 @@ function setupHandlers(io, socket) {
       saveRoom(effectiveRoomId, room);
       activeRooms.add(effectiveRoomId);
       socket.join(effectiveRoomId);
+      await persistRoomImmediately(effectiveRoomId, room);
 
       socket.emit(EVENTS.ROOM_INFO, {
         roomId: effectiveRoomId,
@@ -618,4 +637,4 @@ function getRoomForHttp(roomId) {
   return roomCache.get(roomId) || null;
 }
 
-module.exports = { setupHandlers, getRoomForHttp };
+module.exports = { setupHandlers, getRoomForHttp, createTemporaryRoom };

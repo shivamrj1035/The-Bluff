@@ -15,6 +15,14 @@ export default function LandingPage() {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
+  const requireAuth = (onSuccess) => {
+    if (!user) {
+      setIsAuthOpen(true);
+      return;
+    }
+    onSuccess();
+  };
+
   const metrics = [
     { value: '2.3K+', label: 'players online' },
     { value: '120+', label: 'live rooms' },
@@ -166,7 +174,7 @@ export default function LandingPage() {
             live tables and a cleaner multiplayer hub.
           </p>
           <div className="lp-hero-btns">
-            <button className="lp-btn-primary" onClick={() => setScreen('JOIN')}>
+            <button className="lp-btn-primary" onClick={() => requireAuth(() => setScreen('JOIN'))}>
               <PlayIcon size={20} />
               Play Bluff Now
             </button>
@@ -248,7 +256,7 @@ export default function LandingPage() {
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.2 + idx * 0.1 }}
-              onClick={() => game.active && setScreen('JOIN')}
+              onClick={() => game.active && requireAuth(() => setScreen('JOIN'))}
             >
               <div className="lp-game-badge" style={{ color: game.statusColor }}>
                 <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: game.statusColor }} />
