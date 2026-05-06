@@ -5,7 +5,6 @@ const { Server } = require("socket.io");
 const cors = require("cors");
 const { setupHandlers, getRoomForHttp } = require("./socket/handlers");
 const redis = require("./redisClient");
-
 const app = express();
 app.use(cors({ origin: "*" }));
 app.use(express.json());
