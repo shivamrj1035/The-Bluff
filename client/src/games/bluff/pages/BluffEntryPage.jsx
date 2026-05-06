@@ -18,12 +18,6 @@ export default function BluffEntryPage() {
 
   const avatarLetter = name?.trim()[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || '?';
 
-  const getRoomApiUrl = () => {
-    const base = import.meta.env.VITE_SOCKET_URL;
-    if (!base || base === '/') return '/room';
-    return `${String(base).replace(/\/$/, '')}/room`;
-  };
-
   const persistIdentity = async () => {
     if (!name.trim()) {
       toast.error('Enter your player name first');
@@ -41,27 +35,8 @@ export default function BluffEntryPage() {
     const ok = await persistIdentity();
     if (!ok) return;
     setLoading(true);
-    try {
-      const response = await fetch(getRoomApiUrl(), { method: 'POST' });
-      if (!response.ok) {
-        toast.error('Unable to create table right now');
-        return;
-      }
-      const data = await response.json();
-      if (!data?.roomId) {
-        toast.error('Table code was not generated');
-        return;
-      }
-      const params = new URLSearchParams(window.location.search);
-      params.set('game', 'bluff');
-      params.set('room', data.roomId);
-      window.history.replaceState({ path: `${window.location.pathname}?${params.toString()}` }, '', `${window.location.pathname}?${params.toString()}`);
-      connect(data.roomId);
-    } catch (_err) {
-      toast.error('Unable to create table right now');
-    } finally {
-      setLoading(false);
-    }
+    connect('');
+    setLoading(false);
   };
 
   const handleJoinTable = async () => {

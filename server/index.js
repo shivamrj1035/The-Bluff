@@ -3,7 +3,7 @@ const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const cors = require("cors");
-const { setupHandlers, getRoomForHttp, createTemporaryRoom } = require("./socket/handlers");
+const { setupHandlers, getRoomForHttp } = require("./socket/handlers");
 const redis = require("./redisClient");
 
 const app = express();
@@ -12,24 +12,6 @@ app.use(express.json());
 
 // Health check endpoint
 app.get("/health", (req, res) => res.json({ status: "ok" }));
-
-app.post("/room", async (_req, res) => {
-  try {
-    const room = await createTemporaryRoom();
-    return res.status(201).json({
-      roomId: room.roomId,
-      game: "bluff",
-      state: room.state,
-      playerCount: room.players.length,
-      maxPlayers: room.maxPlayers || 8,
-      createdAt: room.createdAt,
-      expiresAt: room.expiresAt,
-      inviteUrl: `?game=bluff&room=${room.roomId}`,
-    });
-  } catch (e) {
-    return res.status(500).json({ error: "Unable to create room" });
-  }
-});
 
 // Room existence check endpoint (for joining via link)
 // Uses in-memory cache first, falls back to Redis

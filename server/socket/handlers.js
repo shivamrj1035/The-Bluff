@@ -221,15 +221,6 @@ async function generateUniqueRoomId() {
   throw new Error("Unable to generate unique room code");
 }
 
-async function createTemporaryRoom() {
-  const roomId = await generateUniqueRoomId();
-  const room = createRoom(roomId);
-  saveRoom(roomId, room);
-  activeRooms.add(roomId);
-  await persistRoomImmediately(roomId, room);
-  return room;
-}
-
 function setupHandlers(io, socket) {
   startGlobalTimer(io);
 
@@ -637,4 +628,4 @@ function getRoomForHttp(roomId) {
   return roomCache.get(roomId) || null;
 }
 
-module.exports = { setupHandlers, getRoomForHttp, createTemporaryRoom };
+module.exports = { setupHandlers, getRoomForHttp };
