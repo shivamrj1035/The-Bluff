@@ -5,9 +5,9 @@ import { useGameStore } from '../games/bluff/store/useGameStore';
 import AvatarDisplay from '../components/common/AvatarDisplay';
 import { AVATAR_OPTIONS } from '../games/bluff/constants/avatars';
 import {
-  ChevronDownIcon, ArrowLeftIcon, CameraIcon,
-  LogOutIcon, TrophyIcon, UsersIcon, EnergyIcon,
-  SpadeIcon, SettingsIcon, BellIcon, ShieldIcon, HelpIcon
+  ArrowLeftIcon, CameraIcon,
+  LogOutIcon, TrophyIcon, EnergyIcon,
+  SpadeIcon, SettingsIcon, BellIcon, ShieldIcon,
 } from '../components/common/Icons';
 
 /**

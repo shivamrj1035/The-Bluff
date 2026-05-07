@@ -10,12 +10,7 @@ import ProfilePage from './pages/ProfilePage';
 import { useGameStore } from './games/bluff/store/useGameStore';
 
 export default function App() {
-  const { status, gameState, screen, initAuth } = useGameStore();
-
-  // Initialize Supabase auth once on mount
-  useEffect(() => {
-    initAuth();
-  }, []);
+  const { status, gameState, screen } = useGameStore();
 
   const params = new URLSearchParams(window.location.search);
   const roomParam = params.get('room');
