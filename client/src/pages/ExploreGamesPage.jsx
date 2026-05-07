@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../games/bluff/store/useGameStore';
 import AuthDialog from '../components/common/AuthDialog';
+import AvatarDisplay from '../components/common/AvatarDisplay';
 import {
   SpadeIcon,
   GridIcon, EnergyIcon,
@@ -35,7 +36,7 @@ export default function ExploreGamesPage() {
   const games = [
     {
       id: 'bluff',
-      title: 'Bluff Jokker',
+      title: 'The Bluff',
       desc: 'Lie, bluff and win it all!',
       players: '2-6 Players',
       time: '15-30 min',
@@ -77,7 +78,7 @@ export default function ExploreGamesPage() {
       status: 'UNDER DEVELOPMENT',
       image: '/uno_thumbnail.png',
       active: false,
-      accent: '#06b6d4'
+      accent: '#8b5cf6'
     },
     {
       id: 'plan',
@@ -120,7 +121,7 @@ export default function ExploreGamesPage() {
 
       {/* Sidebar */}
       <aside className="explore-sidebar">
-        <div className="sidebar-logo">
+        <div className="sidebar-logo" onClick={() => setScreen('LANDING')}>
           <div className="logo-icon">
             <SpadeIcon size={24} color="#fff" />
           </div>
@@ -201,9 +202,12 @@ export default function ExploreGamesPage() {
                   onClick={() => setShowProfileMenu(!showProfileMenu)}
                   style={{ position: 'relative', cursor: 'pointer' }}
                 >
-                  <div className="user-avatar" style={{ background: '#f97316' }}>
-                    {avatar || (profile?.username?.charAt(0)) || 'U'}
-                  </div>
+                  <AvatarDisplay
+                    avatarId={avatar}
+                    playerName={playerName || profile?.username}
+                    size={36}
+                    animated={true}
+                  />
                   <div className="user-info">
                     <span className="user-name">{playerName || profile?.username || 'User'}</span>
                     <span className="user-status"><span className="status-dot" /> Online</span>

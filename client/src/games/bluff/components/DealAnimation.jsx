@@ -50,8 +50,8 @@ export default function DealAnimation({ players, onComplete }) {
                     position: 'absolute',
                     inset: 0,
                     borderRadius: '12px',
-                    border: '1.5px solid rgba(167, 139, 250, 0.4)',
-                    background: 'linear-gradient(135deg, #4c1d95, #1e1b4b)',
+                    border: '1.5px solid rgba(103, 232, 249, 0.4)',
+                    background: 'linear-gradient(135deg, #0e3a46, #06202a)',
                     zIndex: i,
                     transformStyle: 'preserve-3d',
                   }}
@@ -84,13 +84,13 @@ export default function DealAnimation({ players, onComplete }) {
                     position: 'absolute',
                     inset: '6px',
                     borderRadius: '8px',
-                    border: '1px solid rgba(167, 139, 250, 0.15)',
+                    border: '1px solid rgba(103, 232, 249, 0.15)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     background: 'repeating-linear-gradient(45deg, rgba(255,255,255,0.01) 0px, rgba(255,255,255,0.01) 1px, transparent 1px, transparent 8px)',
                   }}>
-                    <span style={{ color: 'rgba(167, 139, 250, 0.25)', fontSize: '24px', fontWeight: 900 }}>♣</span>
+                    <span style={{ color: 'rgba(103, 232, 249, 0.25)', fontSize: '24px', fontWeight: 900 }}>♣</span>
                   </div>
                 </motion.div>
               ))}
@@ -106,7 +106,7 @@ export default function DealAnimation({ players, onComplete }) {
                   fontSize: '2rem',
                   fontWeight: 900,
                   color: '#a78bfa',
-                  textShadow: '0 0 20px rgba(124, 58, 237, 0.6)',
+                  textShadow: '0 0 20px rgba(8, 145, 178, 0.6)',
                   margin: 0,
                 }}>
                   {phase === 'shuffle' ? '🔀 Shuffling Deck...' : '🃏 Dealing Cards...'}

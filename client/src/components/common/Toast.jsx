@@ -14,7 +14,7 @@ const ICONS = { success: '✅', error: '❌', info: 'ℹ️' };
 const COLORS = {
   success: 'border-green-500/40 text-green-300',
   error:   'border-red-500/40 text-red-300',
-  info:    'border-indigo-500/40 text-indigo-300',
+  info:    'border-cyan-500/40 text-cyan-300',
 };
 
 export function Toaster() {

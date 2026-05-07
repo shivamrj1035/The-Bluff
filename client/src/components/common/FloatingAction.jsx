@@ -48,9 +48,9 @@ export default function FloatingAction({ fromPos, toPos, text, type, onComplete 
             borderRadius: '999px',
             background: isPass
               ? 'rgba(30, 30, 50, 0.92)'
-              : 'rgba(124, 58, 237, 0.85)',
+              : 'rgba(8, 145, 178, 0.85)',
             border: isPass
-              ? '1.5px solid rgba(167,139,250,0.35)'
+              ? '1.5px solid rgba(103,232,249,0.35)'
               : '1.5px solid rgba(255,255,255,0.2)',
             boxShadow: '0 6px 20px rgba(0,0,0,0.5)',
             backdropFilter: 'blur(8px)',

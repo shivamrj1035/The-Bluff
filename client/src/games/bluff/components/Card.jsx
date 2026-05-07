@@ -46,7 +46,7 @@ export default function Card({ cardId, isSelected, onClick, style, index = 0, fa
           transition: 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
           transform: isX ? 'rotateY(180deg)' : 'rotateY(0deg)',
           borderRadius: '12px',
-          boxShadow: isSelected ? '0 0 20px rgba(124, 58, 237, 0.6)' : '0 4px 15px rgba(0,0,0,0.3)',
+          boxShadow: isSelected ? '0 0 20px rgba(8, 145, 178, 0.6)' : '0 4px 15px rgba(0,0,0,0.3)',
           border: isSelected ? '2px solid #a78bfa' : 'none',
         }}
       >
@@ -89,8 +89,8 @@ export default function Card({ cardId, isSelected, onClick, style, index = 0, fa
           style={{
             backfaceVisibility: 'hidden',
             transform: 'rotateY(180deg)',
-            background: 'linear-gradient(135deg, #4c1d95 0%, #1e1b4b 50%, #2e1065 100%)',
-            border: '2px solid rgba(167, 139, 250, 0.3)',
+            background: 'linear-gradient(135deg, #0e3a46 0%, #06202a 50%, #083344 100%)',
+            border: '2px solid rgba(103, 232, 249, 0.3)',
             borderRadius: '10px',
             height: '100%',
             width: '100%',
@@ -103,13 +103,13 @@ export default function Card({ cardId, isSelected, onClick, style, index = 0, fa
             position: 'absolute',
             inset: '6px',
             borderRadius: '8px',
-            border: '1px solid rgba(167, 139, 250, 0.15)',
+            border: '1px solid rgba(103, 232, 249, 0.15)',
             background: 'repeating-linear-gradient(45deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 1px, transparent 1px, transparent 8px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
           }}>
-            <div style={{ color: 'rgba(167, 139, 250, 0.2)', fontWeight: 900, fontSize: small ? '20px' : '32px', fontFamily: 'serif' }}>♣</div>
+            <div style={{ color: 'rgba(103, 232, 249, 0.2)', fontWeight: 900, fontSize: small ? '20px' : '32px', fontFamily: 'serif' }}>♣</div>
           </div>
         </div>
       </div>

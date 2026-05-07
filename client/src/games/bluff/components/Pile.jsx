@@ -17,7 +17,7 @@ const Pile = () => {
               animate={{ scale: 1, opacity: 1 }}
               className="w-full h-full bg-slate-800/50 rounded-2xl border-2 border-white/10 shadow-2xl flex items-center justify-center relative overflow-hidden"
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-purple-500/10" />
+              <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-teal-500/10" />
               <span className="text-6xl font-black text-white/20 select-none">
                 {totalCards}
               </span>

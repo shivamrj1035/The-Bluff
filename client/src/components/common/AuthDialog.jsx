@@ -109,7 +109,7 @@ export default function AuthDialog({ isOpen, onClose }) {
               width: '100%',
               maxWidth: '440px',
               background: 'linear-gradient(135deg, rgba(15, 10, 30, 0.98) 0%, rgba(20, 15, 40, 0.98) 100%)',
-              border: '1px solid rgba(124, 58, 237, 0.25)',
+              border: '1px solid rgba(8, 145, 178, 0.25)',
               borderRadius: '24px',
               padding: '40px',
               boxShadow: '0 25px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.06)',
@@ -121,13 +121,13 @@ export default function AuthDialog({ isOpen, onClose }) {
             <div style={{
               position: 'absolute', top: '-60px', right: '-60px',
               width: '200px', height: '200px',
-              background: 'radial-gradient(circle, rgba(124,58,237,0.15) 0%, transparent 70%)',
+              background: 'radial-gradient(circle, rgba(8,145,178,0.15) 0%, transparent 70%)',
               pointerEvents: 'none',
             }} />
             <div style={{
               position: 'absolute', bottom: '-40px', left: '-40px',
               width: '160px', height: '160px',
-              background: 'radial-gradient(circle, rgba(139,92,246,0.1) 0%, transparent 70%)',
+              background: 'radial-gradient(circle, rgba(6,182,212,0.1) 0%, transparent 70%)',
               pointerEvents: 'none',
             }} />
 
@@ -154,17 +154,17 @@ export default function AuthDialog({ isOpen, onClose }) {
             <div style={{ marginBottom: '32px' }}>
               <div style={{
                 width: '48px', height: '48px',
-                background: 'linear-gradient(135deg, #7c3aed, #a855f7)',
+                background: 'linear-gradient(135deg, #6d28d9, #8b5cf6)',
                 borderRadius: '14px',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 marginBottom: '20px',
-                boxShadow: '0 8px 20px rgba(124,58,237,0.35)',
+                boxShadow: '0 8px 20px rgba(8,145,178,0.35)',
               }}>
                 <SpadeIcon size={24} />
               </div>
               <h2 style={{
                 fontSize: '1.7rem', fontWeight: 800, margin: '0 0 6px 0',
-                background: 'linear-gradient(135deg, #ffffff 0%, #c4b5fd 100%)',
+                background: 'linear-gradient(135deg, #ffffff 0%, #a5f3fc 100%)',
                 WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
                 backgroundClip: 'text',
               }}>
@@ -194,10 +194,10 @@ export default function AuthDialog({ isOpen, onClose }) {
                     borderRadius: '10px',
                     fontWeight: 700, fontSize: '0.9rem',
                     cursor: 'pointer', transition: 'all 0.2s',
-                    background: mode === m ? 'linear-gradient(135deg, #7c3aed, #6d28d9)' : 'transparent',
+                    background: mode === m ? 'linear-gradient(135deg, #6d28d9, #4c1d95)' : 'transparent',
                     color: mode === m ? '#fff' : '#64748b',
-                    border: mode === m ? '1px solid rgba(124,58,237,0.5)' : '1px solid transparent',
-                    boxShadow: mode === m ? '0 4px 12px rgba(124,58,237,0.25)' : 'none',
+                    border: mode === m ? '1px solid rgba(8,145,178,0.5)' : '1px solid transparent',
+                    boxShadow: mode === m ? '0 4px 12px rgba(8,145,178,0.25)' : 'none',
                   }}
                 >
                   {m === 'login' ? 'Sign In' : 'Sign Up'}
@@ -286,8 +286,8 @@ export default function AuthDialog({ isOpen, onClose }) {
                   marginTop: '8px',
                   padding: '14px 20px',
                   background: loading
-                    ? 'rgba(124,58,237,0.5)'
-                    : 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
+                    ? 'rgba(8,145,178,0.5)'
+                    : 'linear-gradient(135deg, #6d28d9 0%, #4c1d95 100%)',
                   color: '#fff',
                   border: 'none',
                   borderRadius: '14px',
@@ -297,7 +297,7 @@ export default function AuthDialog({ isOpen, onClose }) {
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   gap: '10px',
                   transition: 'all 0.2s',
-                  boxShadow: loading ? 'none' : '0 6px 20px rgba(124,58,237,0.35)',
+                  boxShadow: loading ? 'none' : '0 6px 20px rgba(8,145,178,0.35)',
                 }}
                 onMouseEnter={e => { if (!loading) e.currentTarget.style.transform = 'translateY(-2px)'; }}
                 onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; }}
@@ -379,11 +379,11 @@ function InputField({ label, icon, type, placeholder, value, onChange, required 
         alignItems: 'center',
         gap: '12px',
         padding: '0 16px',
-        background: focused ? 'rgba(124,58,237,0.08)' : 'rgba(255,255,255,0.04)',
-        border: `1px solid ${focused ? 'rgba(124,58,237,0.5)' : 'rgba(255,255,255,0.08)'}`,
+        background: focused ? 'rgba(8,145,178,0.08)' : 'rgba(255,255,255,0.04)',
+        border: `1px solid ${focused ? 'rgba(8,145,178,0.5)' : 'rgba(255,255,255,0.08)'}`,
         borderRadius: '14px',
         transition: 'all 0.2s',
-        boxShadow: focused ? '0 0 0 4px rgba(124,58,237,0.1)' : 'none',
+        boxShadow: focused ? '0 0 0 4px rgba(8,145,178,0.1)' : 'none',
         height: '50px',
       }}>
         <span style={{ color: focused ? '#a78bfa' : '#475569', flexShrink: 0, display: 'flex' }}>

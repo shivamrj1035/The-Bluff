@@ -62,7 +62,7 @@ export default function BluffEntryPage() {
         width: '100vw',
         overflow: 'hidden',
         background:
-          'radial-gradient(circle at 20% 15%, rgba(124,58,237,0.22), transparent 24%), radial-gradient(circle at 85% 20%, rgba(249,115,22,0.12), transparent 20%), linear-gradient(180deg, #0d061f 0%, #080412 58%, #040109 100%)',
+          'radial-gradient(circle at 20% 15%, rgba(8,145,178,0.22), transparent 24%), radial-gradient(circle at 85% 20%, rgba(20,184,166,0.12), transparent 20%), linear-gradient(180deg, #06202a 0%, #031015 58%, #01080b 100%)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -79,7 +79,7 @@ export default function BluffEntryPage() {
           width: 200,
           height: 200,
           borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(124,58,237,0.24), transparent 68%)',
+          background: 'radial-gradient(circle, rgba(8,145,178,0.24), transparent 68%)',
           filter: 'blur(10px)',
           pointerEvents: 'none',
         }}
@@ -125,8 +125,8 @@ export default function BluffEntryPage() {
           maxWidth: 440,
           borderRadius: 26,
           padding: '28px 24px 22px',
-          background: 'linear-gradient(160deg, rgba(20,11,42,0.95), rgba(8,4,20,0.96))',
-          border: '1px solid rgba(124,58,237,0.26)',
+          background: 'linear-gradient(160deg, rgba(3, 31, 39, 0.95), rgba(1, 10, 13, 0.96))',
+          border: '1px solid rgba(8,145,178,0.26)',
           boxShadow: '0 28px 70px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.03)',
           backdropFilter: 'blur(16px)',
           position: 'relative',
@@ -166,7 +166,7 @@ export default function BluffEntryPage() {
               <span style={{ color: '#fff' }}>Play </span>
               <span
                 style={{
-                  background: 'linear-gradient(135deg,#c4b5fd,#7c3aed)',
+                  background: 'linear-gradient(135deg,#a5f3fc,#6d28d9)',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
                 }}
@@ -241,10 +241,10 @@ export default function BluffEntryPage() {
               alignItems: 'center',
               gap: 12,
               background: 'rgba(255,255,255,0.05)',
-              border: `1px solid ${editingName ? 'rgba(124,58,237,0.5)' : 'rgba(255,255,255,0.08)'}`,
+              border: `1px solid ${editingName ? 'rgba(8,145,178,0.5)' : 'rgba(255,255,255,0.08)'}`,
               borderRadius: 16,
               padding: '13px 14px',
-              boxShadow: editingName ? '0 0 0 3px rgba(124,58,237,0.12)' : 'none',
+              boxShadow: editingName ? '0 0 0 3px rgba(8,145,178,0.12)' : 'none',
             }}
           >
             <span style={{ color: '#6b7280' }}>👤</span>
@@ -276,7 +276,7 @@ export default function BluffEntryPage() {
                 background: 'none',
                 border: 'none',
                 cursor: 'pointer',
-                color: '#7c3aed',
+                color: '#6d28d9',
                 fontSize: 15,
                 padding: 0,
               }}
@@ -295,7 +295,7 @@ export default function BluffEntryPage() {
             style={{
               width: '100%',
               padding: '15px 18px',
-              background: 'linear-gradient(135deg,#7c3aed,#5b21b6)',
+              background: 'linear-gradient(135deg,#6d28d9,#4c1d95)',
               border: 'none',
               borderRadius: 16,
               color: '#fff',
@@ -306,7 +306,7 @@ export default function BluffEntryPage() {
               alignItems: 'center',
               justifyContent: 'space-between',
               gap: 12,
-              boxShadow: '0 10px 28px rgba(124,58,237,0.34)',
+              boxShadow: '0 10px 28px rgba(8,145,178,0.34)',
             }}
           >
             <span>👑 Create Private Table</span>

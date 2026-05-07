@@ -37,7 +37,7 @@ const GameBoard = () => {
               ${gameState.currentTurn === player.id ? 'ring-2 ring-primary-glow border-primary-glow bg-primary-glow/10' : ''}
             `}
           >
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-xl font-bold">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-600 to-teal-500 flex items-center justify-center text-xl font-bold">
               {player.name[0]}
             </div>
             <p className="text-sm font-bold truncate w-full text-center">{player.name}</p>

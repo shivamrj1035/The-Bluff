@@ -37,14 +37,14 @@ export default function ChatBubble({ messages, isMe, position = 'bottom' }) {
           transition={{ type: 'spring', stiffness: 400, damping: 28 }}
           style={{
             background: isMe
-              ? 'linear-gradient(135deg, rgba(124,58,237,0.95), rgba(91,33,182,0.95))'
+              ? 'linear-gradient(135deg, rgba(8,145,178,0.95), rgba(14,116,144,0.95))'
               : 'rgba(15,15,28,0.97)',
-            border: isMe ? '1.5px solid rgba(167,139,250,0.6)' : '1.5px solid rgba(255,255,255,0.12)',
+            border: isMe ? '1.5px solid rgba(103,232,249,0.6)' : '1.5px solid rgba(255,255,255,0.12)',
             borderRadius: '14px',
             padding: '7px 12px',
             backdropFilter: 'blur(12px)',
             boxShadow: isMe
-              ? '0 4px 24px rgba(124,58,237,0.4), 0 0 0 1px rgba(167,139,250,0.15)'
+              ? '0 4px 24px rgba(8,145,178,0.4), 0 0 0 1px rgba(103,232,249,0.15)'
               : '0 4px 20px rgba(0,0,0,0.5)',
             position: 'relative',
           }}
@@ -74,7 +74,7 @@ export default function ChatBubble({ messages, isMe, position = 'bottom' }) {
             borderRight: '7px solid transparent',
             [isTailUp
               ? 'borderBottom'
-              : 'borderTop']: `8px solid ${isMe ? 'rgba(124,58,237,0.95)' : 'rgba(15,15,28,0.97)'}`,
+              : 'borderTop']: `8px solid ${isMe ? 'rgba(8,145,178,0.95)' : 'rgba(15,15,28,0.97)'}`,
           }} />
         </motion.div>
       </AnimatePresence>

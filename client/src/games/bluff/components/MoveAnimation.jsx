@@ -38,8 +38,8 @@ export default function MoveAnimation({ fromPos, toPos, count, onComplete }) {
             width: '60px',
             height: '85px',
             borderRadius: '6px',
-            background: 'linear-gradient(135deg, #4c1d95, #1e1b4b)',
-            border: '1px solid rgba(167,139,250,0.5)',
+            background: 'linear-gradient(135deg, #0e3a46, #06202a)',
+            border: '1px solid rgba(103,232,249,0.5)',
             boxShadow: '0 10px 20px rgba(0,0,0,0.5)'
           }}
         />

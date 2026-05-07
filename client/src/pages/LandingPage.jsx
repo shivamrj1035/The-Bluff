@@ -9,6 +9,7 @@ import {
   ArrowRightIcon, UsersIcon, TrophyIcon,
   ChevronDownIcon, CrownIcon, LogOutIcon
 } from '../components/common/Icons';
+import AvatarDisplay from '../components/common/AvatarDisplay';
 
 export default function LandingPage() {
   const { setScreen, playerName, avatar, user, profile, signOut } = useGameStore();
@@ -80,12 +81,13 @@ export default function LandingPage() {
       id: 'uno-flip',
       title: 'Uno Flip',
       desc: 'Uno with a Twist',
-      icon: <DiamondIcon size={48} color="#06b6d4" />,
+      icon: <DiamondIcon size={48} color="#c084fc" />,
       status: 'UNDER DEVELOPMENT',
       statusColor: '#f59e0b',
       active: false
     }
   ];
+
 
   return (
     <div className="landing-wrapper">
@@ -119,12 +121,12 @@ export default function LandingPage() {
                 style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', position: 'relative' }}
                 onClick={() => setShowProfileMenu(!showProfileMenu)}
               >
-                <div style={{
-                  width: '36px', height: '36px', borderRadius: '50%', background: '#f97316',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.9rem'
-                }}>
-                  {avatar || (profile?.username?.charAt(0)) || 'U'}
-                </div>
+                <AvatarDisplay
+                  avatarId={avatar}
+                  playerName={playerName || profile?.username}
+                  size={36}
+                  animated={true}
+                />
                 <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{playerName || profile?.username || 'User'}</span>
                 <ChevronDownIcon size={16} />
 
@@ -174,7 +176,7 @@ export default function LandingPage() {
             live tables and a cleaner multiplayer hub.
           </p>
           <div className="lp-hero-btns">
-            <button className="lp-btn-primary" onClick={() => requireAuth(() => setScreen('JOIN'))}>
+            <button className="lp-btn-primary" onClick={() => requireAuth(() => setScreen('BLUFF_ENTRY'))}>
               <PlayIcon size={20} />
               Play Bluff Now
             </button>
@@ -256,7 +258,7 @@ export default function LandingPage() {
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.2 + idx * 0.1 }}
-              onClick={() => game.active && requireAuth(() => setScreen('JOIN'))}
+              onClick={() => game.active && requireAuth(() => setScreen('BLUFF_ENTRY'))}
             >
               <div className="lp-game-badge" style={{ color: game.statusColor }}>
                 <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: game.statusColor }} />
@@ -279,7 +281,7 @@ export default function LandingPage() {
                       width: '24px', height: '24px', borderRadius: '50%',
                       background: i === 0 ? '#f97316' : i === 1 ? '#10b981' : '#64748b',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '0.65rem', fontWeight: 800, border: '1.5px solid #030308'
+                      fontSize: '0.65rem', fontWeight: 800, border: '1.5px solid #01080b'
                     }}>
                       {a}
                     </div>
@@ -336,7 +338,7 @@ export default function LandingPage() {
         </div>
       </motion.div>
 
-      <footer style={{ textAlign: 'center', padding: '40px 0', borderTop: '1px solid rgba(255,255,255,0.03)', color: '#475569', fontSize: '0.85rem' }}>
+      <footer className="lp-footer">
         © 2026 THE BLUFF Multiplayer Platform. All rights reserved.
       </footer>
     </div>

@@ -6,6 +6,7 @@ import LobbyPage from './games/bluff/pages/LobbyPage';
 import GameBoard from './games/bluff/pages/GameBoard';
 import ExploreGamesPage from './pages/ExploreGamesPage';
 import BluffEntryPage from './games/bluff/pages/BluffEntryPage';
+import ProfilePage from './pages/ProfilePage';
 import { useGameStore } from './games/bluff/store/useGameStore';
 
 export default function App() {
@@ -30,9 +31,10 @@ export default function App() {
         shouldOpenBluffJoin && status !== 'ERROR'
           ? <JoinPage />
           : screen === 'BLUFF_ENTRY' ? <BluffEntryPage />
-          : screen === 'JOIN' ? <JoinPage />
-          : screen === 'EXPLORE' ? <ExploreGamesPage />
-          : <LandingPage />
+            : screen === 'JOIN' ? <JoinPage />
+              : screen === 'EXPLORE' ? <ExploreGamesPage />
+                : screen === 'PROFILE' ? <ProfilePage />
+                  : <LandingPage />
       )}
 
       {(status === 'CONNECTING' || status === 'RECONNECTING') && (

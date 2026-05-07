@@ -27,8 +27,8 @@ export const useGameStore = create((set, get) => ({
   playerId: null,
 
   // Player identity
-  playerName: localStorage.getItem('bluff_name') || '',
-  avatar: localStorage.getItem('bluff_avatar') || 'P',
+  playerName: localStorage.getItem('hub_name') || '',
+  avatar: localStorage.getItem('hub_avatar') || 'S',
   roomId: localStorage.getItem('bluff_roomId') || '',
 
   // Auth & Profile state
@@ -72,18 +72,28 @@ export const useGameStore = create((set, get) => ({
           .insert([{ 
             id: userId, 
             username: playerName || `Player_${userId.slice(0, 5)}`,
-            avatar_url: avatar 
+            avatar_url: avatar,
           }])
           .select()
           .single();
         
-        if (!createError) set({ profile: newProfile });
+        if (!createError) {
+          set({ 
+            profile: newProfile,
+            avatar: newProfile.avatar_url || get().avatar,
+            playerName: newProfile.username || get().playerName,
+          });
+        }
       } else if (!error) {
+        // Profile exists - sync avatar and name from DB
         set({ 
           profile: data,
           playerName: data.username || get().playerName,
-          avatar: data.avatar_url || get().avatar
+          avatar: data.avatar_url || get().avatar,
         });
+        // Update localStorage to match database
+        localStorage.setItem('hub_name', data.username || get().playerName);
+        localStorage.setItem('hub_avatar', data.avatar_url || get().avatar);
       }
     } catch (err) {
       console.error('Error fetching profile:', err);
@@ -91,24 +101,32 @@ export const useGameStore = create((set, get) => ({
   },
 
   updateProfile: async (updates) => {
-    const { user, profile } = get();
+    const { user } = get();
     if (!user) return;
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .update(updates)
-      .eq('id', user.id)
-      .select()
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', user.id)
+        .select()
+        .single();
 
-    if (!error) {
-      set({ 
-        profile: data,
-        playerName: data.username || get().playerName,
-        avatar: data.avatar_url || get().avatar
-      });
+      if (!error && data) {
+        set({ 
+          profile: data,
+          playerName: data.username || get().playerName,
+          avatar: data.avatar_url || get().avatar,
+        });
+        // Update localStorage to match database
+        localStorage.setItem('hub_name', data.username || get().playerName);
+        localStorage.setItem('hub_avatar', data.avatar_url || get().avatar);
+      }
+      return { data, error };
+    } catch (err) {
+      console.error('Error updating profile:', err);
+      return { data: null, error: err };
     }
-    return { data, error };
   },
 
   login: async (email, password) => {
@@ -144,8 +162,8 @@ export const useGameStore = create((set, get) => ({
 
   // --- Identity ---
   setIdentity: async (name, av) => {
-    localStorage.setItem('bluff_name', name);
-    localStorage.setItem('bluff_avatar', av);
+    localStorage.setItem('hub_name', name);
+    localStorage.setItem('hub_avatar', av);
     set({ playerName: name, avatar: av });
 
     const { user } = get();
@@ -180,7 +198,7 @@ export const useGameStore = create((set, get) => ({
       if (roomId) {
         localStorage.setItem('bluff_roomId', roomId);
       }
-      localStorage.setItem('bluff_name', playerName);
+      localStorage.setItem('hub_name', playerName);
       s.emit('join_room', { roomId, playerName, avatar: get().avatar });
     });
 

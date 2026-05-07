@@ -31,7 +31,7 @@ const PlayingCard = ({ cardId, isSelected, onClick, isFaceDown = false, delay = 
       whileHover={!isFaceDown ? { y: isSelected ? -25 : -10, scale: 1.05 } : {}}
       transition={{ type: 'spring', stiffness: 260, damping: 20, delay }}
       onClick={onClick}
-      className={`relative w-24 h-36 sm:w-32 sm:h-48 rounded-xl cursor-pointer shadow-2xl transition-shadow ${isSelected ? 'shadow-indigo-500/50 ring-2 ring-indigo-400' : 'shadow-black/20'}`}
+      className={`relative w-24 h-36 sm:w-32 sm:h-48 rounded-xl cursor-pointer shadow-2xl transition-shadow ${isSelected ? 'shadow-cyan-500/50 ring-2 ring-cyan-300' : 'shadow-black/20'}`}
       style={{ transformStyle: 'preserve-3d', perspective: '1000px' }}
     >
       <div className="absolute inset-0 w-full h-full" style={{ transformStyle: 'preserve-3d', transition: 'transform 0.5s', transform: isFaceDown ? 'rotateY(180deg)' : 'rotateY(0deg)' }}>
@@ -60,10 +60,10 @@ const PlayingCard = ({ cardId, isSelected, onClick, isFaceDown = false, delay = 
 
         {/* Back Face */}
         <div 
-          className="absolute inset-0 w-full h-full bg-gradient-to-br from-indigo-800 to-slate-900 rounded-xl border-2 border-indigo-400/40 flex items-center justify-center shadow-inner"
+          className="absolute inset-0 w-full h-full bg-gradient-to-br from-cyan-950 to-slate-950 rounded-xl border-2 border-cyan-300/40 flex items-center justify-center shadow-inner"
           style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
         >
-          <div className="w-[85%] h-[85%] border-2 border-indigo-400/30 rounded-lg flex items-center justify-center bg-indigo-500/10">
+          <div className="w-[85%] h-[85%] border-2 border-cyan-300/30 rounded-lg flex items-center justify-center bg-cyan-500/10">
              <svg width="60" height="60" viewBox="0 0 100 100">
                <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="6" />
                <path d="M 50 20 L 50 80 M 20 50 L 80 50" stroke="rgba(255,255,255,0.15)" strokeWidth="6" />

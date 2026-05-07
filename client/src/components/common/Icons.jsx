@@ -1,10 +1,51 @@
 import React from 'react';
 
-const colors = ['#7c3aed', '#db2777', '#f59e0b', '#10b981', '#ef4444', '#06b6d4', '#f97316'];
+// Emoji avatar definitions matching ProfilePage
+const EMOJI_AVATARS = {
+  crazy1: { emoji: '🤪', gradient: 'linear-gradient(135deg, #f97316, #db2777)' },
+  wink: { emoji: '😉', gradient: 'linear-gradient(135deg, #6d28d9, #7c3aed)' },
+  cool: { emoji: '😎', gradient: 'linear-gradient(135deg, #10b981, #8b5cf6)' },
+  rocket: { emoji: '🚀', gradient: 'linear-gradient(135deg, #f59e0b, #ef4444)' },
+  genius: { emoji: '🧐', gradient: 'linear-gradient(135deg, #8b5cf6, #d946ef)' },
+  party: { emoji: '🥳', gradient: 'linear-gradient(135deg, #ec4899, #f97316)' },
+  alien: { emoji: '👽', gradient: 'linear-gradient(135deg, #8b5cf6, #10b981)' },
+  devil: { emoji: '😈', gradient: 'linear-gradient(135deg, #dc2626, #7c3aed)' },
+  ghost: { emoji: '👻', gradient: 'linear-gradient(135deg, #e0e7ff, #6366f1)' },
+  robot: { emoji: '🤖', gradient: 'linear-gradient(135deg, #94a3b8, #475569)' },
+  crown: { emoji: '👑', gradient: 'linear-gradient(135deg, #f59e0b, #fbbf24)' },
+  ninja: { emoji: '🥷', gradient: 'linear-gradient(135deg, #1f2937, #111827)' },
+};
 
-export default function Avatar({ name, size = 40, fontSize = '1rem' }) {
+const letterColors = ['#6d28d9', '#db2777', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#f97316', '#8b5cf6'];
+
+export default function Avatar({ name, avatar, size = 40, fontSize = '1rem' }) {
+  // If avatar prop is provided and matches an emoji avatar, show emoji
+  if (avatar && EMOJI_AVATARS[avatar]) {
+    const emojiData = EMOJI_AVATARS[avatar];
+    let animationProps = {
+      animate: { scale: [1, 1.05, 1] },
+      transition: { duration: 2, repeat: Infinity, ease: 'easeInOut' },
+    };
+    
+    return (
+      <div style={{
+        width: size, height: size, borderRadius: '50%',
+        background: emojiData.gradient,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: size * 0.75,
+        flexShrink: 0,
+        boxShadow: `0 4px 12px ${emojiData.gradient.includes('#f97316') ? '#f9731666' : emojiData.gradient.includes('#6d28d9') ? '#6d28d966' : '#7c3aed66'}`,
+        border: '0.5px solid rgba(255,255,255,0.2)',
+        userSelect: 'none',
+      }}>
+        {emojiData.emoji}
+      </div>
+    );
+  }
+
+  // Fallback to letter avatar
   const char = name ? name.charAt(0).toUpperCase() : '?';
-  const color = name ? colors[name.length % colors.length] : '#333';
+  const color = name ? letterColors[name.length % letterColors.length] : '#333';
 
   return (
     <div style={{
