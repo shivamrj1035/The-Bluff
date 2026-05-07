@@ -1,11 +1,9 @@
 import { create } from 'zustand';
 import { io } from 'socket.io-client';
-import { supabase } from '../../../lib/supabase';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || '/';
+const API_BASE = import.meta.env.VITE_SOCKET_URL || ''; // Assuming server handles both
 
-// Connection status types
-// IDLE | CONNECTING | CONNECTED | RECONNECTING | ERROR
 let socket = null;
 
 function getSocket() {
@@ -22,7 +20,7 @@ function getSocket() {
 
 export const useGameStore = create((set, get) => ({
   // Connection state
-  status: 'IDLE',   // 'IDLE' | 'CONNECTING' | 'CONNECTED' | 'ERROR'
+  status: 'IDLE',
   socket: null,
   playerId: null,
 
@@ -33,65 +31,69 @@ export const useGameStore = create((set, get) => ({
 
   // Auth & Profile state
   user: null,
-  session: null,
+  clerkToken: null,
   profile: null,
   isAuthLoading: true,
 
   // --- Auth Actions ---
-  initAuth: async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    set({ session, user: session?.user ?? null, isAuthLoading: false });
-    
-    if (session?.user) {
-      get().fetchProfile(session.user.id);
-    }
-
-    supabase.auth.onAuthStateChange((_event, session) => {
-      set({ session, user: session?.user ?? null });
-      if (session?.user) {
-        get().fetchProfile(session.user.id);
-      } else {
-        set({ profile: null });
+  setAuth: async (clerkUser, getToken) => {
+    try {
+      const token = await getToken();
+      set({ user: clerkUser, clerkToken: token, isAuthLoading: false });
+      
+      if (clerkUser) {
+        await get().fetchProfile();
       }
-    });
+    } catch (err) {
+      console.error('Error setting auth:', err);
+      set({ isAuthLoading: false });
+    }
   },
 
-  fetchProfile: async (userId) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
+  clearAuth: () => {
+    set({ user: null, clerkToken: null, profile: null, isAuthLoading: false });
+  },
 
-      if (error && error.code === 'PGRST116') {
+  fetchProfile: async () => {
+    const { clerkToken } = get();
+    if (!clerkToken) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/api/profile`, {
+        headers: { Authorization: `Bearer ${clerkToken}` },
+      });
+
+      if (response.status === 404) {
         // Profile doesn't exist, create it
-        const { playerName, avatar } = get();
-        const { data: newProfile, error: createError } = await supabase
-          .from('profiles')
-          .insert([{ 
-            id: userId, 
-            username: playerName || `Player_${userId.slice(0, 5)}`,
+        const { playerName, avatar, user } = get();
+        const createRes = await fetch(`${API_BASE}/api/profile`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${clerkToken}` 
+          },
+          body: JSON.stringify({
+            username: playerName || user?.username || user?.firstName || 'Player',
             avatar_url: avatar,
-          }])
-          .select()
-          .single();
+            full_name: user?.fullName || '',
+          }),
+        });
         
-        if (!createError) {
+        if (createRes.ok) {
+          const newProfile = await createRes.json();
           set({ 
             profile: newProfile,
             avatar: newProfile.avatar_url || get().avatar,
             playerName: newProfile.username || get().playerName,
           });
         }
-      } else if (!error) {
-        // Profile exists - sync avatar and name from DB
+      } else if (response.ok) {
+        const data = await response.json();
         set({ 
           profile: data,
           playerName: data.username || get().playerName,
           avatar: data.avatar_url || get().avatar,
         });
-        // Update localStorage to match database
         localStorage.setItem('hub_name', data.username || get().playerName);
         localStorage.setItem('hub_avatar', data.avatar_url || get().avatar);
       }
@@ -101,51 +103,35 @@ export const useGameStore = create((set, get) => ({
   },
 
   updateProfile: async (updates) => {
-    const { user } = get();
-    if (!user) return;
+    const { clerkToken } = get();
+    if (!clerkToken) return { error: 'Not authenticated' };
 
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('id', user.id)
-        .select()
-        .single();
+      const response = await fetch(`${API_BASE}/api/profile`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${clerkToken}` 
+        },
+        body: JSON.stringify(updates),
+      });
 
-      if (!error && data) {
+      if (response.ok) {
+        const data = await response.json();
         set({ 
           profile: data,
           playerName: data.username || get().playerName,
           avatar: data.avatar_url || get().avatar,
         });
-        // Update localStorage to match database
         localStorage.setItem('hub_name', data.username || get().playerName);
         localStorage.setItem('hub_avatar', data.avatar_url || get().avatar);
+        return { data, error: null };
       }
-      return { data, error };
+      return { data: null, error: 'Failed to update profile' };
     } catch (err) {
       console.error('Error updating profile:', err);
       return { data: null, error: err };
     }
-  },
-
-  login: async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    return { data, error };
-  },
-
-  signup: async (email, password, username) => {
-    const { data, error } = await supabase.auth.signUp({ 
-      email, 
-      password,
-      options: { data: { username } }
-    });
-    return { data, error };
-  },
-
-  signOut: async () => {
-    await supabase.auth.signOut();
-    set({ user: null, session: null, profile: null });
   },
 
   // Game state from server
@@ -153,10 +139,10 @@ export const useGameStore = create((set, get) => ({
   error: null,
 
   // UI state
-  screen: 'LANDING', // 'LANDING' | 'EXPLORE' | 'BLUFF_ENTRY' | 'JOIN'
+  screen: 'LANDING',
   selectedCards: [],
   isDealing: false,
-  chatMessages: [],      // { id, senderId, senderName, message, ts }
+  chatMessages: [],
   hostTransferredName: null,
   hostTransferredId: null,
 
@@ -179,7 +165,6 @@ export const useGameStore = create((set, get) => ({
     const { playerName, avatar } = get();
     const s = getSocket();
 
-    // Clean up old listeners
     s.off('connect');
     s.off('game_state');
     s.off('error');
@@ -216,7 +201,7 @@ export const useGameStore = create((set, get) => ({
       const params = new URLSearchParams(window.location.search);
       params.set('room', assignedRoomId);
       if (game) params.set('game', game);
-      const nextUrl = `${window.location.pathname}?${params.toString()}`;
+      const nextUrl = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
       window.history.replaceState({ path: nextUrl }, '', nextUrl);
       set({ roomId: assignedRoomId, status: 'CONNECTED', error: null });
     });
@@ -247,7 +232,6 @@ export const useGameStore = create((set, get) => ({
       const msgId = `${senderId}-${ts}`;
       const newMsg = { id: msgId, senderId, senderName, message, ts };
       set((state) => ({ chatMessages: [...state.chatMessages, newMsg] }));
-      // Auto-remove after 5.5 seconds
       setTimeout(() => {
         set((state) => ({ chatMessages: state.chatMessages.filter(m => m.id !== msgId) }));
       }, 5500);
@@ -334,13 +318,9 @@ export const useGameStore = create((set, get) => ({
     s?.emit('restart_game', { roomId });
   },
 
-  // closeGame: host resets the active game → everyone goes back to the lobby.
-  // Does NOT disconnect — the server broadcasts WAITING state which shows the LobbyPage.
-  // From the lobby, the host can START AGAIN or LEAVE TABLE.
   closeGame: () => {
     const { socket: s, roomId } = get();
     s?.emit('close_game', { roomId });
-    // Do NOT set status to IDLE here — let the server's game_state broadcast handle routing.
   },
 
   clearSelection: () => set({ selectedCards: [] }),
@@ -353,10 +333,8 @@ export const useGameStore = create((set, get) => ({
   },
 }));
 
-// Auto-init auth and reconnect on load
+// Reconnect logic on load
 const store = useGameStore.getState();
-store.initAuth();
-
 const initialRoom = localStorage.getItem('bluff_roomId');
 if (initialRoom) {
   store.connect(initialRoom);

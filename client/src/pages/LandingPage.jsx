@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useClerk } from '@clerk/clerk-react';
 import { useGameStore } from '../games/bluff/store/useGameStore';
-import AuthDialog from '../components/common/AuthDialog';
 import {
   SpadeIcon, HeartIcon, DiamondIcon,
   GridIcon, EnergyIcon, LockIcon,
@@ -12,13 +12,13 @@ import {
 import AvatarDisplay from '../components/common/AvatarDisplay';
 
 export default function LandingPage() {
-  const { setScreen, playerName, avatar, user, profile, signOut } = useGameStore();
-  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const { setScreen, playerName, avatar, user, profile } = useGameStore();
+  const { openSignIn, signOut } = useClerk();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   const requireAuth = (onSuccess) => {
     if (!user) {
-      setIsAuthOpen(true);
+      openSignIn();
       return;
     }
     onSuccess();
@@ -96,250 +96,207 @@ export default function LandingPage() {
       <div className="lp-bg-curve" />
 
       <header className="lp-header">
-        <div className="lp-logo">
+        <div className="lp-logo" onClick={() => setScreen('LANDING')}>
           <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <SpadeIcon size={20} color="#fff" />
           </div>
-          MULTIPLAYER GAMING HUB
+          <span>The Bluff</span>
         </div>
 
         <nav className="lp-nav">
-          <div className="lp-nav-item active">Home</div>
-          <div className="lp-nav-item" onClick={() => setScreen('EXPLORE')}>Games</div>
-          <div className="lp-nav-item">Leaderboard</div>
-          <div className="lp-nav-item">About Us</div>
+          <a href="#games">Games</a>
+          <a href="#about">About</a>
+          <a href="#leaderboard">Leaderboard</a>
         </nav>
 
-        <div className="lp-header-actions">
+        <div className="lp-auth">
           {user ? (
-            <>
-              <div className="glass-panel" style={{ padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '8px', borderRadius: '12px' }}>
-                <EnergyIcon size={18} />
-                <span style={{ fontWeight: 800, fontSize: '0.85rem' }}>{profile?.coins || 0}</span>
-              </div>
-              <div
-                style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', position: 'relative' }}
-                onClick={() => setShowProfileMenu(!showProfileMenu)}
-              >
+            <div className="user-profile-trigger" onClick={() => setShowProfileMenu(!showProfileMenu)} style={{ position: 'relative' }}>
+              <div className="user-avatar-pill">
                 <AvatarDisplay
                   avatarId={avatar}
                   playerName={playerName || profile?.username}
-                  size={36}
+                  size={32}
                   animated={true}
                 />
-                <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{playerName || profile?.username || 'User'}</span>
-                <ChevronDownIcon size={16} />
-
-                <AnimatePresence>
-                  {showProfileMenu && (
-                    <motion.div
-                      className="glass-panel profile-dropdown"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                    >
-                      <button className="dropdown-item" onClick={() => { setScreen('PROFILE'); setShowProfileMenu(false); }}>
-                        <UsersIcon size={16} /> My Profile
-                      </button>
-                      <button className="dropdown-item" onClick={() => { signOut(); setShowProfileMenu(false); }}>
-                        <LogOutIcon size={16} /> Sign Out
-                      </button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                <span className="user-name">{playerName || profile?.username || 'User'}</span>
+                <ChevronDownIcon size={14} color="#64748b" />
               </div>
-            </>
+
+              <AnimatePresence>
+                {showProfileMenu && (
+                  <motion.div
+                    className="glass-panel profile-dropdown"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    style={{ top: '100%', right: 0, marginTop: '8px', position: 'absolute', zIndex: 100 }}
+                  >
+                    <button className="dropdown-item" onClick={() => { setScreen('PROFILE'); setShowProfileMenu(false); }}>
+                      <UsersIcon size={16} /> My Profile
+                    </button>
+                    <button className="dropdown-item" onClick={() => { signOut(); setShowProfileMenu(false); }}>
+                      <LogOutIcon size={16} /> Sign Out
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           ) : (
-            <button className="lp-btn-login" onClick={() => setIsAuthOpen(true)}>
+            <button className="lp-btn-login" onClick={() => openSignIn()}>
               Sign In
             </button>
           )}
         </div>
       </header>
 
-      <AuthDialog isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
+      <main className="lp-main">
+        {/* Hero Section */}
+        <section className="lp-hero">
+          <motion.div
+            className="hero-badge"
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+          >
+            <EnergyIcon size={14} color="#a78bfa" />
+            <span>Multiplayer Card Hub</span>
+          </motion.div>
 
-      <section className="lp-hero">
-        <motion.div
-          className="lp-hero-content"
-          initial={{ x: -40, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          transition={{ duration: 0.6 }}
-        >
-          <div className="lp-kicker">
-            <div className="lp-dot" />
-            Premium social card lounge
-          </div>
-          <h1>Compact. Fast. <span>Ready to play.</span></h1>
-          <p>
-            A tighter landing experience for card players who want instant access,
-            live tables and a cleaner multiplayer hub.
-          </p>
-          <div className="lp-hero-btns">
-            <button className="lp-btn-primary" onClick={() => requireAuth(() => setScreen('BLUFF_ENTRY'))}>
-              <PlayIcon size={20} />
-              Play Bluff Now
+          <motion.h1
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.1 }}
+          >
+            Where Skills Meet <br />
+            <span>Strategic Bluff</span>
+          </motion.h1>
+
+          <motion.p
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.2 }}
+          >
+            Join the most thrilling multiplayer card platform. Challenge friends,
+            climb leaderboards, and master the art of the bluff.
+          </motion.p>
+
+          <motion.div
+            className="hero-cta"
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.3 }}
+          >
+            <button className="lp-btn-primary" onClick={() => setScreen('EXPLORE')}>
+              Explore Games <ArrowRightIcon size={18} />
             </button>
-            <button className="lp-btn-outline" onClick={() => setScreen('EXPLORE')}>
-              <GridIcon size={20} />
-              Explore Games
-            </button>
-          </div>
-          <div className="lp-metrics-row">
-            {metrics.map((metric) => (
-              <div key={metric.label} className="lp-metric-card">
-                <strong>{metric.value}</strong>
-                <span>{metric.label}</span>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-
-        <motion.div
-          className="lp-hero-visual"
-          initial={{ x: 40, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          transition={{ duration: 0.8 }}
-        >
-          <div className="lp-hero-panel">
-            <div className="lp-panel-top">
-              <div>
-                <span className="lp-panel-label">Featured table</span>
-                <h3>Game Arena</h3>
-              </div>
-              <div className="lp-panel-pill">
-                <UsersIcon size={16} />
-                developed by Shivam
-              </div>
-            </div>
-
-            <div className="lp-hero-image">
-              <img src="/landing_hero_premium.png" alt="Cards" />
-            </div>
-
-            <div className="lp-panel-bottom">
-              {highlights.map((item, idx) => (
-                <motion.div
-                  key={item.title}
-                  className="lp-highlight-card"
-                  initial={{ y: 18, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.25 + idx * 0.08 }}
-                >
-                  <div className="lp-highlight-icon">{item.icon}</div>
-                  <div>
-                    <h4>{item.title}</h4>
-                    <p>{item.text}</p>
-                  </div>
-                </motion.div>
+            <div className="hero-metrics">
+              {metrics.map((m, i) => (
+                <div key={i} className="metric-item">
+                  <span className="metric-val">{m.value}</span>
+                  <span className="metric-label">{m.label}</span>
+                </div>
               ))}
             </div>
-          </div>
-        </motion.div>
-      </section>
+          </motion.div>
+        </section>
 
-      <section className="lp-games-section">
-        <div className="header lp-section-header">
-          <div className="lp-section-title">
-            <h2>Our Games</h2>
-            <p>Shortlist your next table and jump straight in.</p>
-          </div>
-          <div className="lp-filter-pill">
-            <span>All Games</span>
-            <ChevronDownIcon size={16} />
-          </div>
-        </div>
-
-        <div className="lp-game-grid">
-          {games.map((game, idx) => (
+        {/* Feature Highlights */}
+        <section className="lp-highlights">
+          {highlights.map((h, i) => (
             <motion.div
-              key={game.id}
-              className={`lp-game-card ${game.active ? 'active' : ''}`}
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.2 + idx * 0.1 }}
-              onClick={() => game.active && requireAuth(() => setScreen('BLUFF_ENTRY'))}
+              key={i}
+              className="highlight-card glass-panel"
+              initial={{ y: 30, opacity: 0 }}
+              whileInView={{ y: 0, opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.1 }}
             >
-              <div className="lp-game-badge" style={{ color: game.statusColor }}>
-                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: game.statusColor }} />
-                {game.status}
-              </div>
-
-              <div className="lp-game-icon-container">
-                {game.icon}
-              </div>
-
-              <h4>{game.title}</h4>
-              <p>{game.desc}</p>
-
-              <div style={{ flex: 1 }} />
-
-              <div className="lp-card-footer">
-                <div style={{ display: 'flex', gap: '4px' }}>
-                  {game.avatars?.map((a, i) => (
-                    <div key={i} style={{
-                      width: '24px', height: '24px', borderRadius: '50%',
-                      background: i === 0 ? '#f97316' : i === 1 ? '#10b981' : '#64748b',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '0.65rem', fontWeight: 800, border: '1.5px solid #01080b'
-                    }}>
-                      {a}
-                    </div>
-                  ))}
-                </div>
-                {game.active ? (
-                  <div style={{ color: '#a78bfa', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    Play Now <ArrowRightIcon size={16} />
-                  </div>
-                ) : (
-                  <div style={{ color: '#475569', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 800 }}>
-                    Coming Soon <LockIcon size={16} />
-                  </div>
-                )}
-              </div>
+              <div className="highlight-icon">{h.icon}</div>
+              <h3>{h.title}</h3>
+              <p>{h.text}</p>
             </motion.div>
           ))}
-        </div>
-      </section>
+        </section>
 
-      <motion.div
-        className="lp-features-bar"
-        initial={{ y: 40, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.8 }}
-      >
-        <div className="lp-feature">
-          <div className="lp-feature-icon"><UsersIcon size={24} /></div>
-          <div className="lp-feature-text">
-            <h5>Real Players</h5>
-            <p>Play with real people from around the world</p>
+        {/* Games Section */}
+        <section id="games" className="lp-games">
+          <div className="section-header">
+            <h2>Featured <span>Games</span></h2>
+            <p>Our collection of classic and modern card games.</p>
           </div>
-        </div>
-        <div className="lp-feature">
-          <div className="lp-feature-icon"><ShieldIcon size={24} /></div>
-          <div className="lp-feature-text">
-            <h5>Fair Play</h5>
-            <p>Our games are 100% fair and secure</p>
+
+          <div className="game-grid">
+            {games.map((game, i) => (
+              <motion.div
+                key={i}
+                className={`game-card glass-panel ${game.active ? 'active' : ''}`}
+                initial={{ scale: 0.95, opacity: 0 }}
+                whileInView={{ scale: 1, opacity: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                onClick={() => game.active && setScreen('EXPLORE')}
+              >
+                <div className="game-card-icon">{game.icon}</div>
+                <h3>{game.title}</h3>
+                <p>{game.desc}</p>
+                <div className="game-status" style={{ color: game.statusColor }}>
+                  <span className="status-dot" style={{ backgroundColor: game.statusColor }} />
+                  {game.status}
+                </div>
+                {game.active && (
+                  <button className="game-play-btn">
+                    <PlayIcon size={16} />
+                  </button>
+                )}
+              </motion.div>
+            ))}
           </div>
-        </div>
-        <div className="lp-feature">
-          <div className="lp-feature-icon"><TrophyIcon size={24} /></div>
-          <div className="lp-feature-text">
-            <h5>Leaderboards</h5>
-            <p>Compete and climb the global rankings</p>
+        </section>
+
+        {/* Community Section */}
+        <section id="about" className="lp-community glass-panel">
+          <div className="community-content">
+            <div className="community-text">
+              <div className="badge-promo">
+                <GiftIcon size={14} />
+                <span>Beta Season Rewards</span>
+              </div>
+              <h2>Join the <span>Elite Club</span></h2>
+              <p>
+                Create your profile today and get 500 free coins to start your journey.
+                Participate in tournaments and win exclusive card skins.
+              </p>
+              <button className="lp-btn-outline" onClick={() => requireAuth(() => setScreen('PROFILE'))}>
+                {user ? 'View My Profile' : 'Create Your Account'}
+              </button>
+            </div>
+            <div className="community-visual">
+              <div className="avatar-stack">
+                <AvatarDisplay avatarId="S" size={60} />
+                <AvatarDisplay avatarId="P" size={60} />
+                <AvatarDisplay avatarId="G" size={60} />
+                <div className="avatar-more">+4k</div>
+              </div>
+            </div>
           </div>
-        </div>
-        <div className="lp-feature">
-          <div className="lp-feature-icon"><GiftIcon size={24} /></div>
-          <div className="lp-feature-text">
-            <h5>Rewards</h5>
-            <p>Win games and earn exciting rewards</p>
-          </div>
-        </div>
-      </motion.div>
+        </section>
+      </main>
 
       <footer className="lp-footer">
-        © 2026 THE BLUFF Multiplayer Platform. All rights reserved.
+        <div className="footer-content">
+          <div className="footer-logo">
+            <SpadeIcon size={24} color="#7c3aed" />
+            <span>The Bluff</span>
+          </div>
+          <div className="footer-links">
+            <a href="#">Privacy</a>
+            <a href="#">Terms</a>
+            <a href="#">Support</a>
+          </div>
+          <div className="footer-copy">
+            © 2025 The Bluff. All rights reserved.
+          </div>
+        </div>
       </footer>
     </div>
   );

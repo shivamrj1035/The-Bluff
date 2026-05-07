@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useClerk } from '@clerk/clerk-react';
 import { useGameStore } from '../games/bluff/store/useGameStore';
-import AuthDialog from '../components/common/AuthDialog';
 import AvatarDisplay from '../components/common/AvatarDisplay';
 import {
   SpadeIcon,
@@ -17,15 +17,15 @@ import {
  * Implements the premium dark UI from the provided mockup.
  */
 export default function ExploreGamesPage() {
-  const { setScreen, playerName, avatar, user, profile, signOut } = useGameStore();
+  const { setScreen, playerName, avatar, user, profile } = useGameStore();
+  const { openSignIn, signOut } = useClerk();
   const [activeTab, setActiveTab] = useState('All Games');
   const [sortBy, setSortBy] = useState('Popular');
-  const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   const requireAuth = (onSuccess) => {
     if (!user) {
-      setIsAuthOpen(true);
+      openSignIn();
       return;
     }
     onSuccess();
@@ -117,8 +117,6 @@ export default function ExploreGamesPage() {
 
   return (
     <div className="explore-container">
-      <AuthDialog isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
-
       {/* Sidebar */}
       <aside className="explore-sidebar">
         <div className="sidebar-logo" onClick={() => setScreen('LANDING')}>
@@ -234,7 +232,7 @@ export default function ExploreGamesPage() {
                   </AnimatePresence>
                 </div>
               ) : (
-                <button className="lp-btn-login" onClick={() => setIsAuthOpen(true)}>
+                <button className="lp-btn-login" onClick={() => openSignIn()}>
                   Sign In
                 </button>
               )}
