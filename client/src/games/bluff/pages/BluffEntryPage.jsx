@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useGameStore } from '../store/useGameStore';
 import { toast } from '../../../components/common/Toast';
-import AuthDialog from '../../../components/common/AuthDialog';
+
 
 export default function BluffEntryPage() {
   const { setScreen, setIdentity, connect, playerName: storedName, user, profile } = useGameStore();

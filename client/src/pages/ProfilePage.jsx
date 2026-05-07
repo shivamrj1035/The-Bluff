@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useClerk } from '@clerk/clerk-react';
 import { useGameStore } from '../games/bluff/store/useGameStore';
 import AvatarDisplay from '../components/common/AvatarDisplay';
-import { avatarConfigs } from '../games/bluff/constants/avatars';
+import { AVATAR_OPTIONS } from '../games/bluff/constants/avatars';
 import {
   ChevronDownIcon, ArrowLeftIcon, CameraIcon,
   LogOutIcon, TrophyIcon, UsersIcon, EnergyIcon,
@@ -270,17 +270,25 @@ export default function ProfilePage() {
                 <button className="close-btn" onClick={() => setShowAvatarGrid(false)}>×</button>
               </div>
               <div className="avatar-grid-scroll">
-                {Object.entries(avatarConfigs).map(([id, config]) => (
+                {AVATAR_OPTIONS.map((avatarData) => (
                   <button
-                    key={id}
-                    className={`avatar-option ${avatar === id ? 'selected' : ''}`}
-                    onClick={() => handleAvatarSelect(id)}
+                    key={avatarData.id}
+                    className={`avatar-option ${avatar === avatarData.id ? 'selected' : ''}`}
+                    onClick={() => handleAvatarSelect(avatarData.id)}
                   >
                     <div className="avatar-preview">
-                      <AvatarDisplay avatarId={id} size={80} animated={false} />
+                      <AvatarDisplay
+                        avatarId={avatarData.id}
+                        size={80}
+                        animated={false}
+                      />
                     </div>
-                    <span>{config.label}</span>
-                    {avatar === id && <div className="selected-badge">✓</div>}
+
+                    <span>{avatarData.name}</span>
+
+                    {avatar === avatarData.id && (
+                      <div className="selected-badge">✓</div>
+                    )}
                   </button>
                 ))}
               </div>

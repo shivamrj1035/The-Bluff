@@ -1,18 +1,16 @@
 {
   "name": "server",
   "version": "1.0.0",
-  "description": "",
+  "description": "The Bluff Game Backend",
   "main": "index.js",
-  "directories": {
-    "test": "tests"
-  },
   "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
+    "@clerk/backend": "^3.4.6",
+    "@neondatabase/serverless": "^1.1.0",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
