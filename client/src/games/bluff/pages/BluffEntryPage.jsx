@@ -1,3 +1,4 @@
+import AuthDialog from ../../../components/common/AuthDialog;
 import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useGameStore } from '../store/useGameStore';

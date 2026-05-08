@@ -1,3 +1,4 @@
+import ../bluff.css;
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from '../../../components/common/Toast';
