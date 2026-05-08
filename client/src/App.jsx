@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Toaster } from './components/common/Toast';
 import LandingPage from './pages/LandingPage';
 import JoinPage from './games/bluff/pages/JoinPage';
@@ -7,6 +7,7 @@ import GameBoard from './games/bluff/pages/GameBoard';
 import ExploreGamesPage from './pages/ExploreGamesPage';
 import BluffEntryPage from './games/bluff/pages/BluffEntryPage';
 import ProfilePage from './pages/ProfilePage';
+import ClerkSync from './components/common/ClerkSync';
 import { useGameStore } from './games/bluff/store/useGameStore';
 
 export default function App() {
@@ -21,6 +22,7 @@ export default function App() {
   return (
     <>
       <Toaster />
+      <ClerkSync />
 
       {(status === 'IDLE' || status === 'ERROR') && (
         shouldOpenBluffJoin && status !== 'ERROR'

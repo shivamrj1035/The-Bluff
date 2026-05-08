@@ -1,25 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { useClerk } from '@clerk/clerk-react';
 import { useGameStore } from '../store/useGameStore';
 import { toast } from '../../../components/common/Toast';
+import AuthDialog from '../../../components/common/AuthDialog';
 
 export default function JoinPage() {
-  const { setIdentity, connect, playerName: storedName, error, user, profile } = useGameStore();
-  const { openSignIn } = useClerk();
-  const [name, setName] = useState(storedName || profile?.username || '');
+  const { setIdentity, connect, playerName: storedName, error, user } = useGameStore();
+  const [name, setName] = useState(storedName || '');
   const [roomId, setRoomId] = useState('');
   const [checking, setChecking] = useState(false);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
 
   useEffect(() => {
     if (error) toast.error(error);
     const roomFromUrl = new URLSearchParams(window.location.search).get('room');
     if (roomFromUrl) setRoomId(roomFromUrl.toUpperCase());
-    
-    if (profile?.username && !name) {
-      setName(profile.username);
-    }
-  }, [error, profile, name]);
+  }, [error]);
 
   const avatarLetter = name?.trim()[0]?.toUpperCase() || '?';
 
@@ -31,7 +27,7 @@ export default function JoinPage() {
 
   const handleJoin = async () => {
     if (!user) {
-      openSignIn();
+      setIsAuthOpen(true);
       return;
     }
     if (!name.trim()) return toast.error('Enter your name');
@@ -55,7 +51,7 @@ export default function JoinPage() {
 
     const newUrl = `${window.location.origin}${window.location.pathname}?room=${rid}`;
     window.history.pushState({ path: newUrl }, '', newUrl);
-    await setIdentity(name.trim(), profile?.avatar_id || 'P');
+    await setIdentity(name.trim(), 'P');
     connect(rid);
   };
 
@@ -63,6 +59,7 @@ export default function JoinPage() {
 
   return (
     <div className="auth-shell join-shell">
+      <AuthDialog isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
       <div className="join-orb join-orb-left" />
       <div className="join-orb join-orb-right" />
 
@@ -104,24 +101,31 @@ export default function JoinPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
-              placeholder="John Doe"
-              maxLength={15}
+              placeholder="Enter your name"
+              maxLength={12}
             />
           </div>
         </div>
 
-        <button
-          className={`join-submit ${joinDisabled ? 'disabled' : ''}`}
+        <motion.button
+          whileHover={{ scale: joinDisabled ? 1 : 1.01 }}
+          whileTap={{ scale: joinDisabled ? 1 : 0.99 }}
           onClick={handleJoin}
           disabled={joinDisabled}
+          className="join-primary-btn"
         >
-          {checking ? 'Finding Table...' : 'Find Table'}
-        </button>
+          {checking ? 'Checking Table...' : 'Connect to Table'}
+          {!checking && <span>→</span>}
+        </motion.button>
 
-        <div className="join-links">
-          <button className="join-link-btn" onClick={() => window.history.back()}>
-            ← Cancel
+        <div className="join-footer">
+          <button
+            onClick={() => useGameStore.getState().setScreen('BLUFF_ENTRY')}
+            className="join-back-btn"
+          >
+            ← Back to Bluff
           </button>
+          <p>Private rooms only. Enter the exact host code.</p>
         </div>
       </motion.div>
     </div>

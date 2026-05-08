@@ -3,73 +3,58 @@ const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const cors = require("cors");
+const { clerkMiddleware, getAuth } = require("@clerk/express");
 const { setupHandlers, getRoomForHttp } = require("./socket/handlers");
 const redis = require("./redisClient");
-const { sql, initDb } = require("./db");
-const { createClerkClient } = require("@clerk/backend");
-
-const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
-
+const { sql, ensureProfileSchema } = require("./db");
 const app = express();
 app.use(cors({ origin: "*" }));
 app.use(express.json());
+app.use(clerkMiddleware());
 
-// Initialize Database
-initDb();
+function normalizeProfileInput(reqBody, auth) {
+  const fallbackName = `Player_${String(auth.userId || "").slice(0, 5)}`;
+  const username = String(reqBody?.username || "").trim().slice(0, 20) || fallbackName;
+  const avatar_url = String(reqBody?.avatar_url || reqBody?.avatarUrl || "P").trim().slice(0, 20) || "P";
 
-// Clerk Authentication Middleware
-const authenticate = async (req, res, next) => {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return res.status(401).json({ error: "No token provided" });
-    
-    const token = authHeader.split(" ")[1];
-    const session = await clerkClient.verifyToken(token);
-    req.auth = session;
-    next();
-  } catch (e) {
-    res.status(401).json({ error: "Invalid token" });
-  }
-};
+  return { username, avatar_url };
+}
 
 // Health check endpoint
 app.get("/health", (req, res) => res.json({ status: "ok" }));
 
-// Profile Routes
-app.get("/api/profile", authenticate, async (req, res) => {
+app.put("/api/profile", async (req, res) => {
   try {
-    const userId = req.auth.sub;
-    const [profile] = await sql`SELECT * FROM profiles WHERE id = ${userId}`;
-    if (!profile) return res.status(404).json({ error: "Profile not found" });
-    res.json(profile);
-  } catch (e) {
-    res.status(500).json({ error: "Database error" });
-  }
-});
+    const auth = getAuth(req);
+    if (!auth.isAuthenticated || !auth.userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
 
-app.post("/api/profile", authenticate, async (req, res) => {
-  try {
-    const userId = req.auth.sub;
-    const { username, avatar_url, full_name } = req.body;
-    
+    if (!sql) {
+      return res.status(503).json({ error: "Profile persistence is unavailable" });
+    }
+
+    const { username, avatar_url } = normalizeProfileInput(req.body, auth);
     const [profile] = await sql`
-      INSERT INTO profiles (id, username, avatar_url, full_name, updated_at)
-      VALUES (${userId}, ${username}, ${avatar_url}, ${full_name}, CURRENT_TIMESTAMP)
-      ON CONFLICT (id) DO UPDATE SET
+      INSERT INTO profiles (id, username, avatar_url)
+      VALUES (${auth.userId}, ${username}, ${avatar_url})
+      ON CONFLICT (id)
+      DO UPDATE SET
         username = EXCLUDED.username,
         avatar_url = EXCLUDED.avatar_url,
-        full_name = EXCLUDED.full_name,
-        updated_at = CURRENT_TIMESTAMP
-      RETURNING *
+        updated_at = NOW()
+      RETURNING id, username, avatar_url, coins
     `;
-    res.json(profile);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "Database error" });
+
+    return res.json(profile);
+  } catch (error) {
+    console.error('[PROFILE] sync failed:', error);
+    return res.status(500).json({ error: "Unable to sync profile" });
   }
 });
 
-// Room existence check endpoint
+// Room existence check endpoint (for joining via link)
+// Uses in-memory cache first, falls back to Redis
 app.get("/room/:roomId", async (req, res) => {
   try {
     const roomId = String(req.params.roomId || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
@@ -94,6 +79,7 @@ app.get("/room/:roomId", async (req, res) => {
       if (!payload.exists) return res.status(404).json({ exists: false, isExpired: true });
       return res.json(payload);
     }
+    // Cache miss — check Redis
     const data = await redis.get(`room:${roomId}`);
     if (!data) return res.status(404).json({ exists: false });
     const r = JSON.parse(data);
@@ -108,6 +94,10 @@ app.get("/room/:roomId", async (req, res) => {
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: "*", methods: ["GET", "POST"] },
+});
+
+ensureProfileSchema().catch((error) => {
+  console.error("[DB] Failed to initialize profiles table:", error);
 });
 
 io.on("connection", (socket) => {

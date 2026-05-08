@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useClerk } from '@clerk/clerk-react';
 import { useGameStore } from '../games/bluff/store/useGameStore';
+import AuthDialog from '../components/common/AuthDialog';
 import AvatarDisplay from '../components/common/AvatarDisplay';
 import {
   SpadeIcon,
@@ -17,19 +17,27 @@ import {
  * Implements the premium dark UI from the provided mockup.
  */
 export default function ExploreGamesPage() {
-  const { setScreen, playerName, avatar, user, profile } = useGameStore();
-  const { openSignIn, signOut } = useClerk();
+  const { setScreen, playerName, avatar, user, profile, signOut } = useGameStore();
   const [activeTab, setActiveTab] = useState('All Games');
   const [sortBy, setSortBy] = useState('Popular');
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [pendingScreen, setPendingScreen] = useState(null);
 
-  const requireAuth = (onSuccess) => {
+  const goToProtectedScreen = (screen) => {
     if (!user) {
-      openSignIn();
+      setPendingScreen(screen);
+      setIsAuthOpen(true);
       return;
     }
-    onSuccess();
+    setScreen(screen);
   };
+
+  useEffect(() => {
+    if (!user || !pendingScreen) return;
+    setScreen(pendingScreen);
+    setPendingScreen(null);
+  }, [pendingScreen, setScreen, user]);
 
   const tabs = ['All Games', 'Popular', 'Classic', 'Strategy', 'Party', 'Quick Play'];
 
@@ -117,6 +125,8 @@ export default function ExploreGamesPage() {
 
   return (
     <div className="explore-container">
+      <AuthDialog isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
+
       {/* Sidebar */}
       <aside className="explore-sidebar">
         <div className="sidebar-logo" onClick={() => setScreen('LANDING')}>
@@ -232,7 +242,7 @@ export default function ExploreGamesPage() {
                   </AnimatePresence>
                 </div>
               ) : (
-                <button className="lp-btn-login" onClick={() => openSignIn()}>
+                <button className="lp-btn-login" onClick={() => setIsAuthOpen(true)}>
                   Sign In
                 </button>
               )}
@@ -277,7 +287,7 @@ export default function ExploreGamesPage() {
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: idx * 0.05 }}
-              onClick={() => game.active && requireAuth(() => setScreen('BLUFF_ENTRY'))}
+              onClick={() => game.active && goToProtectedScreen('BLUFF_ENTRY')}
             >
               <div className="card-media">
                 <img src={game.image} alt={game.title} />

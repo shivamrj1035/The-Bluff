@@ -11,9 +11,47 @@
 |---|---|
 | Frontend | React (Vite), Zustand, Framer Motion |
 | Backend | Node.js, Express, Socket.IO |
+| Auth | Clerk |
+| Database | Neon PostgreSQL (via @neondatabase/serverless) |
 | State Store | Redis (via ioredis) |
 | Styling | Vanilla CSS (glassmorphism theme) |
 | Protocol | WebSockets (Socket.IO rooms) |
+
+---
+
+## Session: 2026-05-08 (Migration) — Migrated to Clerk & Neon DB
+
+### Feature Goal
+Replace Supabase with Clerk for global authentication and Neon PostgreSQL for profile persistence.
+
+### Implementation Details
+
+#### 1. Authentication (Clerk)
+- Integrated `<ClerkProvider>` into `client/src/main.jsx`.
+- Added `<ClerkSync>` component to `App.jsx` to synchronize Clerk's `useUser()` state with Zustand `useGameStore`.
+- Modified `<AuthDialog>` to invoke `clerk.openSignIn()` instead of managing forms.
+- Replaced `supabase.auth` calls globally.
+
+#### 2. Database (Neon)
+- Dropped `supabase-js` entirely.
+- Created `/api/profile` endpoint on the Node backend (`server/index.js`), using `@clerk/express` to authenticate requests.
+- Integrated `@neondatabase/serverless` to store and update player profiles (username, avatar_url, coins) via direct SQL queries.
+- Ensured profile schema is created automatically on server startup.
+
+#### 3. Global Identity
+- Profile data (avatar, name) is fetched via the server endpoint and stored in `useGameStore`.
+- Profile data persists across `LandingPage`, `ExploreGamesPage`, `BluffEntryPage`, `JoinPage`, and `LobbyPage` ensuring avatars and usernames are globally consistent.
+
+### Files Changed
+- `client/src/main.jsx` — added Clerk provider.
+- `client/src/App.jsx` — added ClerkSync component.
+- `client/src/components/common/ClerkSync.jsx` [NEW] — bridges Clerk session state into Zustand.
+- `client/src/components/common/AuthDialog.jsx` — delegates auth flows to Clerk.
+- `client/src/games/bluff/store/useGameStore.js` — refactored identity, stripped Supabase.
+- `client/src/lib/profileApi.js` [NEW] — frontend wrapper for the Node backend API.
+- `client/src/lib/supabase.js` [DELETED] — removed Supabase client.
+- `server/index.js` — added `/api/profile` Express route with Neon DB logic.
+- `server/db.js` [NEW] — setup for `@neondatabase/serverless`.
 
 ---
 
