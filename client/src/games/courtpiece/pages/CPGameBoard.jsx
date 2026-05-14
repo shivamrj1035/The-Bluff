@@ -127,7 +127,7 @@ export default function CPGameBoard() {
       </div>
 
       {/* ── MAIN TABLE AREA ───────────────────────────────────────────── */}
-      <div style={{ flex:1, display:'grid', gridTemplateRows:'auto 1fr auto', gridTemplateColumns:'auto 1fr auto', gap:8, padding:'12px 16px', overflow:'hidden' }}>
+      <div style={{ flex:1, display:'grid', gridTemplateRows:'auto 1fr auto', gridTemplateColumns:'auto 1fr auto', gap:8, padding:'12px 16px', overflow:'hidden', position:'relative' }}>
 
         {/* Top player (partner) */}
         <div style={{ gridColumn:'1/4', display:'flex', justifyContent:'center', alignItems:'flex-start', paddingTop:4 }}>
@@ -253,15 +253,6 @@ export default function CPGameBoard() {
             )}
           </AnimatePresence>
 
-          {/* ScoreBoard */}
-          <ScoreBoard
-            teams={gs.teams}
-            teamANames={teamA.map(p => p.name)}
-            teamBNames={teamB.map(p => p.name)}
-            trumpSuit={gs.trumpSuit}
-            targetCoats={gs.targetCoats}
-            trickCount={gs.trickCount}
-          />
 
           {/* Center trick cards */}
           <div style={{ display:'grid', gridTemplateAreas:'"tl tc tr" "ml mc mr" "bl bc br"', width:170, height:170, position:'relative' }}>
@@ -316,6 +307,18 @@ export default function CPGameBoard() {
               isHost={bottomPlayer?.id === gs.hostId}
             />
           )}
+        </div>
+
+        {/* Absolutely positioned ScoreBoard at bottom left */}
+        <div style={{ position:'absolute', bottom: 16, left: 16, zIndex: 10 }}>
+          <ScoreBoard
+            teams={gs.teams}
+            teamANames={teamA.map(p => p.name)}
+            teamBNames={teamB.map(p => p.name)}
+            trumpSuit={gs.trumpSuit}
+            targetCoats={gs.targetCoats}
+            trickCount={gs.trickCount}
+          />
         </div>
       </div>
 
