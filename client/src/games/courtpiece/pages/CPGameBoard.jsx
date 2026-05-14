@@ -56,15 +56,18 @@ export default function CPGameBoard() {
   const trickCardFor = (playerId) =>
     gs.currentTrick?.find(t => t.playerId === playerId)?.card || null;
 
-  // Must-follow-suit check: gray out unplayable cards
+  // Must-follow-suit check: gray out only rule-restricted cards
   const leadSuit = gs.leadSuit;
   const hasLeadSuit = leadSuit && hand.some(c => getCardSuit(c) === leadSuit);
-  const isPlayable = (card) => {
-    if (gs.state !== 'PLAYING') return false;
-    if (gs.currentTurn !== myId) return false;
+  const isValidSuit = (card) => {
     if (!leadSuit) return true;
     if (hasLeadSuit) return getCardSuit(card) === leadSuit;
     return true;
+  };
+  const isPlayable = (card) => {
+    if (gs.state !== 'PLAYING') return false;
+    if (gs.currentTurn !== myId) return false;
+    return isValidSuit(card);
   };
 
   // Trump selector visibility
@@ -345,17 +348,21 @@ export default function CPGameBoard() {
         )}
 
         <div style={{ display:'flex', flexWrap:'wrap', gap:8, justifyContent:'center', maxWidth:'100%', overflowX:'auto' }}>
-          {hand.map(card => (
-            <CPCard
-              key={card}
-              cardId={card}
-              trumpSuit={gs.trumpSuit}
-              disabled={!isPlayable(card)}
-              selected={cpSelectedCard === card}
-              onClick={() => handleCardClick(card)}
-              size="md"
-            />
-          ))}
+          {hand.map(card => {
+            const playable = isPlayable(card);
+            const ruleRestricted = gs.state === 'PLAYING' && gs.currentTurn === myId && !isValidSuit(card);
+            return (
+              <CPCard
+                key={card}
+                cardId={card}
+                trumpSuit={gs.trumpSuit}
+                disabled={ruleRestricted}
+                selected={cpSelectedCard === card}
+                onClick={playable ? () => handleCardClick(card) : undefined}
+                size="md"
+              />
+            );
+          })}
           {hand.length === 0 && gs.state === 'PLAYING' && (
             <p style={{ color:'#374151', fontSize:'0.85rem', fontWeight:600 }}>No cards in hand</p>
           )}
