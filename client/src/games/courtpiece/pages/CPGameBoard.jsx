@@ -6,6 +6,7 @@ import CPPlayerArea from '../components/CPPlayerArea';
 import TrumpSelector from '../components/TrumpSelector';
 import ScoreBoard from '../components/ScoreBoard';
 import ChatInput from '../../../components/common/ChatInput';
+import AvatarDisplay from '../../../components/common/AvatarDisplay';
 import { toast } from '../../../components/common/Toast';
 
 const SUIT_SYMBOL = { H: '♥', D: '♦', C: '♣', S: '♠' };
@@ -186,8 +187,8 @@ export default function CPGameBoard() {
                         if (!p) return null;
                         const revealCard = gs.revealCards?.[p.id];
                         return (
-                          <div key={p.id} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
-                            <span style={{ fontSize:'0.7rem', color:'#6b7280', fontWeight:700 }}>{p.name}</span>
+                          <div key={p.id} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8 }}>
+                            <AvatarDisplay avatarId={p.avatar} playerName={p.name} size={32} animated={false} />
                             <CPCard cardId={revealCard} trumpSuit={null} size="md" />
                             {gs.trumpSelecterId === p.id && (
                               <span style={{ fontSize:'0.65rem', fontWeight:800, color:'#fb923c' }}>👑 Picks Trump</span>

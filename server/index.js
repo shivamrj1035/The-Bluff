@@ -4,8 +4,8 @@ const http = require("http");
 const { Server } = require("socket.io");
 const cors = require("cors");
 const { clerkMiddleware, getAuth } = require("@clerk/express");
-const { sql, ensureProfileSchema, ensureSettingsSchema } = require("./db");
-const { setupHandlers, getRoomForHttp, getActiveRoomsList, setupCPHandlers, getCPRoomForHttp } = require("./socket/handlers");
+const { sql, ensureProfileSchema, ensureSettingsSchema, incrementRoomCounter, ensureHistorySchema } = require("./db");
+const { setupHandlers, getRoomForHttp, getActiveRoomsList, setupCPHandlers, getCPRoomForHttp, deleteRoom, deleteCPRoom } = require("./socket/handlers");
 const redis = require("./redisClient");
 const app = express();
 app.use(cors({ origin: "*" }));
@@ -101,6 +101,49 @@ app.get("/api/profile", async (req, res) => {
   }
 });
 
+app.get("/api/profile/history", async (req, res) => {
+  try {
+    const auth = getAuth(req);
+    if (!auth?.userId) return res.status(401).json({ error: "Unauthorized" });
+
+    const history = await sql`
+      SELECT * FROM game_history 
+      WHERE winner_id = ${auth.userId} 
+      OR EXISTS (
+        SELECT 1 FROM jsonb_array_elements(players) p 
+        WHERE p->>'userId' = ${auth.userId}
+      )
+      ORDER BY created_at DESC 
+      LIMIT 20
+    `;
+    res.json(history);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch history" });
+  }
+});
+
+app.get("/api/leaderboard", async (req, res) => {
+  try {
+    const leaderboard = await sql`
+      SELECT 
+        p.id, 
+        p.username, 
+        p.avatar_url,
+        p.coins,
+        (SELECT COUNT(*) FROM game_history gh WHERE gh.winner_id = p.id) as wins,
+        (SELECT COUNT(*) FROM game_history gh WHERE EXISTS (
+          SELECT 1 FROM jsonb_array_elements(gh.players) ply WHERE ply->>'userId' = p.id
+        )) as total_games
+      FROM profiles p
+      ORDER BY wins DESC, p.coins DESC
+      LIMIT 100
+    `;
+    res.json(leaderboard);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch leaderboard" });
+  }
+});
+
 // --- Public Settings ---
 app.get("/api/settings", async (req, res) => {
   try {
@@ -117,11 +160,14 @@ app.get("/api/admin/stats", adminOnly, async (req, res) => {
     const rooms = getActiveRoomsList();
     const [userCount] = await sql`SELECT COUNT(*) FROM profiles`;
     const totalPlayers = rooms.reduce((sum, r) => sum + r.players.length, 0);
+    const [settings] = await sql`SELECT value FROM site_settings WHERE key = 'global'`;
+    const totalRoomsCreated = settings?.value?.room_counter || 0;
 
     return res.json({
       activeRooms: rooms.length,
       totalPlayers,
       registeredUsers: parseInt(userCount.count),
+      totalRoomsCreated,
     });
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch stats" });
@@ -143,6 +189,39 @@ app.get("/api/admin/users", adminOnly, async (req, res) => {
     return res.json(users);
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch users" });
+  }
+});
+
+app.put("/api/admin/users/:id/block", adminOnly, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await sql`UPDATE profiles SET is_blocked = TRUE WHERE id = ${id}`;
+    res.json({ success: true, message: "User blocked" });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to block user" });
+  }
+});
+
+app.put("/api/admin/users/:id/unblock", adminOnly, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await sql`UPDATE profiles SET is_blocked = FALSE WHERE id = ${id}`;
+    res.json({ success: true, message: "User unblocked" });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to unblock user" });
+  }
+});
+
+app.delete("/api/admin/rooms/:id", adminOnly, async (req, res) => {
+  try {
+    const { id } = req.params;
+    // Try both Bluff and CP room deletions
+    await deleteRoom(id);
+    await deleteCPRoom(id);
+    io.to(id).emit("room_closed", { message: "This room was terminated by an administrator." });
+    res.json({ success: true, message: "Room terminated" });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to terminate room" });
   }
 });
 
@@ -216,6 +295,10 @@ ensureProfileSchema().catch((error) => {
 
 ensureSettingsSchema().catch((error) => {
   console.error("[DB] Failed to initialize settings table:", error);
+});
+
+ensureHistorySchema().catch((error) => {
+  console.error("[DB] Failed to initialize history table:", error);
 });
 
 io.on("connection", (socket) => {

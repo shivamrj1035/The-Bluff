@@ -15,7 +15,7 @@ export default function CPLobbyPage() {
     cpKickPlayer, cpReorderPlayers, cpSendChat, cpChatMessages,
     cpHostTransferredName, cpHostTransferredId, cpSocket,
   } = useCPStore();
-  const { playerName, avatar } = useGameStore();
+  const { playerName, avatar, setScreen } = useGameStore();
 
   const [copied, setCopied] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
@@ -66,12 +66,20 @@ export default function CPLobbyPage() {
             Table <span style={{ color:'#fb923c', fontFamily:'monospace' }}>{cpRoomId}</span>
           </h2>
         </div>
-        <button
-          onClick={() => { cpDisconnect(); }}
-          style={{ background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.25)', color:'#f87171', padding:'8px 14px', borderRadius:12, fontWeight:700, fontSize:'0.8rem', cursor:'pointer' }}
-        >
-          Leave
-        </button>
+        <div style={{ display:'flex', gap:8 }}>
+          <button
+            onClick={() => { cpDisconnect(); setScreen('LEADERBOARD'); }}
+            style={{ background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', color:'#fff', padding:'8px 14px', borderRadius:12, fontWeight:700, fontSize:'0.8rem', cursor:'pointer' }}
+          >
+            🏆 Leaderboard
+          </button>
+          <button
+            onClick={() => { cpDisconnect(); }}
+            style={{ background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.25)', color:'#f87171', padding:'8px 14px', borderRadius:12, fontWeight:700, fontSize:'0.8rem', cursor:'pointer' }}
+          >
+            Leave
+          </button>
+        </div>
       </div>
 
       {/* Main card */}

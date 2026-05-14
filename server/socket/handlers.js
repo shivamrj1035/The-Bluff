@@ -3,6 +3,7 @@ const { createRoom, reducer } = require("../logic/gameState");
 const { validateAction } = require("../logic/validator");
 const { serializeState } = require("./sync");
 const redis = require("../redisClient");
+const { incrementRoomCounter, sql, recordGameResult } = require("../db");
 
 // ─── Court Piece imports ───────────────────────────────────────────────────────
 const { CP_EVENTS, CP_GAME_STATES } = require("../logic/courtpiece/constants");
@@ -10,7 +11,7 @@ const { createCPRoom, cpReducer } = require("../logic/courtpiece/gameState");
 const { validateCPAction } = require("../logic/courtpiece/validator");
 const { serializeCPState } = require("./cpSync");
 
-const ROOM_TTL = 60 * 60 * 4; // 4 hours in seconds
+const ROOM_TTL = 60 * 60 * 1; // 1 hour in seconds
 const ROOM_TTL_MS = ROOM_TTL * 1000;
 const EMPTY_ROOM_GRACE_MS = 5 * 60 * 1000;
 const ROOM_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -151,6 +152,18 @@ function startGlobalTimer(io) {
           continue;
         }
 
+        // Hard 1-hour limit from creation
+        if (room.createdAt && now - room.createdAt >= 60 * 60 * 1000) {
+          io.to(roomId).emit(EVENTS.ERROR, { message: "This table has reached its maximum duration of 1 hour." });
+          io.to(roomId).emit("room_closed");
+          deleteRoom(roomId).catch((err) => {
+            console.error(`[ROOM DELETE error] ${roomId}:`, err.message);
+          });
+          activeRooms.delete(roomId);
+          console.log(`[ROOM EXPIRED] ${roomId} — reached 1hr limit`);
+          continue;
+        }
+
         const isPicking = room.state === GAME_STATES.BLUFF_PICKING;
         const isResolution = room.state === GAME_STATES.ROUND_RESOLUTION;
         const isPlayerTurn = room.state === GAME_STATES.PLAYER_TURN;
@@ -172,6 +185,24 @@ function startGlobalTimer(io) {
                 playerId: room.bluffPickerId,
               });
             } else if (isResolution) {
+              if (room._gameEnded) {
+                const players = room.players.map(p => {
+                  const rank = room.ranking.find(r => r.id === p.id);
+                  return {
+                    userId: p.id,
+                    name: p.name,
+                    rank: rank ? rank.rankPos : room.players.length,
+                    status: rank ? 'Finished' : 'Left'
+                  };
+                });
+                const winner = room.ranking.find(r => r.rankPos === 1);
+                recordGameResult({
+                  gameType: 'bluff',
+                  roomId,
+                  players,
+                  winnerId: winner?.id
+                }).catch(err => console.error('[DB] recordGameResult error:', err));
+              }
               room = reducer(room, { type: "PROCEED_NEXT_TURN" });
             } else if (isPlayerTurn && room.currentTurn) {
               if (room.pile && room.pile.length > 0) {
@@ -231,8 +262,16 @@ function setupHandlers(io, socket) {
   startGlobalTimer(io);
 
   // --- JOIN ROOM ---
-  socket.on(EVENTS.JOIN_ROOM, async ({ roomId, playerName, avatar }) => {
+  socket.on(EVENTS.JOIN_ROOM, async ({ roomId, playerName, avatar, userId }) => {
     try {
+      // 0. Block Check
+      if (userId && sql) {
+        const [user] = await sql`SELECT is_blocked FROM profiles WHERE id = ${userId}`;
+        if (user?.is_blocked) {
+          socket.emit(EVENTS.ERROR, { message: "You are blocked by CardNexus please contact Admin Shivam Jayswal." });
+          return;
+        }
+      }
       const normalizedRoomId = normalizeRoomId(roomId);
       const trimmedName = String(playerName || "").trim().slice(0, 12);
       const safeAvatar = String(avatar || "P").trim().slice(0, 20); // avatar IDs can be up to 20 chars (e.g. 'crazy1', 'rocket', 'ninja')
@@ -241,6 +280,7 @@ function setupHandlers(io, socket) {
       let effectiveRoomId = normalizedRoomId;
       if (isCreateRequest) {
         effectiveRoomId = await generateUniqueRoomId();
+        await incrementRoomCounter();
       }
 
       let room = await getRoom(effectiveRoomId);
@@ -484,6 +524,26 @@ function setupHandlers(io, socket) {
       }
 
       room = reducer(room, { type: "PASS_TURN", playerId: socket.id });
+
+      if (room.state === GAME_STATES.ENDED) {
+        const players = room.players.map(p => {
+          const rank = room.ranking.find(r => r.id === p.id);
+          return {
+            userId: p.id,
+            name: p.name,
+            rank: rank ? rank.rankPos : room.players.length,
+            status: rank ? 'Finished' : 'Left'
+          };
+        });
+        const winner = room.ranking.find(r => r.rankPos === 1);
+        recordGameResult({
+          gameType: 'bluff',
+          roomId,
+          players,
+          winnerId: winner?.id
+        }).catch(err => console.error('[DB] PASS_TURN recordGameResult error:', err));
+      }
+
       saveRoom(roomId, room);
       emitState(io, roomId, room);
     } catch (err) {
@@ -636,11 +696,14 @@ function getRoomForHttp(roomId) {
 
 function getActiveRoomsList() {
   const list = [];
+  
+  // Bluff rooms
   for (const roomId of activeRooms) {
     const room = roomCache.get(roomId);
     if (room) {
       list.push({
         roomId,
+        game: 'bluff',
         state: room.state,
         players: room.players.map(p => ({ name: p.name, isConnected: p.isConnected })),
         lastActivityAt: room.lastActivityAt,
@@ -648,10 +711,26 @@ function getActiveRoomsList() {
       });
     }
   }
+
+  // Court Piece rooms
+  for (const roomId of cpActiveRooms) {
+    const room = cpRoomCache.get(roomId);
+    if (room) {
+      list.push({
+        roomId,
+        game: 'courtpiece',
+        state: room.state,
+        players: room.players.map(p => ({ name: p.name, isConnected: p.isConnected })),
+        lastActivityAt: room.lastActivityAt,
+        expiresAt: room.expiresAt,
+      });
+    }
+  }
+
   return list;
 }
 
-module.exports = { setupHandlers, getRoomForHttp, getActiveRoomsList, setupCPHandlers, getCPRoomForHttp };
+module.exports = { setupHandlers, getRoomForHttp, getActiveRoomsList, setupCPHandlers, getCPRoomForHttp, deleteRoom, deleteCPRoom };
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  COURT PIECE HANDLERS
@@ -662,8 +741,49 @@ const cpRoomCache = new Map();
 const cpDirtyRooms = new Set();
 const cpActiveRooms = new Set();
 const cpSocketRoomMap = new Map();
-const CP_ROOM_TTL = 60 * 60 * 4;
+const CP_ROOM_TTL = 60 * 60 * 1;
 const CP_ROOM_TTL_MS = CP_ROOM_TTL * 1000;
+let cpTimerInterval = null;
+
+function startCPGlobalTimer(io) {
+  if (cpTimerInterval) return;
+  cpTimerInterval = setInterval(() => {
+    for (const roomId of cpActiveRooms) {
+      try {
+        let room = getCPRoomFromCache(roomId);
+        if (!room) { cpActiveRooms.delete(roomId); continue; }
+        const now = Date.now();
+        
+        // Empty room cleanup
+        if (room.emptySince && now - room.emptySince >= EMPTY_ROOM_GRACE_MS) {
+          deleteCPRoom(roomId).catch(e => {});
+          cpActiveRooms.delete(roomId);
+          continue;
+        }
+
+        // Inactivity cleanup
+        if (room.expiresAt && now >= room.expiresAt) {
+          io.to(roomId).emit(CP_EVENTS.CP_ERROR, { message: "This table expired due to inactivity." });
+          io.to(roomId).emit("room_closed");
+          deleteCPRoom(roomId).catch(e => {});
+          cpActiveRooms.delete(roomId);
+          continue;
+        }
+
+        // Hard 1-hour limit
+        if (room.createdAt && now - room.createdAt >= 60 * 60 * 1000) {
+          io.to(roomId).emit(CP_EVENTS.CP_ERROR, { message: "This table has reached its maximum duration of 1 hour." });
+          io.to(roomId).emit("room_closed");
+          deleteCPRoom(roomId).catch(e => {});
+          cpActiveRooms.delete(roomId);
+          continue;
+        }
+      } catch (e) {
+        console.error("CP Timer error:", e);
+      }
+    }
+  }, 3000);
+}
 
 function getCPRoomFromCache(roomId) {
   return cpRoomCache.get(roomId) || null;
@@ -740,9 +860,19 @@ function pickCPNewHost(room, departingId) {
 }
 
 function setupCPHandlers(io, socket) {
+  startCPGlobalTimer(io);
   // ── CP_JOIN_ROOM ────────────────────────────────────────────────────────
-  socket.on(CP_EVENTS.CP_JOIN_ROOM, async ({ roomId, playerName, avatar }) => {
+  socket.on(CP_EVENTS.CP_JOIN_ROOM, async ({ roomId, playerName, avatar, userId }) => {
     try {
+      // 0. Block Check
+      if (userId && sql) {
+        const [user] = await sql`SELECT is_blocked FROM profiles WHERE id = ${userId}`;
+        if (user?.is_blocked) {
+          socket.emit(CP_EVENTS.CP_ERROR, { message: "You are blocked by CardNexus please contact Admin Shivam Jayswal." });
+          return;
+        }
+      }
+
       const rawId = String(roomId || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
       const trimmedName = String(playerName || '').trim().slice(0, 12);
       const safeAvatar = String(avatar || 'P').slice(0, 2);
@@ -755,7 +885,11 @@ function setupCPHandlers(io, socket) {
           let code = '';
           for (let j = 0; j < 6; j++) code += ROOM_CODE_CHARS[Math.floor(Math.random() * ROOM_CODE_CHARS.length)];
           const exists = getCPRoomFromCache(code) || await getCPRoom(code);
-          if (!exists) { effectiveRoomId = code; break; }
+          if (!exists) { 
+            effectiveRoomId = code; 
+            await incrementRoomCounter();
+            break; 
+          }
         }
         if (!effectiveRoomId) { socket.emit(CP_EVENTS.CP_ERROR, { message: 'Could not create room.' }); return; }
       }
@@ -903,6 +1037,29 @@ function setupCPHandlers(io, socket) {
           let r = getCPRoomFromCache(roomId);
           if (!r || r.state !== CP_GAME_STATES.TRICK_RESOLUTION) return;
           r = cpReducer(r, { type: 'CP_NEXT_TRICK' });
+          
+          if (r.matchWinner) {
+            const playersData = r.players.map((p, idx) => {
+              const team = idx % 2 === 0 ? 'A' : 'B';
+              return {
+                userId: p.id,
+                name: p.name,
+                team,
+                rank: r.matchWinner === team ? 1 : 2,
+                status: r.matchWinner === team ? 'Winner' : 'Loser'
+              };
+            });
+            const winningTeamPlayers = r.players.filter((p, idx) => (idx % 2 === 0 ? 'A' : 'B') === r.matchWinner);
+            for (const wp of winningTeamPlayers) {
+              recordGameResult({
+                gameType: 'courtpiece',
+                roomId,
+                players: playersData,
+                winnerId: wp.id
+              }).catch(err => console.error('[DB] CP recordGameResult error:', err));
+            }
+          }
+
           saveCPRoom(roomId, r);
           emitCPState(io, roomId, r);
         }, 2500);

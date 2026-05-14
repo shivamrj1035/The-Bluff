@@ -90,7 +90,7 @@ export default function ExploreGamesPage() {
             <UsersIcon size={20} />
             <span>Friends</span>
           </div>
-          <div className="nav-item">
+          <div className="nav-item" onClick={() => setScreen('LEADERBOARD')}>
             <TrophyIcon size={20} />
             <span>Leaderboard</span>
           </div>

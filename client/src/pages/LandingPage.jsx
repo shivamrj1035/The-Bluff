@@ -87,7 +87,7 @@ export default function LandingPage() {
         <nav className="lp-nav">
           <div className="lp-nav-item active">Home</div>
           <div className="lp-nav-item" onClick={() => setScreen('EXPLORE')}>Games</div>
-          <div className="lp-nav-item">Leaderboard</div>
+          <div className="lp-nav-item" onClick={() => setScreen('LEADERBOARD')}>Leaderboard</div>
           <div className="lp-nav-item">About Us</div>
         </nav>
 
@@ -315,7 +315,7 @@ export default function LandingPage() {
             <p>Our games are 100% fair and secure</p>
           </div>
         </div>
-        <div className="lp-feature">
+        <div className="lp-feature" onClick={() => setScreen('LEADERBOARD')} style={{ cursor: 'pointer' }}>
           <div className="lp-feature-icon"><TrophyIcon size={24} /></div>
           <div className="lp-feature-text">
             <h5>Leaderboards</h5>
@@ -332,7 +332,7 @@ export default function LandingPage() {
       </motion.div>
 
       <footer className="lp-footer">
-        © 2026 THE BLUFF Multiplayer Platform. All rights reserved.
+        © 2026 Card Nexus Multiplayer Platform. All rights reserved.
       </footer>
     </div>
   );

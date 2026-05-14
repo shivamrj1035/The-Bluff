@@ -8,6 +8,7 @@ import ExploreGamesPage from './pages/ExploreGamesPage';
 import BluffEntryPage from './games/bluff/pages/BluffEntryPage';
 import ProfilePage from './pages/ProfilePage';
 import AdminPage from './pages/AdminPage';
+import LeaderboardPage from './pages/LeaderboardPage';
 import ClerkSync from './components/common/ClerkSync';
 import { useGameStore } from './games/bluff/store/useGameStore';
 import { useCPStore } from './games/courtpiece/store/useCPStore';
@@ -107,7 +108,8 @@ export default function App() {
               : screen === 'EXPLORE' ? <ExploreGamesPage />
                 : screen === 'PROFILE' ? <ProfilePage />
                   : screen === 'ADMIN' ? <AdminPage />
-                    : <LandingPage />
+                    : screen === 'LEADERBOARD' ? <LeaderboardPage />
+                      : <LandingPage />
       )}
 
       {(status === 'CONNECTING' || status === 'RECONNECTING') && (

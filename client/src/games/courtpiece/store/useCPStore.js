@@ -37,10 +37,11 @@ export const useCPStore = create((set, get) => ({
   setCPScreen: (screen) => set({ cpScreen: screen }),
 
   // ── Connect to a Court Piece room ────────────────────────────────────────
-  connectCP: (roomId, playerName, avatar) => {
+  connectCP: (roomId, playerName, avatar, userId) => {
     const s = getCPSocket();
     const pName = playerName || get().cpPlayerName || '';
     const av    = avatar    || get().cpAvatar     || 'P';
+    const uId   = userId    || '';
 
     s.off('cp_game_state');
     s.off('cp_error');
@@ -51,13 +52,14 @@ export const useCPStore = create((set, get) => ({
     s.off('disconnect');
     s.off('reconnect');
     s.off('connect');
+    s.off('room_closed');
 
     set({ cpStatus: 'CONNECTING', cpRoomId: roomId, cpError: null, cpSocket: s });
 
     s.on('connect', () => {
       set({ cpPlayerId: s.id, cpStatus: 'CONNECTED', cpError: null });
       if (roomId) localStorage.setItem('cp_roomId', roomId);
-      s.emit('cp_join_room', { roomId, playerName: pName, avatar: av });
+      s.emit('cp_join_room', { roomId, playerName: pName, avatar: av, userId: uId });
     });
 
     s.on('cp_game_state', (state) => {
@@ -106,19 +108,30 @@ export const useCPStore = create((set, get) => ({
       }, 5500);
     });
 
+    s.on('room_closed', ({ message }) => {
+      s.disconnect();
+      localStorage.removeItem('cp_roomId');
+      set({ 
+        cpStatus: 'ERROR', 
+        cpError: message || 'This room was terminated by an administrator.', 
+        cpGameState: null,
+        cpRoomId: ''
+      });
+    });
+
     s.on('disconnect', () => set({ cpStatus: 'RECONNECTING' }));
 
     s.on('reconnect', () => {
       set({ cpStatus: 'CONNECTED', cpError: null });
       const { cpRoomId: rId } = get();
-      s.emit('cp_join_room', { roomId: rId, playerName: pName, avatar: av });
+      s.emit('cp_join_room', { roomId: rId, playerName: pName, avatar: av, userId: uId });
     });
 
     if (!s.connected) {
       s.connect();
     } else {
       set({ cpPlayerId: s.id, cpStatus: 'CONNECTED' });
-      s.emit('cp_join_room', { roomId, playerName: pName, avatar: av });
+      s.emit('cp_join_room', { roomId, playerName: pName, avatar: av, userId: uId });
     }
   },
 
