@@ -4,6 +4,7 @@ import { useGameStore } from '../games/bluff/store/useGameStore';
 import { useCPStore } from '../games/courtpiece/store/useCPStore';
 import AuthDialog from '../components/common/AuthDialog';
 import AvatarDisplay from '../components/common/AvatarDisplay';
+import { REGISTERED_GAMES } from '../constants/registeredGames';
 import {
   SpadeIcon,
   GridIcon, EnergyIcon,
@@ -44,88 +45,20 @@ export default function ExploreGamesPage() {
 
   const tabs = ['All Games', 'Popular', 'Classic', 'Strategy', 'Party', 'Quick Play'];
 
-  const games = [
-    {
-      id: 'bluff',
-      title: 'The Bluff',
-      desc: 'Lie, bluff and win it all!',
-      players: '2-6 Players',
-      time: '15-30 min',
-      status: 'READY TO PLAY',
-      isNew: true,
-      image: '/tash_thumbnail.png',
-      active: true,
-      accent: '#7c3aed'
-    },
-    {
-      id: 'joker',
-      title: 'Joker Game',
-      desc: 'Master the wild card!',
-      players: '2-4 Players',
-      time: '20-40 min',
-      status: 'UNDER DEVELOPMENT',
-      image: '/tash_thumbnail.png',
-      active: false,
-      accent: '#f59e0b'
-    },
-    {
-      id: 'uno',
-      title: 'UNO',
-      desc: 'The classic card game!',
-      players: '2-10 Players',
-      time: '10-20 min',
-      status: 'UNDER DEVELOPMENT',
-      isPopular: true,
-      image: '/uno_thumbnail.png',
-      active: false,
-      accent: '#ef4444'
-    },
-    {
-      id: 'uno-flip',
-      title: 'UNO Flip',
-      desc: 'Flip the deck, change the game!',
-      players: '2-10 Players',
-      time: '15-30 min',
-      status: 'UNDER DEVELOPMENT',
-      image: '/uno_thumbnail.png',
-      active: false,
-      accent: '#8b5cf6'
-    },
-    {
-      id: 'plan',
-      title: 'Plan Game',
-      desc: 'Strategize and outsmart your opponents!',
-      players: '2-4 Players',
-      time: '20-40 min',
-      status: 'UNDER DEVELOPMENT',
-      image: '/tash_thumbnail.png',
-      active: false,
-      accent: '#8b5cf6'
-    },
-    {
-      id: 'courtpiece',
-      title: 'Court Piece',
-      desc: 'Rang · Trump tricks · 2v2 team battle!',
-      players: '4 Players',
-      time: '20-40 min',
-      status: 'READY TO PLAY',
-      isNew: true,
-      image: '/tash_thumbnail.png',
-      active: true,
-      accent: '#f59e0b'
-    },
-    {
-      id: 'teen-patti',
-      title: 'Teen Patti',
-      desc: 'India\'s most loved card game!',
-      players: '3-6 Players',
-      time: '20-30 min',
-      status: 'UNDER DEVELOPMENT',
-      image: '/tash_thumbnail.png',
-      active: false,
-      accent: '#7c3aed'
-    }
-  ];
+  // All games that actually exist in the codebase
+  const allGames = REGISTERED_GAMES.map(g => ({
+    ...g,
+    active: siteSettings?.enabled_games ? siteSettings.enabled_games.includes(g.id) : (g.id === 'bluff'),
+    status: (siteSettings?.enabled_games ? siteSettings.enabled_games.includes(g.id) : (g.id === 'bluff')) ? 'READY TO PLAY' : 'COMING SOON'
+  }));
+
+  // Mock games to fill the grid if needed (UX choice to show potential)
+  const comingSoonGames = [
+    { id: 'joker', title: 'Joker Game', desc: 'Master the wild card!', players: '2-4 Players', time: '20-40 min', status: 'COMING SOON', image: '/tash_thumbnail.png', active: false, accent: '#f59e0b', category: 'Strategy' },
+    { id: 'uno', title: 'UNO', desc: 'The classic card game!', players: '2-10 Players', time: '10-20 min', status: 'COMING SOON', isPopular: true, image: '/uno_thumbnail.png', active: false, accent: '#ef4444', category: 'Party' },
+  ].filter(msg => !allGames.find(ag => ag.id === msg.id));
+
+  const games = [...allGames, ...comingSoonGames];
 
   return (
     <div className="explore-container">
@@ -289,7 +222,7 @@ export default function ExploreGamesPage() {
         </section>
 
         <div className="explore-grid">
-          {games.filter(g => !siteSettings?.enabled_games || siteSettings.enabled_games.includes(g.id)).map((game, idx) => (
+          {games.map((game, idx) => (
             <motion.div
               key={game.id}
               className={`game-explore-card ${game.active ? 'active' : ''}`}
@@ -298,8 +231,8 @@ export default function ExploreGamesPage() {
               transition={{ delay: idx * 0.05 }}
               onClick={() => {
                 if (!game.active) return;
-                if (game.id === 'bluff') goToProtectedScreen('BLUFF_ENTRY');
-                else if (game.id === 'courtpiece') goToProtectedScreen('CP_ENTRY', true);
+                if (game.entryScreen === 'BLUFF_ENTRY') goToProtectedScreen('BLUFF_ENTRY');
+                else if (game.entryScreen === 'CP_ENTRY') goToProtectedScreen('CP_ENTRY', true);
               }}
             >
               <div className="card-media">
