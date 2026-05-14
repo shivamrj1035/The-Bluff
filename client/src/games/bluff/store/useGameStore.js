@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { io } from 'socket.io-client';
-import { syncProfile } from '../../../lib/profileApi';
+import { syncProfile, getProfile } from '../../../lib/profileApi';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || '/';
 
@@ -38,6 +38,7 @@ export const useGameStore = create((set, get) => ({
   isAuthLoading: true,
   authTokenGetter: null,
   authSignOut: null,
+  siteSettings: null,
 
   // --- Auth Actions ---
   setAuthLoading: (isAuthLoading) => set({ isAuthLoading }),
@@ -76,15 +77,13 @@ export const useGameStore = create((set, get) => ({
   },
 
   fetchProfile: async () => {
-    const { user, playerName, avatar } = get();
+    const { user } = get();
     if (!user) return null;
 
     try {
       const token = await get().getAuthToken();
-      const data = await syncProfile(token, {
-        username: playerName || user.fullName || user.username || `Player_${user.id.slice(0, 5)}`,
-        avatar_url: avatar || 'P',
-      });
+      // Use GET (read-only) so we never overwrite the saved avatar_url with a stale default
+      const data = await getProfile(token);
 
       if (data) {
         set({
@@ -144,6 +143,78 @@ export const useGameStore = create((set, get) => ({
       authSignOut: null,
       isAuthLoading: false,
     });
+  },
+
+  fetchSettings: async () => {
+    try {
+      const resp = await fetch(`${SOCKET_URL.replace(/\/$/, '')}/api/settings`);
+      const data = await resp.json();
+      if (data) {
+        set({ siteSettings: data });
+        // Apply theme variables to CSS
+        if (data.theme) {
+          const root = document.documentElement;
+          if (data.theme.primary) {
+            root.style.setProperty('--primary', data.theme.primary);
+            root.style.setProperty('--primary-light', data.theme.primary + 'cc');
+            root.style.setProperty('--secondary', data.theme.primary + 'dd');
+            root.style.setProperty('--border-bright', data.theme.primary + '33');
+            root.style.setProperty('--shadow-p', data.theme.primary + '4d');
+            // Also update alias variables used across the site
+            root.style.setProperty('--accent-purple', data.theme.primary);
+            root.style.setProperty('--accent-glow', data.theme.primary + '4d');
+          }
+          if (data.theme.bg) root.style.setProperty('--bg', data.theme.bg);
+        }
+      }
+      return data;
+    } catch (err) {
+      console.error('Failed to fetch site settings:', err);
+    }
+  },
+
+  updateSettings: async (newSettings) => {
+    const { getAuthToken } = get();
+    const token = await getAuthToken();
+    try {
+      const resp = await fetch(`${SOCKET_URL.replace(/\/$/, '')}/api/admin/settings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(newSettings)
+      });
+      const data = await resp.json();
+      if (data.success) {
+        set({ siteSettings: newSettings });
+        // Re-apply theme
+        if (newSettings.theme) {
+          const root = document.documentElement;
+          if (newSettings.theme.primary) {
+            root.style.setProperty('--primary', newSettings.theme.primary);
+            root.style.setProperty('--primary-light', newSettings.theme.primary + 'cc');
+            root.style.setProperty('--secondary', newSettings.theme.primary + 'dd');
+            root.style.setProperty('--border-bright', newSettings.theme.primary + '33');
+            root.style.setProperty('--shadow-p', newSettings.theme.primary + '4d');
+            // Also update alias variables used across the site
+            root.style.setProperty('--accent-purple', newSettings.theme.primary);
+            root.style.setProperty('--accent-glow', newSettings.theme.primary + '4d');
+          }
+          if (newSettings.theme.bg) root.style.setProperty('--bg', newSettings.theme.bg);
+        }
+      }
+      return data;
+    } catch (err) {
+      console.error('Failed to update settings:', err);
+    }
+  },
+
+  isAdmin: () => {
+    const { user } = get();
+    if (!user) return false;
+    const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS || "").split(",").map(e => e.trim().toLowerCase());
+    return adminEmails.includes(user.email?.toLowerCase());
   },
 
   // Game state from server

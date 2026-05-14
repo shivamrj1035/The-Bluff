@@ -299,8 +299,8 @@ body {
   --header-height: 80px;
   --card-bg: rgba(13, 17, 23, 0.8);
   --card-border: rgba(255, 255, 255, 0.05);
-  --accent-purple: #7c3aed;
-  --accent-glow: rgba(124, 58, 237, 0.3);
+  --accent-purple: var(--primary);
+  --accent-glow: var(--shadow-p);
   --text-dim: #94a3b8;
 }
 
@@ -339,7 +339,7 @@ body {
   height: 280px;
   top: 110px;
   left: -100px;
-  background: radial-gradient(circle, rgba(124, 58, 237, 0.22), transparent 68%);
+  background: radial-gradient(circle, var(--shadow-p), transparent 68%);
 }
 
 .lp-bg-orb-right {
@@ -354,12 +354,12 @@ body {
 .lp-bg-curve {
   position: absolute;
   inset: 86px 2.5% auto;
-  height: 380px;
+  height: 600px;
   border-radius: 36px;
   border: 1px solid rgba(255, 255, 255, 0.04);
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01)),
-    radial-gradient(circle at 0% 100%, rgba(124, 58, 237, 0.18), transparent 36%);
+    radial-gradient(circle at 0% 100%, var(--shadow-p), transparent 36%);
   pointer-events: none;
 }
 
@@ -417,9 +417,9 @@ body {
   left: 0;
   right: 0;
   height: 3px;
-  background: var(--accent-purple);
+  background: var(--primary);
   border-radius: 2px;
-  box-shadow: 0 0 10px var(--accent-purple);
+  box-shadow: 0 0 10px var(--primary);
 }
 
 .lp-header-actions {
@@ -464,8 +464,8 @@ body {
 }
 
 .lp-hero-content h1 span {
-  color: var(--accent-purple);
-  background: linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%);
+  color: var(--primary);
+  background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -534,7 +534,7 @@ body {
   border-radius: 32px;
   background:
     linear-gradient(160deg, rgba(13, 17, 23, 0.96), rgba(1, 8, 11, 0.84)),
-    radial-gradient(circle at top right, rgba(124, 58, 237, 0.14), transparent 32%);
+    radial-gradient(circle at top right, var(--shadow-p), transparent 32%);
   border: 1px solid rgba(255, 255, 255, 0.06);
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
 }
@@ -580,7 +580,7 @@ body {
   overflow: hidden;
   border-radius: 28px;
   background:
-    radial-gradient(circle at 50% 45%, rgba(124, 58, 237, 0.18), transparent 40%),
+    radial-gradient(circle at 50% 45%, var(--shadow-p), transparent 40%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01));
 }
 
@@ -588,7 +588,7 @@ body {
   max-width: 100%;
   max-height: 320px;
   object-fit: contain;
-  filter: drop-shadow(0 22px 38px rgba(124, 58, 237, 0.24));
+  filter: drop-shadow(0 22px 38px var(--shadow-p));
   transform: translateY(10px);
 }
 
@@ -684,15 +684,15 @@ body {
 }
 
 .lp-game-card:hover {
-  border-color: rgba(124, 58, 237, 0.4);
+  border-color: var(--border-bright);
   transform: translateY(-8px);
   background: rgba(15, 15, 25, 0.8);
   box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.5);
 }
 
 .lp-game-card.active {
-  border-color: var(--accent-purple);
-  box-shadow: 0 0 30px rgba(124, 58, 237, 0.15);
+  border-color: var(--primary);
+  box-shadow: 0 0 30px var(--shadow-p);
 }
 
 .lp-game-badge {
@@ -714,7 +714,7 @@ body {
   width: 72px;
   height: 72px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(124, 58, 237, 0.1) 0%, transparent 70%);
+  background: radial-gradient(circle, var(--shadow-p) 0%, transparent 70%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -794,7 +794,7 @@ body {
 
 /* Buttons */
 .lp-btn-primary {
-  background: var(--accent-purple);
+  background: var(--primary);
   color: #fff;
   border: none;
   padding: 13px 22px;
@@ -805,12 +805,12 @@ body {
   gap: 10px;
   cursor: pointer;
   transition: all 0.2s;
-  box-shadow: 0 8px 16px -4px rgba(124, 58, 237, 0.5);
+  box-shadow: 0 8px 16px -4px var(--shadow-p);
 }
 
 .lp-btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 20px -4px rgba(124, 58, 237, 0.6);
+  box-shadow: 0 12px 20px -4px var(--shadow-p);
 }
 
 .lp-btn-outline {
@@ -848,7 +848,7 @@ body {
 }
 
 .lp-btn-login {
-  background: #6d28d9;
+  background: var(--primary);
   color: white;
   border: none;
   padding: 10px 24px;
@@ -856,26 +856,41 @@ body {
   font-weight: 700;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+  box-shadow: 0 4px 12px var(--shadow-p);
 }
 
 .lp-btn-login:hover {
-  background: #4c1d95;
+  background: var(--secondary);
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(124, 58, 237, 0.4);
+  box-shadow: 0 6px 16px var(--shadow-p);
 }
 
 .profile-dropdown {
   position: absolute;
   top: calc(100% + 12px);
   right: 0;
-  width: 180px;
-  padding: 8px;
-  border-radius: 16px;
-  z-index: 100;
+  width: 190px;
+  padding: 10px;
+  border-radius: 18px;
+
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+
+  z-index: 100;
+
+  /* Better Visual Separation */
+  background: rgba(18, 18, 28, 0.92);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.03);
+
+  overflow: hidden;
 }
 
 .dropdown-item {
@@ -1102,15 +1117,15 @@ body {
 
 .sidebar-nav .nav-item.active {
   color: #fff;
-  background: linear-gradient(90deg, rgba(124, 58, 237, 0.1) 0%, transparent 100%);
-  border-right-color: #6d28d9;
+  background: linear-gradient(90deg, var(--shadow-p) 0%, transparent 100%);
+  border-right-color: var(--primary);
 }
 
 .sidebar-promo {
   margin: 12px 14px 10px;
   padding: 14px 14px 12px;
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.1) 0%, rgba(6, 182, 212, 0.05) 100%);
-  border: 1px solid rgba(124, 58, 237, 0.2);
+  background: linear-gradient(135deg, var(--shadow-p) 0%, rgba(6, 182, 212, 0.05) 100%);
+  border: 1px solid var(--border-bright);
   border-radius: 16px;
   text-align: center;
 }
@@ -1119,7 +1134,7 @@ body {
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: rgba(124, 58, 237, 0.2);
+  background: var(--shadow-p);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1142,14 +1157,14 @@ body {
 .promo-btn {
   width: 100%;
   padding: 8px 10px;
-  background: #6d28d9;
+  background: var(--primary);
   border: none;
   border-radius: 9px;
   color: #fff;
   font-weight: 800;
   font-size: 0.76rem;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+  box-shadow: 0 4px 12px var(--shadow-p);
 }
 
 .sidebar-footer {
@@ -1360,7 +1375,7 @@ body {
   border-radius: 24px;
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01)),
-    radial-gradient(circle at top right, rgba(124, 58, 237, 0.12), transparent 34%);
+    radial-gradient(circle at top right, var(--shadow-p), transparent 34%);
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
@@ -1372,8 +1387,9 @@ body {
 }
 
 .explore-hero .hero-text h1 span {
-  background: linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%);
+  background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary) 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
@@ -1415,8 +1431,8 @@ body {
 }
 
 .tab-btn.active {
-  background: rgba(124, 58, 237, 0.15);
-  border-color: #6d28d9;
+  background: var(--shadow-p);
+  border-color: var(--secondary);
   color: #fff;
 }
 
@@ -1467,12 +1483,12 @@ body {
 
 .game-explore-card:hover {
   transform: translateY(-8px);
-  border-color: rgba(124, 58, 237, 0.3);
+  border-color: var(--border-bright);
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
 }
 
 .game-explore-card.active {
-  border-color: #6d28d9;
+  border-color: var(--secondary);
 }
 
 .card-media {
@@ -1563,9 +1579,9 @@ body {
 }
 
 .card-action-btn.active {
-  background: #6d28d9;
+  background: var(--secondary);
   color: #fff;
-  box-shadow: 0 8px 20px rgba(124, 58, 237, 0.3);
+  box-shadow: 0 8px 20px var(--shadow-p);
 }
 
 .card-action-btn.disabled {
@@ -1574,8 +1590,8 @@ body {
 }
 
 .coming-soon-banner {
-  background: rgba(124, 58, 237, 0.05);
-  border: 1px solid rgba(124, 58, 237, 0.1);
+  background: var(--border-bright);
+  border: 1px solid var(--border-bright);
   border-radius: 18px;
   padding: 18px 20px;
   display: flex;

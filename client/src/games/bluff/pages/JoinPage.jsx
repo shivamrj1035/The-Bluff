@@ -3,9 +3,10 @@ import { motion } from 'framer-motion';
 import { useGameStore } from '../store/useGameStore';
 import { toast } from '../../../components/common/Toast';
 import AuthDialog from '../../../components/common/AuthDialog';
+import AvatarDisplay from '../../../components/common/AvatarDisplay';
 
 export default function JoinPage() {
-  const { setIdentity, connect, playerName: storedName, error, user } = useGameStore();
+  const { setIdentity, connect, playerName: storedName, error, user, avatar } = useGameStore();
   const [name, setName] = useState(storedName || '');
   const [roomId, setRoomId] = useState('');
   const [checking, setChecking] = useState(false);
@@ -17,7 +18,7 @@ export default function JoinPage() {
     if (roomFromUrl) setRoomId(roomFromUrl.toUpperCase());
   }, [error]);
 
-  const avatarLetter = name?.trim()[0]?.toUpperCase() || '?';
+  const avatarId = avatar || 'P';
 
   const getRoomLookupUrl = (rid) => {
     const base = import.meta.env.VITE_SOCKET_URL;
@@ -51,7 +52,7 @@ export default function JoinPage() {
 
     const newUrl = `${window.location.origin}${window.location.pathname}?room=${rid}`;
     window.history.pushState({ path: newUrl }, '', newUrl);
-    await setIdentity(name.trim(), 'P');
+    await setIdentity(name.trim(), avatarId);
     connect(rid);
   };
 
@@ -71,7 +72,7 @@ export default function JoinPage() {
       >
         <div className="join-card-top">
           <div className="join-chip">Join Table</div>
-          <div className="join-avatar">{avatarLetter}</div>
+          <AvatarDisplay avatarId={avatarId} playerName={name || 'Player'} size={40} animated={true} />
         </div>
 
         <h1>Enter Room</h1>
@@ -120,10 +121,13 @@ export default function JoinPage() {
 
         <div className="join-footer">
           <button
-            onClick={() => useGameStore.getState().setScreen('BLUFF_ENTRY')}
+            onClick={() => {
+              window.history.pushState({}, '', window.location.pathname);
+              useGameStore.getState().setScreen('LANDING');
+            }}
             className="join-back-btn"
           >
-            ← Back to Bluff
+            ← Back to Home
           </button>
           <p>Private rooms only. Enter the exact host code.</p>
         </div>
