@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../games/bluff/store/useGameStore';
+import { useCPStore } from '../games/courtpiece/store/useCPStore';
 import AuthDialog from '../components/common/AuthDialog';
 import AvatarDisplay from '../components/common/AvatarDisplay';
 import {
@@ -18,19 +19,21 @@ import {
  */
 export default function ExploreGamesPage() {
   const { setScreen, playerName, avatar, user, profile, signOut } = useGameStore();
+  const { setCPScreen } = useCPStore();
   const [activeTab, setActiveTab] = useState('All Games');
   const [sortBy, setSortBy] = useState('Popular');
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [pendingScreen, setPendingScreen] = useState(null);
 
-  const goToProtectedScreen = (screen) => {
+  const goToProtectedScreen = (screen, isCPScreen = false) => {
     if (!user) {
       setPendingScreen(screen);
       setIsAuthOpen(true);
       return;
     }
-    setScreen(screen);
+    if (isCPScreen) setCPScreen(screen);
+    else setScreen(screen);
   };
 
   useEffect(() => {
@@ -100,14 +103,15 @@ export default function ExploreGamesPage() {
       accent: '#8b5cf6'
     },
     {
-      id: 'sircoat',
-      title: 'SirCoat',
-      desc: 'Trick, play and rule the court!',
-      players: '3-6 Players',
+      id: 'courtpiece',
+      title: 'Court Piece',
+      desc: 'Rang · Trump tricks · 2v2 team battle!',
+      players: '4 Players',
       time: '20-40 min',
-      status: 'UNDER DEVELOPMENT',
+      status: 'READY TO PLAY',
+      isNew: true,
       image: '/tash_thumbnail.png',
-      active: false,
+      active: true,
       accent: '#f59e0b'
     },
     {
@@ -287,7 +291,11 @@ export default function ExploreGamesPage() {
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: idx * 0.05 }}
-              onClick={() => game.active && goToProtectedScreen('BLUFF_ENTRY')}
+              onClick={() => {
+                if (!game.active) return;
+                if (game.id === 'bluff') goToProtectedScreen('BLUFF_ENTRY');
+                else if (game.id === 'courtpiece') goToProtectedScreen('CP_ENTRY', true);
+              }}
             >
               <div className="card-media">
                 <img src={game.image} alt={game.title} />
