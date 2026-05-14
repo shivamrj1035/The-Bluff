@@ -6,6 +6,7 @@ import {
   ArrowLeftIcon, EnergyIcon, TrashIcon, XIcon,
   PlayIcon, ShieldIcon, CrownIcon
 } from '../components/common/Icons';
+import { REGISTERED_GAMES } from '../constants/registeredGames';
 
 const TABS = [
   { id: 'stats', label: 'Dashboard', icon: <EnergyIcon size={18} /> },
@@ -217,13 +218,18 @@ export default function AdminPage() {
                     <div>
                       <label style={{ display: 'block', marginBottom: '12px', fontSize: '0.9rem', fontWeight: 700 }}>Enabled Games</label>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
-                        {['bluff', 'joker', 'uno', 'uno-flip'].map(game => (
-                          <div key={game} className="player-row" style={{ justifyContent: 'space-between' }}>
-                            <span style={{ textTransform: 'capitalize', fontWeight: 700 }}>{game}</span>
+                        {REGISTERED_GAMES.map(game => (
+                          <div key={game.id} className="player-row" style={{ justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: game.accent + '22', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <PlayIcon size={16} color={game.accent} />
+                              </div>
+                              <span style={{ fontWeight: 700 }}>{game.title}</span>
+                            </div>
                             <input 
                               type="checkbox" 
-                              checked={cmsData.enabled_games?.includes(game)} 
-                              onChange={() => handleToggleGame(game)}
+                              checked={cmsData.enabled_games?.includes(game.id)} 
+                              onChange={() => handleToggleGame(game.id)}
                               style={{ width: '20px', height: '20px', accentColor: 'var(--primary)' }}
                             />
                           </div>

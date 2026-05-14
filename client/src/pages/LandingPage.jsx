@@ -10,6 +10,7 @@ import {
   ChevronDownIcon, CrownIcon, LogOutIcon, SettingsIcon
 } from '../components/common/Icons';
 import AvatarDisplay from '../components/common/AvatarDisplay';
+import { REGISTERED_GAMES } from '../constants/registeredGames';
 
 export default function LandingPage() {
   const { setScreen, playerName, avatar, user, profile, signOut, siteSettings, isAdmin } = useGameStore();
@@ -56,45 +57,17 @@ export default function LandingPage() {
     }
   ];
 
-  const games = [
-    {
-      id: 'bluff',
-      title: 'Bluff',
-      desc: 'Classic Bluff Card Game',
-      icon: <SpadeIcon size={48} color="#a78bfa" />,
-      status: 'READY TO PLAY',
-      statusColor: '#10b981',
-      active: true,
+  const games = REGISTERED_GAMES.map(g => {
+    const isActive = siteSettings?.enabled_games ? siteSettings.enabled_games.includes(g.id) : (g.id === 'bluff');
+    return {
+      ...g,
+      active: isActive,
+      status: isActive ? 'READY TO PLAY' : 'COMING SOON',
+      statusColor: isActive ? '#10b981' : '#f59e0b',
+      icon: g.id === 'bluff' ? <SpadeIcon size={48} color="#a78bfa" /> : <CrownIcon size={48} color="#f59e0b" />,
       avatars: ['S', 'P', 'G']
-    },
-    {
-      id: 'joker',
-      title: 'Joker Game',
-      desc: 'Strategy Card Game',
-      icon: <CrownIcon size={48} color="#f59e0b" />,
-      status: 'UNDER DEVELOPMENT',
-      statusColor: '#f59e0b',
-      active: false
-    },
-    {
-      id: 'uno',
-      title: 'Uno',
-      desc: 'Classic Family Game',
-      icon: <HeartIcon size={48} color="#ef4444" />,
-      status: 'UNDER DEVELOPMENT',
-      statusColor: '#f59e0b',
-      active: false
-    },
-    {
-      id: 'uno-flip',
-      title: 'Uno Flip',
-      desc: 'Uno with a Twist',
-      icon: <DiamondIcon size={48} color="#c084fc" />,
-      status: 'UNDER DEVELOPMENT',
-      statusColor: '#f59e0b',
-      active: false
-    }
-  ];
+    };
+  });
 
 
   return (
@@ -274,7 +247,11 @@ export default function LandingPage() {
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.2 + idx * 0.1 }}
-              onClick={() => game.active && goToProtectedScreen('BLUFF_ENTRY')}
+              onClick={() => {
+                if (!game.active) return;
+                if (game.entryScreen === 'BLUFF_ENTRY') goToProtectedScreen('BLUFF_ENTRY');
+                else if (game.entryScreen === 'CP_ENTRY') goToProtectedScreen('CP_ENTRY', true);
+              }}
             >
               <div className="lp-game-badge" style={{ color: game.statusColor }}>
                 <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: game.statusColor }} />

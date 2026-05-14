@@ -330,11 +330,3 @@ WAITING → DEALING → PLAYER_TURN ↔ BLUFF_PICKING → ROUND_RESOLUTION → P
 - `socketRoomMap` is updated accordingly
 
 ---
-
-## Known Issues / TODOs
-
-- [ ] In-game player order panel (show turn order sidebar in GameBoard)
-- [ ] Spectator mode UI (currently just silently joins but gets no hand)
-- [ ] Mobile: drag-to-reorder instead of up/down buttons
-- [ ] Room password / private table access control
-- [ ] Player avatar customization beyond initials
