@@ -18,7 +18,7 @@ import {
  * Implements the premium dark UI from the provided mockup.
  */
 export default function ExploreGamesPage() {
-  const { setScreen, playerName, avatar, user, profile, signOut } = useGameStore();
+  const { setScreen, playerName, avatar, user, profile, signOut, siteSettings, isAdmin } = useGameStore();
   const { setCPScreen } = useCPStore();
   const [activeTab, setActiveTab] = useState('All Games');
   const [sortBy, setSortBy] = useState('Popular');
@@ -238,6 +238,11 @@ export default function ExploreGamesPage() {
                         <button className="dropdown-item" onClick={() => { setScreen('PROFILE'); setShowProfileMenu(false); }}>
                           <UsersIcon size={16} /> My Profile
                         </button>
+                        {isAdmin() && (
+                          <button className="dropdown-item" onClick={() => { setScreen('ADMIN'); setShowProfileMenu(false); }} style={{ color: 'var(--primary-light)' }}>
+                            <SettingsIcon size={16} /> Admin Panel
+                          </button>
+                        )}
                         <button className="dropdown-item" onClick={() => { signOut(); setShowProfileMenu(false); }}>
                           <LogOutIcon size={16} /> Sign Out
                         </button>
@@ -256,7 +261,7 @@ export default function ExploreGamesPage() {
 
         <section className="explore-hero">
           <div className="hero-text">
-            <h1>EXPLORE <span>GAMES</span> <span className="hero-stars">✨</span></h1>
+            <h1>EXPLORE <span style={{ color: 'var(--primary)' }}>GAMES</span> <span className="hero-stars">✨</span></h1>
             <p>Choose your game, challenge your friends and show your game skills.</p>
           </div>
 
@@ -284,7 +289,7 @@ export default function ExploreGamesPage() {
         </section>
 
         <div className="explore-grid">
-          {games.map((game, idx) => (
+          {games.filter(g => !siteSettings?.enabled_games || siteSettings.enabled_games.includes(g.id)).map((game, idx) => (
             <motion.div
               key={game.id}
               className={`game-explore-card ${game.active ? 'active' : ''}`}

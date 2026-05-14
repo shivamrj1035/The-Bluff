@@ -151,7 +151,7 @@ function startGlobalTimer(io) {
           continue;
         }
 
-        const isPicking    = room.state === GAME_STATES.BLUFF_PICKING;
+        const isPicking = room.state === GAME_STATES.BLUFF_PICKING;
         const isResolution = room.state === GAME_STATES.ROUND_RESOLUTION;
         const isPlayerTurn = room.state === GAME_STATES.PLAYER_TURN;
 
@@ -235,7 +235,7 @@ function setupHandlers(io, socket) {
     try {
       const normalizedRoomId = normalizeRoomId(roomId);
       const trimmedName = String(playerName || "").trim().slice(0, 12);
-      const safeAvatar = String(avatar || "P").slice(0, 2);
+      const safeAvatar = String(avatar || "P").trim().slice(0, 20); // avatar IDs can be up to 20 chars (e.g. 'crazy1', 'rocket', 'ninja')
       const isCreateRequest = !normalizedRoomId;
 
       let effectiveRoomId = normalizedRoomId;
@@ -269,10 +269,10 @@ function setupHandlers(io, socket) {
         existingPlayer.isConnected = true;
         existingPlayer.avatar = safeAvatar || existingPlayer.avatar;
 
-        if (room.hostId === oldId)          room.hostId = socket.id;
-        if (room.currentTurn === oldId)     room.currentTurn = socket.id;
-        if (room.bluffPickerId === oldId)   room.bluffPickerId = socket.id;
-        if (room.bluffTargetId === oldId)   room.bluffTargetId = socket.id;
+        if (room.hostId === oldId) room.hostId = socket.id;
+        if (room.currentTurn === oldId) room.currentTurn = socket.id;
+        if (room.bluffPickerId === oldId) room.bluffPickerId = socket.id;
+        if (room.bluffTargetId === oldId) room.bluffTargetId = socket.id;
         if (room.lastPlayerToPlay === oldId) room.lastPlayerToPlay = socket.id;
 
         if (room.hands[oldId]) {
@@ -634,18 +634,35 @@ function getRoomForHttp(roomId) {
   return roomCache.get(roomId) || null;
 }
 
-module.exports = { setupHandlers, getRoomForHttp, setupCPHandlers, getCPRoomForHttp };
+function getActiveRoomsList() {
+  const list = [];
+  for (const roomId of activeRooms) {
+    const room = roomCache.get(roomId);
+    if (room) {
+      list.push({
+        roomId,
+        state: room.state,
+        players: room.players.map(p => ({ name: p.name, isConnected: p.isConnected })),
+        lastActivityAt: room.lastActivityAt,
+        expiresAt: room.expiresAt,
+      });
+    }
+  }
+  return list;
+}
+
+module.exports = { setupHandlers, getRoomForHttp, getActiveRoomsList, setupCPHandlers, getCPRoomForHttp };
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  COURT PIECE HANDLERS
 //  Completely isolated from Bluff. Separate caches, separate Redis prefix (cproom:).
 // ══════════════════════════════════════════════════════════════════════════════
 
-const cpRoomCache   = new Map();
-const cpDirtyRooms  = new Set();
+const cpRoomCache = new Map();
+const cpDirtyRooms = new Set();
 const cpActiveRooms = new Set();
 const cpSocketRoomMap = new Map();
-const CP_ROOM_TTL    = 60 * 60 * 4;
+const CP_ROOM_TTL = 60 * 60 * 4;
 const CP_ROOM_TTL_MS = CP_ROOM_TTL * 1000;
 
 function getCPRoomFromCache(roomId) {
@@ -677,7 +694,7 @@ function saveCPRoom(roomId, room) {
 async function deleteCPRoom(roomId) {
   cpRoomCache.delete(roomId);
   cpDirtyRooms.delete(roomId);
-  try { await redis.del(`cproom:${roomId}`); } catch (e) {}
+  try { await redis.del(`cproom:${roomId}`); } catch (e) { }
 }
 
 async function persistCPRoomImmediately(roomId, room) {
@@ -728,8 +745,8 @@ function setupCPHandlers(io, socket) {
     try {
       const rawId = String(roomId || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
       const trimmedName = String(playerName || '').trim().slice(0, 12);
-      const safeAvatar  = String(avatar || 'P').slice(0, 2);
-      const isCreate    = !rawId;
+      const safeAvatar = String(avatar || 'P').slice(0, 2);
+      const isCreate = !rawId;
 
       let effectiveRoomId = rawId;
       if (isCreate) {
@@ -768,9 +785,9 @@ function setupCPHandlers(io, socket) {
         existing.id = socket.id;
         existing.isConnected = true;
         existing.avatar = safeAvatar || existing.avatar;
-        if (room.hostId === oldId)            room.hostId = socket.id;
-        if (room.currentTurn === oldId)       room.currentTurn = socket.id;
-        if (room.trumpSelecterId === oldId)   room.trumpSelecterId = socket.id;
+        if (room.hostId === oldId) room.hostId = socket.id;
+        if (room.currentTurn === oldId) room.currentTurn = socket.id;
+        if (room.trumpSelecterId === oldId) room.trumpSelecterId = socket.id;
         // Update hands key
         if (room.hands[oldId]) { room.hands[socket.id] = room.hands[oldId]; delete room.hands[oldId]; }
         // Update revealCards key

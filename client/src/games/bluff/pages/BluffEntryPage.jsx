@@ -3,10 +3,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useGameStore } from '../store/useGameStore';
 import { toast } from '../../../components/common/Toast';
+import AvatarDisplay from '../../../components/common/AvatarDisplay';
 
 
 export default function BluffEntryPage() {
-  const { setScreen, setIdentity, connect, playerName: storedName, user, profile } = useGameStore();
+  const { setScreen, setIdentity, connect, playerName: storedName, user, profile, avatar, fetchProfile, isAuthLoading } = useGameStore();
   const [name, setName] = useState(storedName || profile?.username || '');
   const [editingName, setEditingName] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -17,14 +18,16 @@ export default function BluffEntryPage() {
     if (editingName) nameRef.current?.focus();
   }, [editingName]);
 
-  const avatarLetter = name?.trim()[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || '?';
+  const avatarId = avatar || 'P';
 
   const persistIdentity = async () => {
     if (!name.trim()) {
       toast.error('Enter your player name first');
       return false;
     }
-    await setIdentity(name.trim(), 'P');
+    // Use the avatar from the store (set by ProfilePage), fallback to 'P'
+    const currentAvatar = useGameStore.getState().avatar || 'P';
+    await setIdentity(name.trim(), currentAvatar);
     return true;
   };
 
@@ -127,7 +130,7 @@ export default function BluffEntryPage() {
           borderRadius: 26,
           padding: '28px 24px 22px',
           background: 'linear-gradient(160deg, rgba(3, 31, 39, 0.95), rgba(1, 10, 13, 0.96))',
-          border: '1px solid rgba(8,145,178,0.26)',
+          border: '1px solid var(--border-bright)',
           boxShadow: '0 28px 70px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.03)',
           backdropFilter: 'blur(16px)',
           position: 'relative',
@@ -167,7 +170,7 @@ export default function BluffEntryPage() {
               <span style={{ color: '#fff' }}>Play </span>
               <span
                 style={{
-                  background: 'linear-gradient(135deg,#a5f3fc,#6d28d9)',
+                  background: 'linear-gradient(135deg, var(--primary-light), var(--primary))',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
                 }}
@@ -177,24 +180,13 @@ export default function BluffEntryPage() {
             </h1>
           </div>
 
-          <div
-            style={{
-              width: 62,
-              height: 62,
-              borderRadius: '18px',
-              background: 'linear-gradient(135deg,#f97316,#ea580c)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '1.7rem',
-              fontWeight: 900,
-              color: '#fff',
-              boxShadow: '0 0 0 4px rgba(249,115,22,0.12), 0 16px 30px rgba(249,115,22,0.22)',
-              flex: '0 0 auto',
-            }}
-          >
-            {avatarLetter}
-          </div>
+          <AvatarDisplay
+            avatarId={avatarId}
+            playerName={name || 'Player'}
+            size={62}
+            animated={true}
+            showBorder={true}
+          />
         </div>
 
         <div
@@ -242,10 +234,10 @@ export default function BluffEntryPage() {
               alignItems: 'center',
               gap: 12,
               background: 'rgba(255,255,255,0.05)',
-              border: `1px solid ${editingName ? 'rgba(8,145,178,0.5)' : 'rgba(255,255,255,0.08)'}`,
+              border: `1px solid ${editingName ? 'var(--primary)' : 'rgba(255,255,255,0.08)'}`,
               borderRadius: 16,
               padding: '13px 14px',
-              boxShadow: editingName ? '0 0 0 3px rgba(8,145,178,0.12)' : 'none',
+              boxShadow: editingName ? '0 0 0 3px var(--border-bright)' : 'none',
             }}
           >
             <span style={{ color: '#6b7280' }}>👤</span>
@@ -277,7 +269,7 @@ export default function BluffEntryPage() {
                 background: 'none',
                 border: 'none',
                 cursor: 'pointer',
-                color: '#6d28d9',
+                color: 'var(--primary)',
                 fontSize: 15,
                 padding: 0,
               }}
@@ -296,7 +288,7 @@ export default function BluffEntryPage() {
             style={{
               width: '100%',
               padding: '15px 18px',
-              background: 'linear-gradient(135deg,#6d28d9,#4c1d95)',
+              background: 'linear-gradient(135deg, var(--primary), var(--secondary))',
               border: 'none',
               borderRadius: 16,
               color: '#fff',
@@ -307,7 +299,7 @@ export default function BluffEntryPage() {
               alignItems: 'center',
               justifyContent: 'space-between',
               gap: 12,
-              boxShadow: '0 10px 28px rgba(8,145,178,0.34)',
+              boxShadow: '0 10px 28px var(--shadow-p)',
             }}
           >
             <span>👑 Create Private Table</span>

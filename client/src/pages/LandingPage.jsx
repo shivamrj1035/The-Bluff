@@ -7,12 +7,12 @@ import {
   GridIcon, EnergyIcon, LockIcon,
   ShieldIcon, GiftIcon, PlayIcon,
   ArrowRightIcon, UsersIcon, TrophyIcon,
-  ChevronDownIcon, CrownIcon, LogOutIcon
+  ChevronDownIcon, CrownIcon, LogOutIcon, SettingsIcon
 } from '../components/common/Icons';
 import AvatarDisplay from '../components/common/AvatarDisplay';
 
 export default function LandingPage() {
-  const { setScreen, playerName, avatar, user, profile, signOut } = useGameStore();
+  const { setScreen, playerName, avatar, user, profile, signOut, siteSettings, isAdmin } = useGameStore();
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [pendingScreen, setPendingScreen] = useState(null);
@@ -105,10 +105,10 @@ export default function LandingPage() {
 
       <header className="lp-header">
         <div className="lp-logo">
-          <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <SpadeIcon size={20} color="#fff" />
           </div>
-          MULTIPLAYER GAMING HUB
+          {siteSettings?.header_title || 'MULTIPLAYER GAMING HUB'}
         </div>
 
         <nav className="lp-nav">
@@ -149,6 +149,11 @@ export default function LandingPage() {
                       <button className="dropdown-item" onClick={() => { setScreen('PROFILE'); setShowProfileMenu(false); }}>
                         <UsersIcon size={16} /> My Profile
                       </button>
+                      {isAdmin() && (
+                        <button className="dropdown-item" onClick={() => { setScreen('ADMIN'); setShowProfileMenu(false); }} style={{ color: 'var(--primary-light)' }}>
+                          <SettingsIcon size={16} /> Admin Panel
+                        </button>
+                      )}
                       <button className="dropdown-item" onClick={() => { signOut(); setShowProfileMenu(false); }}>
                         <LogOutIcon size={16} /> Sign Out
                       </button>
@@ -178,10 +183,13 @@ export default function LandingPage() {
             <div className="lp-dot" />
             Premium social card lounge
           </div>
-          <h1>Compact. Fast. <span>Ready to play.</span></h1>
+          <h1>{siteSettings?.hero_title?.split('.').map((part, i, arr) => (
+            <React.Fragment key={i}>
+              {i === arr.length - 1 ? <span>{part}</span> : part + (i < arr.length - 1 ? '.' : '')}
+            </React.Fragment>
+          )) || <>Compact. Fast. <span>Ready to play.</span></>}</h1>
           <p>
-            A tighter landing experience for card players who want instant access,
-            live tables and a cleaner multiplayer hub.
+            {siteSettings?.hero_subtitle || 'A tighter landing experience for card players who want instant access, live tables and a cleaner multiplayer hub.'}
           </p>
           <div className="lp-hero-btns">
             <button className="lp-btn-primary" onClick={() => goToProtectedScreen('BLUFF_ENTRY')}>
@@ -259,7 +267,7 @@ export default function LandingPage() {
         </div>
 
         <div className="lp-game-grid">
-          {games.map((game, idx) => (
+          {games.filter(g => !siteSettings?.enabled_games || siteSettings.enabled_games.includes(g.id)).map((game, idx) => (
             <motion.div
               key={game.id}
               className={`lp-game-card ${game.active ? 'active' : ''}`}
@@ -296,7 +304,7 @@ export default function LandingPage() {
                   ))}
                 </div>
                 {game.active ? (
-                  <div style={{ color: '#a78bfa', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{ color: 'var(--primary-light)', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
                     Play Now <ArrowRightIcon size={16} />
                   </div>
                 ) : (
