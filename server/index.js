@@ -5,7 +5,7 @@ const { Server } = require("socket.io");
 const cors = require("cors");
 const { clerkMiddleware, getAuth } = require("@clerk/express");
 const { sql, ensureProfileSchema, ensureSettingsSchema } = require("./db");
-const { setupHandlers, getRoomForHttp, getActiveRoomsList } = require("./socket/handlers");
+const { setupHandlers, getRoomForHttp, getActiveRoomsList, setupCPHandlers, getCPRoomForHttp } = require("./socket/handlers");
 const redis = require("./redisClient");
 const app = express();
 app.use(cors({ origin: "*" }));
@@ -221,6 +221,7 @@ ensureSettingsSchema().catch((error) => {
 io.on("connection", (socket) => {
   console.log(`[CONNECT] ${socket.id}`);
   setupHandlers(io, socket);
+  setupCPHandlers(io, socket);
 });
 
 const PORT = process.env.PORT || 4000;
