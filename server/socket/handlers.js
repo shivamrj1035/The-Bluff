@@ -922,6 +922,25 @@ function setupCPHandlers(io, socket) {
     } catch (err) { console.error('[CP KICK_PLAYER error]', err); }
   });
 
+  // ── CHAT MESSAGE ────────────────────────────────────────────────────────
+  socket.on(CP_EVENTS.CHAT_MESSAGE, ({ roomId, message }) => {
+    try {
+      const room = getCPRoomFromCache(roomId);
+      if (!room) return;
+      const player = room.players.find(p => p.id === socket.id);
+      if (!player) return;
+      const text = String(message || '').trim().slice(0, 120);
+      if (!text) return;
+      io.to(roomId).emit(CP_EVENTS.CHAT_BROADCAST, {
+        senderId: socket.id,
+        senderName: player.name,
+        message: text,
+        ts: Date.now(),
+      });
+      console.log(`[CP CHAT] ${player.name} in ${roomId}: "${text}"`);
+    } catch (err) { console.error('[CP CHAT_MESSAGE error]', err); }
+  });
+
   // ── CP_CLOSE_GAME ───────────────────────────────────────────────────────
   socket.on(CP_EVENTS.CP_CLOSE_GAME, async ({ roomId }) => {
     try {
