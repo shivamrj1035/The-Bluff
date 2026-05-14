@@ -841,12 +841,75 @@ setInterval(async () => {
   }
 }, 30_000);
 
+const { getBotTrumpSuit, getBotPlayCard } = require('../logic/courtpiece/bot');
+
 function emitCPState(io, roomId, room) {
   if (!room) return;
   const roomSockets = io.sockets.adapter.rooms.get(roomId);
   if (!roomSockets) return;
   for (const socketId of roomSockets) {
     io.to(socketId).emit(CP_EVENTS.CP_GAME_STATE, serializeCPState(room, socketId));
+  }
+
+  // Handle Bot Turns automatically (also handles disconnected players)
+  if (room.state === CP_GAME_STATES.TRUMP_SELECTION && room.trumpSelecterId) {
+    const selector = room.players.find(p => p.id === room.trumpSelecterId);
+    // Bot takes over if player is a bot OR disconnected human
+    if (selector && (selector.isBot || !selector.isConnected) && !room._botTimeoutPending) {
+      room._botTimeoutPending = true;
+      setTimeout(async () => {
+        try {
+          let currentRoom = getCPRoomFromCache(roomId);
+          if (!currentRoom || currentRoom.state !== CP_GAME_STATES.TRUMP_SELECTION) return;
+          
+          currentRoom._botTimeoutPending = false;
+          const botHand = currentRoom.hands[currentRoom.trumpSelecterId] || [];
+          const bestSuit = getBotTrumpSuit(botHand);
+          
+          currentRoom = cpReducer(currentRoom, { 
+            type: 'CP_SELECT_TRUMP', 
+            playerId: currentRoom.trumpSelecterId, 
+            payload: { suit: bestSuit } 
+          });
+          saveCPRoom(roomId, currentRoom);
+          emitCPState(io, roomId, currentRoom);
+        } catch(e) { console.error('Bot Trump Selection Error', e); }
+      }, 2000); // 2s delay for disconnected takeover
+    }
+  } else if (room.state === CP_GAME_STATES.PLAYING && room.currentTurn) {
+    const turnPlayer = room.players.find(p => p.id === room.currentTurn);
+    // Bot takes over if player is a bot OR disconnected human
+    if (turnPlayer && (turnPlayer.isBot || !turnPlayer.isConnected) && !room._botTimeoutPending) {
+      room._botTimeoutPending = true;
+      setTimeout(async () => {
+        try {
+          let currentRoom = getCPRoomFromCache(roomId);
+          if (!currentRoom || currentRoom.state !== CP_GAME_STATES.PLAYING) return;
+          
+          currentRoom._botTimeoutPending = false;
+          const botHand = currentRoom.hands[currentRoom.currentTurn] || [];
+          const cardToPlay = getBotPlayCard(botHand, currentRoom.currentTrick, currentRoom.trumpSuit, currentRoom.leadSuit);
+          
+          currentRoom = cpReducer(currentRoom, { 
+            type: 'CP_PLAY_CARD', 
+            playerId: currentRoom.currentTurn, 
+            payload: { card: cardToPlay } 
+          });
+          saveCPRoom(roomId, currentRoom);
+          emitCPState(io, roomId, currentRoom);
+          
+          if (currentRoom.state === CP_GAME_STATES.TRICK_RESOLUTION) {
+             setTimeout(() => {
+                let r = getCPRoomFromCache(roomId);
+                if (!r || r.state !== CP_GAME_STATES.TRICK_RESOLUTION) return;
+                r = cpReducer(r, { type: 'CP_NEXT_TRICK' });
+                saveCPRoom(roomId, r);
+                emitCPState(io, roomId, r);
+             }, 2500);
+          }
+        } catch(e) { console.error('Bot Play Card Error', e); }
+      }, 2000); // 2s delay for disconnected takeover
+    }
   }
 }
 
@@ -968,6 +1031,40 @@ function setupCPHandlers(io, socket) {
     } catch (err) {
       console.error('[CP JOIN error]', err);
       socket.emit(CP_EVENTS.CP_ERROR, { message: 'Join failed.' });
+    }
+  });
+
+  // ── CP_ADD_BOT ──────────────────────────────────────────────────────────
+  socket.on(CP_EVENTS.CP_ADD_BOT, async ({ roomId }) => {
+    try {
+      let room = await getCPRoom(roomId);
+      if (!room || room.hostId !== socket.id) return;
+      if (room.state !== CP_GAME_STATES.WAITING) {
+        socket.emit(CP_EVENTS.CP_ERROR, { message: 'Can only add bots in the lobby.' });
+        return;
+      }
+      if (room.players.length >= 4) {
+        socket.emit(CP_EVENTS.CP_ERROR, { message: 'Table is full (4 players max).' });
+        return;
+      }
+
+      const botNum = room.players.filter(p => p.isBot).length + 1;
+      const botId = `bot_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+      
+      room.players.push({ 
+        id: botId, 
+        name: `Robo ${botNum}`, 
+        avatar: 'B', // Bot avatar
+        isConnected: true, 
+        isBot: true,
+        cardCount: 0 
+      });
+      room.emptySince = null;
+
+      saveCPRoom(roomId, room);
+      emitCPState(io, roomId, room);
+    } catch (err) {
+      console.error('[CP ADD_BOT error]', err);
     }
   });
 

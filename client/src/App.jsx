@@ -10,6 +10,7 @@ import ProfilePage from './pages/ProfilePage';
 import AdminPage from './pages/AdminPage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import ClerkSync from './components/common/ClerkSync';
+import Preloader from './components/common/Preloader';
 import { useGameStore } from './games/bluff/store/useGameStore';
 import { useCPStore } from './games/courtpiece/store/useCPStore';
 
@@ -27,6 +28,17 @@ const Spinner = () => (
 );
 
 export default function App() {
+  const [loading, setLoading] = React.useState(true);
+  const [exiting, setExiting] = React.useState(false);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setExiting(true);
+      setTimeout(() => setLoading(false), 600); // Match CSS transition
+    }, 2200);
+    return () => clearTimeout(timer);
+  }, []);
+
   const { status, gameState, screen, fetchSettings } = useGameStore();
 
   React.useEffect(() => {
@@ -97,6 +109,7 @@ export default function App() {
   // ── Bluff game (original routing — unchanged) ────────────────────────────
   return (
     <>
+      {loading && <Preloader isExiting={exiting} />}
       <Toaster />
       <ClerkSync />
 

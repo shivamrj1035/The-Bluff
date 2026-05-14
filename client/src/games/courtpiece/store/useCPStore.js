@@ -22,7 +22,7 @@ export const useCPStore = create((set, get) => ({
   // Connection state
   cpStatus: 'IDLE',  // 'IDLE' | 'CONNECTING' | 'CONNECTED' | 'RECONNECTING' | 'ERROR'
   cpSocket: null,
-  cpPlayerId: null,
+  cpPlayerId: localStorage.getItem('cp_userId') || `u_${Math.floor(Math.random() * 1000000)}`,
   cpRoomId: localStorage.getItem('cp_roomId') || '',
   cpError: null,
 
@@ -37,11 +37,13 @@ export const useCPStore = create((set, get) => ({
   setCPScreen: (screen) => set({ cpScreen: screen }),
 
   // ── Connect to a Court Piece room ────────────────────────────────────────
-  connectCP: (roomId, playerName, avatar, userId) => {
+  connectCP: (roomId, playerName, avatar) => {
     const s = getCPSocket();
     const pName = playerName || get().cpPlayerName || '';
     const av    = avatar    || get().cpAvatar     || 'P';
-    const uId   = userId    || '';
+    const uId   = get().cpPlayerId;
+    
+    if (uId) localStorage.setItem('cp_userId', uId);
 
     s.off('cp_game_state');
     s.off('cp_error');
@@ -57,7 +59,7 @@ export const useCPStore = create((set, get) => ({
     set({ cpStatus: 'CONNECTING', cpRoomId: roomId, cpError: null, cpSocket: s });
 
     s.on('connect', () => {
-      set({ cpPlayerId: s.id, cpStatus: 'CONNECTED', cpError: null });
+      set({ cpStatus: 'CONNECTED', cpError: null });
       if (roomId) localStorage.setItem('cp_roomId', roomId);
       s.emit('cp_join_room', { roomId, playerName: pName, avatar: av, userId: uId });
     });
@@ -123,14 +125,14 @@ export const useCPStore = create((set, get) => ({
 
     s.on('reconnect', () => {
       set({ cpStatus: 'CONNECTED', cpError: null });
-      const { cpRoomId: rId } = get();
-      s.emit('cp_join_room', { roomId: rId, playerName: pName, avatar: av, userId: uId });
+      const { cpRoomId: rId, cpPlayerId: pId } = get();
+      s.emit('cp_join_room', { roomId: rId, playerName: pName, avatar: av, userId: pId });
     });
 
     if (!s.connected) {
       s.connect();
     } else {
-      set({ cpPlayerId: s.id, cpStatus: 'CONNECTED' });
+      set({ cpStatus: 'CONNECTED' });
       s.emit('cp_join_room', { roomId, playerName: pName, avatar: av, userId: uId });
     }
   },
@@ -164,6 +166,14 @@ export const useCPStore = create((set, get) => ({
     s?.emit('cp_reorder_players', { roomId: cpRoomId, orderedIds });
   },
 
+  // Chat messages
+  cpChatMessages: [],
+
+  cpAddBot: () => {
+    const { cpSocket: s, cpRoomId } = get();
+    s?.emit('cp_add_bot', { roomId: cpRoomId });
+  },
+
   cpCloseGame: () => {
     const { cpSocket: s, cpRoomId } = get();
     s?.emit('cp_close_game', { roomId: cpRoomId });
@@ -184,9 +194,6 @@ export const useCPStore = create((set, get) => ({
     localStorage.removeItem('cp_roomId');
     const s = getCPSocket();
     s?.disconnect();
-    set({ cpStatus: 'IDLE', cpGameState: null, cpPlayerId: null, cpRoomId: '', cpSelectedCard: null });
+    set({ cpStatus: 'IDLE', cpGameState: null, cpRoomId: '', cpSelectedCard: null });
   },
-
-  // Chat messages
-  cpChatMessages: [],
 }));

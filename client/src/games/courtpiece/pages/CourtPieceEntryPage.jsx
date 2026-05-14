@@ -68,7 +68,9 @@ export default function CourtPieceEntryPage() {
       {/* Back button */}
       <div style={{ position: 'absolute', top: 20, left: 20 }}>
         <button
-          onClick={() => setScreen('EXPLORE')}
+          onClick={() => {
+            navigate('/admin');
+          }}
           style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#9ca3af', fontSize: '0.82rem', fontWeight: 700, padding: '9px 14px', borderRadius: 12, cursor: 'pointer', backdropFilter: 'blur(8px)' }}
         >
           ← Explore

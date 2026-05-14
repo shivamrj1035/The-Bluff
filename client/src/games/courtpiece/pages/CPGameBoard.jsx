@@ -1,16 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCPStore } from '../store/useCPStore';
 import CPCard from '../components/CPCard';
 import CPPlayerArea from '../components/CPPlayerArea';
 import TrumpSelector from '../components/TrumpSelector';
-import ScoreBoard from '../components/ScoreBoard';
 import ChatInput from '../../../components/common/ChatInput';
 import AvatarDisplay from '../../../components/common/AvatarDisplay';
 import { toast } from '../../../components/common/Toast';
 
 const SUIT_SYMBOL = { H: '♥', D: '♦', C: '♣', S: '♠' };
 const SUIT_NAME   = { H: 'Hearts', D: 'Diamonds', C: 'Clubs', S: 'Spades' };
+const SUIT_COLOR  = { H: '#ef4444', D: '#ef4444', C: '#1e293b', S: '#1e293b' };
+const TEAM_COLORS = { A: '#f59e0b', B: '#a78bfa' };
 
 function getCardSuit(c) { return c?.split('_')[0]; }
 
@@ -27,6 +28,7 @@ export default function CPGameBoard() {
     cpSendChat,
     cpChatMessages,
     cpSocket,
+    cpDisconnect,
   } = useCPStore();
 
   if (!gs) return null;
@@ -46,18 +48,9 @@ export default function CPGameBoard() {
   const leftPlayer   = getRelative(3);           // opponent
   const rightPlayer  = getRelative(1);           // opponent
 
-  const positions = [
-    { player: bottomPlayer, pos: 'bottom' },
-    { player: topPlayer,    pos: 'top'    },
-    { player: leftPlayer,   pos: 'left'   },
-    { player: rightPlayer,  pos: 'right'  },
-  ];
-
-  // Find played card for a player in the current trick
   const trickCardFor = (playerId) =>
     gs.currentTrick?.find(t => t.playerId === playerId)?.card || null;
 
-  // Must-follow-suit check: gray out only rule-restricted cards
   const leadSuit = gs.leadSuit;
   const hasLeadSuit = leadSuit && hand.some(c => getCardSuit(c) === leadSuit);
   const isValidSuit = (card) => {
@@ -71,17 +64,14 @@ export default function CPGameBoard() {
     return isValidSuit(card);
   };
 
-  // Trump selector visibility
   const isTrumpReveal    = gs.state === 'TRUMP_REVEAL';
   const isTrumpSelection = gs.state === 'TRUMP_SELECTION';
   const iAmTrumpSelector = gs.trumpSelecterId === myId;
   const showTrumpOverlay = isTrumpReveal || isTrumpSelection;
 
-  // Round end
   const isRoundEnd = gs.state === 'ROUND_END';
   const isGameOver = gs.state === 'GAME_OVER';
 
-  // Team name helpers
   const teamA = players.filter((_, i) => i % 2 === 0);
   const teamB = players.filter((_, i) => i % 2 !== 0);
 
@@ -97,286 +87,315 @@ export default function CPGameBoard() {
   return (
     <div style={{
       height: '100vh', width: '100vw', overflow: 'hidden',
-      background: 'radial-gradient(ellipse at 50% 0%, #1a0a30 0%, #0c0816 55%, #04020d 100%)',
+      background: '#0a0515',
+      color: '#fff',
       display: 'flex', flexDirection: 'column',
-      fontFamily: 'Inter, system-ui, sans-serif',
+      fontFamily: "'Inter', sans-serif",
       position: 'relative',
     }}>
+      {/* Background Gradients */}
+      <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 50% 50%, #1a0a3a 0%, transparent 70%)', opacity: 0.4, pointerEvents: 'none' }} />
 
-      {/* ── TOP BAR ───────────────────────────────────────────────────── */}
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 16px', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0 }}>
-        <div>
-          <p style={{ margin:0, fontSize:'0.6rem', fontWeight:800, letterSpacing:'0.14em', color:'#fb923c' }}>COURT PIECE</p>
-          <p style={{ margin:0, fontSize:'0.78rem', fontWeight:700, color:'#6b7280' }}>
-            Room <span style={{ color:'#e2e8f0', fontFamily:'monospace' }}>{cpRoomId}</span>
-            {gs.trumpSuit && <span style={{ marginLeft:8 }}>· Trump: {SUIT_SYMBOL[gs.trumpSuit]} {SUIT_NAME[gs.trumpSuit]}</span>}
-          </p>
+      {/* ── TOP HEADER ────────────────────────────────────────────────── */}
+      <div style={{ 
+        height: 60, display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+        padding: '0 24px', zIndex: 100, borderBottom: '1px solid rgba(255,255,255,0.05)' 
+      }}>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <span style={{ fontSize: '0.65rem', fontWeight: 900, color: '#f59e0b', letterSpacing: '0.15em' }}>COURT PIECE</span>
+          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#94a3b8' }}>
+            Room <span style={{ color: '#fff', opacity: 0.9 }}>{cpRoomId}</span>
+            {gs.trumpSuit && <span style={{ marginLeft: 12 }}>Trump : <span style={{ color: SUIT_COLOR[gs.trumpSuit] }}>{SUIT_SYMBOL[gs.trumpSuit]} {SUIT_NAME[gs.trumpSuit]}</span></span>}
+          </span>
         </div>
 
-        <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-          {/* Turn indicator */}
-          {gs.state === 'PLAYING' && (
-            <div style={{ padding:'5px 12px', borderRadius:10, background: gs.currentTurn === myId ? 'rgba(251,146,60,0.15)' : 'rgba(255,255,255,0.05)', border:`1px solid ${gs.currentTurn === myId ? 'rgba(251,146,60,0.4)' : 'rgba(255,255,255,0.08)'}`, fontSize:'0.72rem', fontWeight:800, color: gs.currentTurn === myId ? '#fb923c' : '#6b7280' }}>
-              {gs.currentTurn === myId ? '🃏 Your Turn' : `${players.find(p => p.id === gs.currentTurn)?.name || '...'}'s turn`}
-            </div>
-          )}
-
-          {isHost && (
-            <button onClick={cpCloseGame}
-              style={{ padding:'7px 12px', borderRadius:10, background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.2)', color:'#f87171', fontSize:'0.72rem', fontWeight:700, cursor:'pointer' }}>
-              Close
-            </button>
-          )}
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <button onClick={cpDisconnect} style={{ 
+            background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', 
+            color: '#f87171', padding: '6px 16px', borderRadius: 10, fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' 
+          }}>
+            Leave Game
+          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {[1, 2, 3].map(i => (
+              <div key={i} style={{ width: 34, height: 34, borderRadius: 10, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '0.9rem', cursor: 'pointer' }}>
+                {i === 1 ? '⚙️' : i === 2 ? '?' : '💬'}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* ── MAIN TABLE AREA ───────────────────────────────────────────── */}
-      <div style={{ flex:1, display:'grid', gridTemplateRows:'auto 1fr auto', gridTemplateColumns:'auto 1fr auto', gap:8, padding:'12px 16px', overflow:'hidden', position:'relative' }}>
+      {/* ── MAIN CONTENT ──────────────────────────────────────────────── */}
+      <div style={{ 
+        flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', 
+        padding: '20px 60px 20px 240px' // Increased left padding to shift table right
+      }}>
+        
+        {/* Sidebar Statistics */}
+        <div style={{ 
+          position: 'absolute', left: 24, top: '50%', transform: 'translateY(-50%)',
+          width: 180, background: 'rgba(15,10,25,0.85)', backdropFilter: 'blur(12px)',
+          borderRadius: 24, border: '1px solid rgba(255,255,255,0.08)', padding: 20,
+          display: 'flex', flexDirection: 'column', gap: 20, zIndex: 10,
+          boxShadow: '0 20px 50px rgba(0,0,0,0.5)'
+        }}>
+          <div>
+            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#64748b', letterSpacing: '0.05em' }}>TRUMP ({SUIT_NAME[gs.trumpSuit]?.toUpperCase()})</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
+              <span style={{ fontSize: '1.5rem', color: SUIT_COLOR[gs.trumpSuit] }}>{SUIT_SYMBOL[gs.trumpSuit]}</span>
+              <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>{SUIT_NAME[gs.trumpSuit]}</span>
+            </div>
+          </div>
 
-        {/* Top player (partner) */}
-        <div style={{ gridColumn:'1/4', display:'flex', justifyContent:'center', alignItems:'flex-start', paddingTop:4 }}>
-          {topPlayer && (
-            <CPPlayerArea
-              player={topPlayer}
-              team={players.findIndex(p => p.id === topPlayer?.id) % 2 === 0 ? 'A' : 'B'}
-              isMe={false}
-              isCurrentTurn={gs.currentTurn === topPlayer?.id}
-              playedCard={trickCardFor(topPlayer?.id)}
-              trumpSuit={gs.trumpSuit}
-              position="top"
-              chatMessage={cpChatMessages?.find(m => m.senderId === topPlayer?.id)?.message}
-              isHost={topPlayer?.id === gs.hostId}
-            />
-          )}
-        </div>
+          <div style={{ textAlign: 'center' }}>
+            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#64748b', letterSpacing: '0.05em' }}>TRICKS LEFT</span>
+            <div style={{ fontSize: '2.2rem', fontWeight: 900, color: '#fff' }}>{13 - (gs.trickCount || 0)}</div>
+          </div>
 
-        {/* Left player */}
-        <div style={{ display:'flex', alignItems:'center', paddingLeft:4 }}>
-          {leftPlayer && (
-            <CPPlayerArea
-              player={leftPlayer}
-              team={players.findIndex(p => p.id === leftPlayer?.id) % 2 === 0 ? 'A' : 'B'}
-              isMe={false}
-              isCurrentTurn={gs.currentTurn === leftPlayer?.id}
-              playedCard={trickCardFor(leftPlayer?.id)}
-              trumpSuit={gs.trumpSuit}
-              position="left"
-              chatMessage={cpChatMessages?.find(m => m.senderId === leftPlayer?.id)?.message}
-              isHost={leftPlayer?.id === gs.hostId}
-            />
-          )}
-        </div>
-
-        {/* CENTER TABLE — trick + trump reveal overlay */}
-        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:12, position:'relative' }}>
-
-          {/* Trump/Reveal overlay */}
-          <AnimatePresence>
-            {showTrumpOverlay && (
-              <motion.div
-                initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
-                style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.7)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:16, borderRadius:16, zIndex:20, backdropFilter:'blur(8px)', padding:16 }}
-              >
-                {/* Show reveal cards */}
-                {isTrumpReveal && (
-                  <motion.div initial={{ scale:0.8 }} animate={{ scale:1 }} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:12 }}>
-                    <p style={{ margin:0, fontSize:'0.68rem', fontWeight:800, letterSpacing:'0.14em', color:'#fb923c' }}>TRUMP REVEAL</p>
-                    <p style={{ margin:0, fontSize:'0.85rem', color:'#9ca3af', textAlign:'center' }}>
-                      {players[0]?.name} vs {players[1]?.name}
-                    </p>
-                    <div style={{ display:'flex', gap:24, alignItems:'flex-end' }}>
-                      {[0, 1].map(idx => {
-                        const p = players[idx];
-                        if (!p) return null;
-                        const revealCard = gs.revealCards?.[p.id];
-                        return (
-                          <div key={p.id} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8 }}>
-                            <AvatarDisplay avatarId={p.avatar} playerName={p.name} size={32} animated={false} />
-                            <CPCard cardId={revealCard} trumpSuit={null} size="md" />
-                            {gs.trumpSelecterId === p.id && (
-                              <span style={{ fontSize:'0.65rem', fontWeight:800, color:'#fb923c' }}>👑 Picks Trump</span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <p style={{ margin:0, fontSize:'0.75rem', color:'#6b7280' }}>Selecting trump suit in a moment...</p>
-                  </motion.div>
-                )}
-
-                {isTrumpSelection && (
-                  <TrumpSelector
-                    onSelect={cpSelectTrump}
-                    disabled={!iAmTrumpSelector}
-                    selectorName={players.find(p => p.id === gs.trumpSelecterId)?.name || '...'}
-                  />
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Round / Game over overlay */}
-          <AnimatePresence>
-            {(isRoundEnd || isGameOver) && (
-              <motion.div
-                initial={{ opacity:0, scale:0.9 }} animate={{ opacity:1, scale:1 }} exit={{ opacity:0 }}
-                style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.82)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:16, borderRadius:16, zIndex:20, backdropFilter:'blur(10px)', padding:20 }}
-              >
-                <p style={{ margin:0, fontSize:'0.7rem', fontWeight:800, letterSpacing:'0.14em', color: isGameOver ? '#f59e0b' : '#fb923c' }}>
-                  {isGameOver ? '🏆 MATCH OVER' : '🃏 ROUND OVER'}
-                </p>
-                <h2 style={{ margin:0, fontSize:'1.6rem', fontWeight:900, color:'#fff', textAlign:'center' }}>
-                  {isGameOver
-                    ? `Team ${gs.matchWinner} Wins the Match!`
-                    : `Team ${gs.roundWinner} wins this round`}
-                </h2>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, width:'100%', maxWidth:280 }}>
-                  {['A','B'].map(t => (
-                    <div key={t} style={{ padding:'12px', borderRadius:14, background: gs.roundWinner===t || gs.matchWinner===t ? 'rgba(251,146,60,0.12)' : 'rgba(255,255,255,0.04)', border:`1px solid ${gs.roundWinner===t || gs.matchWinner===t ? 'rgba(251,146,60,0.4)' : 'rgba(255,255,255,0.06)'}`, textAlign:'center' }}>
-                      <p style={{ margin:'0 0 4px', fontSize:'0.65rem', fontWeight:800, color: TEAM_COLORS[t] }}>TEAM {t}</p>
-                      <p style={{ margin:0, fontSize:'1.1rem', fontWeight:900, color:'#fff' }}>{gs.teams?.[t]?.tricks || 0} tricks</p>
-                      <p style={{ margin:0, fontSize:'0.7rem', color:'#6b7280' }}>{gs.teams?.[t]?.coats || 0} coats</p>
-                    </div>
-                  ))}
-                </div>
-                {isHost && (
-                  <div style={{ display:'flex', gap:10 }}>
-                    {!isGameOver && (
-                      <motion.button whileHover={{ scale:1.03 }} onClick={cpRestartGame}
-                        style={{ padding:'12px 24px', borderRadius:14, background:'linear-gradient(135deg,#c2410c,#9a3412)', border:'none', color:'#fff', fontWeight:800, cursor:'pointer', fontSize:'0.9rem' }}>
-                        Next Round
-                      </motion.button>
-                    )}
-                    <motion.button whileHover={{ scale:1.03 }} onClick={cpRestartGame}
-                      style={{ padding:'12px 24px', borderRadius:14, background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', color:'#e2e8f0', fontWeight:800, cursor:'pointer', fontSize:'0.9rem' }}>
-                      New Match
-                    </motion.button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {['A', 'B'].map(t => (
+              <div key={t}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 800, color: TEAM_COLORS[t] }}>TEAM {t}</span>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <span style={{ fontSize: '0.6rem', color: '#64748b' }}>Tricks</span>
+                    <span style={{ fontSize: '0.6rem', color: '#64748b' }}>Cards</span>
                   </div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
+                </div>
+                <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginBottom: 6 }}>
+                  {players.filter((_, i) => i % 2 === (t === 'A' ? 0 : 1)).map(p => p.id === myId ? 'You' : p.name).join(' & ')}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '1.2rem', fontWeight: 900 }}>{gs.teams?.[t]?.tricks || 0}/5</span>
+                  <span style={{ fontSize: '1.2rem', fontWeight: 900 }}>{players.filter((_, i) => i % 2 === (t === 'A' ? 0 : 1)).reduce((acc, p) => acc + (p.cardCount || 0), 0)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
 
-
-          {/* Center trick cards */}
-          <div style={{ display:'grid', gridTemplateAreas:'"tl tc tr" "ml mc mr" "bl bc br"', width:170, height:170, position:'relative' }}>
-            {/* Cards in compass positions */}
-            {[
-              { pos: topPlayer,   area: 'tc', top:'0',   left:'50%', transform:'translateX(-50%)', initial: { y: -200, x: '-50%', opacity: 0 }, animate: { y: 0, x: '-50%', opacity: 1 } },
-              { pos: leftPlayer,  area: 'ml', top:'50%', left:'0',   transform:'translateY(-50%)', initial: { x: -200, y: '-50%', opacity: 0 }, animate: { x: 0, y: '-50%', opacity: 1 } },
-              { pos: rightPlayer, area: 'mr', top:'50%', right:'0',  transform:'translateY(-50%)', initial: { x: 200, y: '-50%', opacity: 0 }, animate: { x: 0, y: '-50%', opacity: 1 } },
-              { pos: bottomPlayer,area: 'bc', bottom:'0',left:'50%', transform:'translateX(-50%)', initial: { y: 200, x: '-50%', opacity: 0 }, animate: { y: 0, x: '-50%', opacity: 1 } },
-            ].map(({ pos, top, left, right, bottom, initial, animate }) => {
-              if (!pos) return null;
-              const card = trickCardFor(pos.id);
-              if (!card) return null;
-              return (
-                <motion.div 
-                  key={`${pos.id}-${card}`}
-                  initial={initial}
-                  animate={animate}
-                  transition={{ type: 'spring', stiffness: 250, damping: 25 }}
-                  style={{ position:'absolute', top, left, right, bottom }}
-                >
-                  <CPCard cardId={card} trumpSuit={gs.trumpSuit} size="sm" />
-                </motion.div>
-              );
-            })}
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', pt: 12, textAlign: 'center', fontSize: '0.65rem', fontWeight: 800, color: '#64748b' }}>
+            FIRST TO 5 TRICKS WINS
           </div>
         </div>
 
-        {/* Right player */}
-        <div style={{ display:'flex', alignItems:'center', paddingRight:4 }}>
-          {rightPlayer && (
-            <CPPlayerArea
-              player={rightPlayer}
-              team={players.findIndex(p => p.id === rightPlayer?.id) % 2 === 0 ? 'A' : 'B'}
-              isMe={false}
-              isCurrentTurn={gs.currentTurn === rightPlayer?.id}
-              playedCard={trickCardFor(rightPlayer?.id)}
-              trumpSuit={gs.trumpSuit}
-              position="right"
-              chatMessage={cpChatMessages?.find(m => m.senderId === rightPlayer?.id)?.message}
-              isHost={rightPlayer?.id === gs.hostId}
-            />
-          )}
-        </div>
+        {/* ── THE TABLE ────────────────────────────────────────────────── */}
+        <div style={{ 
+          width: 'min(100%, 860px)', aspectAspectRatio: '2 / 1', position: 'relative',
+          display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          {/* Elliptical Table Shape */}
+          <div style={{ 
+            position: 'absolute', inset: 0, borderRadius: '200px', 
+            background: 'linear-gradient(180deg, #2b1255 0%, #160a2a 100%)',
+            border: '8px solid #1c0e35',
+            boxShadow: 'inset 0 0 60px rgba(0,0,0,0.8), 0 30px 100px rgba(0,0,0,0.6)',
+            zIndex: 1
+          }}>
+            {/* Inner Border Line */}
+            <div style={{ position: 'absolute', inset: 15, borderRadius: '185px', border: '1px dashed rgba(255,255,255,0.1)' }} />
+            
+            {/* Logo in Center */}
+            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', opacity: 0.1, textAlign: 'center' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 900, letterSpacing: '0.3em', color: '#fff' }}>COURT PIECE</span>
+            </div>
+          </div>
 
-        {/* Bottom - My info + chat */}
-        <div style={{ gridColumn:'1/4', display:'flex', justifyContent:'center', gap:16, alignItems:'flex-end', paddingBottom:4 }}>
-          {bottomPlayer && (
-            <CPPlayerArea
-              player={bottomPlayer}
-              team={myTeam}
-              isMe={true}
-              isCurrentTurn={gs.currentTurn === myId}
-              playedCard={null}
-              trumpSuit={gs.trumpSuit}
-              position="bottom"
-              chatMessage={cpChatMessages?.find(m => m.senderId === myId)?.message}
-              isHost={bottomPlayer?.id === gs.hostId}
-            />
-          )}
-        </div>
+          {/* Player Positions */}
+          <div style={{ position: 'absolute', top: -85, left: '50%', transform: 'translateX(-50%)', zIndex: 10 }}>
+            {topPlayer && <CPPlayerArea player={topPlayer} team={players.indexOf(topPlayer)%2===0?'A':'B'} isMe={false} isCurrentTurn={gs.currentTurn===topPlayer.id} playedCard={trickCardFor(topPlayer.id)} trumpSuit={gs.trumpSuit} position="top" chatMessage={cpChatMessages?.find(m=>m.senderId===topPlayer.id)?.message} isHost={topPlayer.id===gs.hostId} />}
+          </div>
+          <div style={{ position: 'absolute', bottom: -85, left: '50%', transform: 'translateX(-50%)', zIndex: 10 }}>
+            {bottomPlayer && <CPPlayerArea player={bottomPlayer} team={myTeam} isMe={true} isCurrentTurn={gs.currentTurn===myId} playedCard={null} trumpSuit={gs.trumpSuit} position="bottom" chatMessage={cpChatMessages?.find(m=>m.senderId===myId)?.message} isHost={bottomPlayer.id===gs.hostId} />}
+          </div>
+          <div style={{ position: 'absolute', left: -75, top: '50%', transform: 'translateY(-50%)', zIndex: 10 }}>
+            {leftPlayer && <CPPlayerArea player={leftPlayer} team={players.indexOf(leftPlayer)%2===0?'A':'B'} isMe={false} isCurrentTurn={gs.currentTurn===leftPlayer.id} playedCard={trickCardFor(leftPlayer.id)} trumpSuit={gs.trumpSuit} position="left" chatMessage={cpChatMessages?.find(m=>m.senderId===leftPlayer.id)?.message} isHost={leftPlayer.id===gs.hostId} />}
+          </div>
+          <div style={{ position: 'absolute', right: -75, top: '50%', transform: 'translateY(-50%)', zIndex: 10 }}>
+            {rightPlayer && <CPPlayerArea player={rightPlayer} team={players.indexOf(rightPlayer)%2===0?'A':'B'} isMe={false} isCurrentTurn={gs.currentTurn===rightPlayer.id} playedCard={trickCardFor(rightPlayer.id)} trumpSuit={gs.trumpSuit} position="right" chatMessage={cpChatMessages?.find(m=>m.senderId===rightPlayer.id)?.message} isHost={rightPlayer.id===gs.hostId} />}
+          </div>
 
-        {/* Absolutely positioned ScoreBoard at bottom left */}
-        <div style={{ position:'absolute', bottom: 16, left: 16, zIndex: 10 }}>
-          <ScoreBoard
-            teams={gs.teams}
-            teamANames={teamA.map(p => p.name)}
-            teamBNames={teamB.map(p => p.name)}
-            trumpSuit={gs.trumpSuit}
-            targetCoats={gs.targetCoats}
-            trickCount={gs.trickCount}
-          />
+          {/* Trick Cards in Center */}
+          <div style={{ position: 'relative', width: 220, height: 220, zIndex: 5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <AnimatePresence>
+              {[
+                { id: topPlayer?.id,    pos: { top: 35, left: '50%', x: '-50%' } },
+                { id: bottomPlayer?.id, pos: { bottom: 35, left: '50%', x: '-50%' } },
+                { id: leftPlayer?.id,   pos: { left: 35, top: '50%', y: '-50%' } },
+                { id: rightPlayer?.id,  pos: { right: 35, top: '50%', y: '-50%' } },
+              ].map(({ id, pos }) => {
+                const card = trickCardFor(id);
+                if (!card) return null;
+                return (
+                  <motion.div
+                    key={`${id}-${card}`}
+                    initial={{ scale: 0.5, opacity: 0, ...pos }}
+                    animate={{ scale: 1, opacity: 1, ...pos }}
+                    exit={{ scale: 0.5, opacity: 0 }}
+                    style={{ position: 'absolute', zIndex: 20 }}
+                  >
+                    <CPCard cardId={card} trumpSuit={gs.trumpSuit} size="sm" />
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          </div>
+
+          {/* Overlays (Trump Selection, Round End, etc.) */}
+          <AnimatePresence>
+            {showTrumpOverlay && (
+              <motion.div 
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                style={{ position: 'absolute', inset: 0, zIndex: 50, borderRadius: '200px', background: 'rgba(10,5,20,0.85)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                {isTrumpReveal && (
+                  <div style={{ textAlign: 'center' }}>
+                    <p style={{ fontSize: '0.8rem', fontWeight: 900, color: '#f59e0b', letterSpacing: '0.2em', marginBottom: 20 }}>TRUMP REVEAL</p>
+                    <div style={{ display: 'flex', gap: 40 }}>
+                      {[0, 1].map(idx => (
+                        <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+                          <AvatarDisplay avatarId={players[idx]?.avatar} playerName={players[idx]?.name} size={48} />
+                          <CPCard cardId={gs.revealCards?.[players[idx]?.id]} size="md" />
+                          {gs.trumpSelecterId === players[idx]?.id && <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#f59e0b' }}>👑 SELECTOR</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {isTrumpSelection && (
+                  <TrumpSelector onSelect={cpSelectTrump} disabled={!iAmTrumpSelector} selectorName={players.find(p=>p.id===gs.trumpSelecterId)?.name} />
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
-      {/* ── MY HAND ───────────────────────────────────────────────────── */}
-      <div style={{ borderTop:'1px solid rgba(255,255,255,0.06)', padding:'12px 16px 20px', flexShrink:0 }}>
-        {/* Lead suit notice */}
-        {leadSuit && gs.currentTurn === myId && (
-          <p style={{ margin:'0 0 8px', textAlign:'center', fontSize:'0.72rem', fontWeight:800, color:'#fb923c', letterSpacing:'0.1em' }}>
-            Lead suit: {SUIT_SYMBOL[leadSuit]} — {hasLeadSuit ? 'You must follow suit' : 'You may play any card'}
-          </p>
-        )}
+      {/* ── FULL SCREEN ROUND/GAME OVER OVERLAY ───────────────────────── */}
+      <AnimatePresence>
+        {(isRoundEnd || isGameOver) && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{ 
+              position: 'fixed', inset: 0, zIndex: 1000, 
+              background: 'rgba(5, 2, 12, 0.75)', backdropFilter: 'blur(12px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: 20
+            }}
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }}
+              style={{
+                width: 'min(100%, 540px)', background: 'rgba(20, 15, 35, 0.95)',
+                borderRadius: 40, border: '1px solid rgba(255, 255, 255, 0.1)',
+                padding: '50px 40px', textAlign: 'center',
+                boxShadow: '0 40px 100px rgba(0,0,0,0.8), inset 0 0 40px rgba(245,158,11,0.05)'
+              }}
+            >
+              <span style={{ fontSize: '0.85rem', fontWeight: 900, color: '#f59e0b', letterSpacing: '0.4em', textTransform: 'uppercase', marginBottom: 16, display: 'block' }}>
+                {isGameOver ? 'Match Result' : 'Round Result'}
+              </span>
+              
+              <h2 style={{ fontSize: '3.5rem', fontWeight: 900, margin: '0 0 10px', background: 'linear-gradient(to bottom, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                Team {isGameOver ? gs.matchWinner : gs.roundWinner}
+              </h2>
+              <p style={{ fontSize: '1.2rem', fontWeight: 700, color: '#f59e0b', marginBottom: 40 }}>VICTORY</p>
 
-        {/* Play hint */}
-        {gs.currentTurn === myId && gs.state === 'PLAYING' && !trickCardFor(myId) && (
-          <p style={{ margin:'0 0 8px', textAlign:'center', fontSize:'0.72rem', color:'#6b7280' }}>
-            {cpSelectedCard ? 'Tap the same card again to play it' : 'Tap a card to select, tap again to play'}
-          </p>
-        )}
+              <div style={{ display: 'flex', gap: 20, marginBottom: 50 }}>
+                {['A', 'B'].map(t => (
+                  <div key={t} style={{ 
+                    flex: 1, background: 'rgba(255,255,255,0.03)', borderRadius: 24, padding: '24px 16px', 
+                    border: `1px solid ${(isGameOver ? gs.matchWinner : gs.roundWinner) === t ? '#f59e0b' : 'rgba(255,255,255,0.08)'}`,
+                    boxShadow: (isGameOver ? gs.matchWinner : gs.roundWinner) === t ? '0 10px 30px rgba(245,158,11,0.15)' : 'none'
+                  }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 800, color: TEAM_COLORS[t], display: 'block', marginBottom: 8 }}>TEAM {t}</span>
+                    <div style={{ fontSize: '0.6rem', color: '#94a3b8', marginBottom: 12, fontWeight: 600 }}>
+                      {players.filter((_, i) => i % 2 === (t === 'A' ? 0 : 1)).map(p => p.id === myId ? 'You' : p.name).join(' & ')}
+                    </div>
+                    <div style={{ fontSize: '2.2rem', fontWeight: 900 }}>{gs.teams?.[t]?.tricks}</div>
+                    <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700 }}>TRICKS WON</span>
+                  </div>
+                ))}
+              </div>
 
-        <div style={{ display:'flex', flexWrap:'wrap', gap:8, justifyContent:'center', maxWidth:'100%', overflowX:'auto' }}>
-          {hand.map(card => {
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {isHost && (
+                  <button 
+                    onClick={cpRestartGame}
+                    style={{ 
+                      width: '100%', background: '#f59e0b', color: '#000', border: 'none', 
+                      padding: '18px', borderRadius: 16, fontWeight: 900, cursor: 'pointer', 
+                      fontSize: '1.1rem', transition: 'transform 0.2s'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
+                    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                  >
+                    {isGameOver ? 'START NEW MATCH' : 'CONTINUE TO NEXT ROUND'}
+                  </button>
+                )}
+                
+                <button 
+                  onClick={() => {
+                    cpDisconnect();
+                    window.location.href = '/';
+                  }}
+                  style={{ 
+                    width: '100%', background: 'rgba(255,255,255,0.05)', color: '#fff', 
+                    border: '1px solid rgba(255,255,255,0.1)', padding: '16px', 
+                    borderRadius: 16, fontWeight: 800, cursor: 'pointer', fontSize: '1rem' 
+                  }}
+                >
+                  CLOSE & BACK TO HOME
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── BOTTOM HAND AREA ──────────────────────────────────────────── */}
+      <div style={{ 
+        height: 180, display: 'flex', flexDirection: 'column', alignItems: 'center', 
+        padding: '0 24px 20px', zIndex: 100, gap: 15
+      }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          {hand.map((card, idx) => {
             const playable = isPlayable(card);
-            const ruleRestricted = gs.state === 'PLAYING' && gs.currentTurn === myId && !isValidSuit(card);
             return (
-              <CPCard
+              <motion.div
                 key={card}
-                cardId={card}
-                trumpSuit={gs.trumpSuit}
-                disabled={ruleRestricted}
-                selected={cpSelectedCard === card}
-                onClick={playable ? () => handleCardClick(card) : undefined}
-                size="md"
-              />
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: idx * 0.05 }}
+              >
+                <CPCard
+                  cardId={card}
+                  trumpSuit={gs.trumpSuit}
+                  disabled={!playable && gs.currentTurn === myId}
+                  selected={cpSelectedCard === card}
+                  onClick={() => handleCardClick(card)}
+                  size="md"
+                />
+              </motion.div>
             );
           })}
-          {hand.length === 0 && gs.state === 'PLAYING' && (
-            <p style={{ color:'#374151', fontSize:'0.85rem', fontWeight:600 }}>No cards in hand</p>
-          )}
         </div>
 
-        {/* Chat */}
-        <div style={{ marginTop:10, display:'flex', justifyContent:'center' }}>
-          <ChatInput roomId={cpRoomId} socket={cpSocket} mode="compact" />
+        <div style={{ width: 'min(100%, 600px)', display: 'flex', gap: 12, alignItems: 'center' }}>
+          <div style={{ flex: 1 }}>
+            <ChatInput roomId={cpRoomId} socket={cpSocket} mode="compact" />
+          </div>
+          <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+             <span style={{ transform: 'rotate(180deg)' }}>▲</span>
+          </div>
         </div>
       </div>
+
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { margin: 0; padding: 0; overflow: hidden; }
+      `}</style>
     </div>
   );
 }
 
-// Color map needed inside this file
-const TEAM_COLORS = { A: '#f59e0b', B: '#a78bfa' };

@@ -13,7 +13,7 @@ export default function CPLobbyPage() {
   const {
     cpGameState, cpRoomId, cpStatus, cpDisconnect, cpStartGame,
     cpKickPlayer, cpReorderPlayers, cpSendChat, cpChatMessages,
-    cpHostTransferredName, cpHostTransferredId, cpSocket,
+    cpHostTransferredName, cpHostTransferredId, cpSocket, cpAddBot
   } = useCPStore();
   const { playerName, avatar, setScreen } = useGameStore();
 
@@ -193,6 +193,20 @@ export default function CPLobbyPage() {
           >
             {copied ? '✅ Link Copied!' : '🔗 Copy Invite Link'}
           </button>
+
+          {isHost && connectedCount < 4 && (
+            <motion.button
+              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+              onClick={cpAddBot}
+              style={{
+                padding:'11px', borderRadius:14, background:'rgba(59,130,246,0.1)',
+                border:'1px solid rgba(59,130,246,0.25)', color:'#60a5fa',
+                fontWeight:700, fontSize:'0.82rem', cursor:'pointer'
+              }}
+            >
+              🤖 Add Bot Player
+            </motion.button>
+          )}
 
           {isHost ? (
             <motion.button
