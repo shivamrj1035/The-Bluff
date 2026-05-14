@@ -4,7 +4,7 @@ const http = require("http");
 const { Server } = require("socket.io");
 const cors = require("cors");
 const { clerkMiddleware, getAuth } = require("@clerk/express");
-const { setupHandlers, getRoomForHttp } = require("./socket/handlers");
+const { setupHandlers, getRoomForHttp, setupCPHandlers, getCPRoomForHttp } = require("./socket/handlers");
 const redis = require("./redisClient");
 const { sql, ensureProfileSchema } = require("./db");
 const app = express();
@@ -103,6 +103,7 @@ ensureProfileSchema().catch((error) => {
 io.on("connection", (socket) => {
   console.log(`[CONNECT] ${socket.id}`);
   setupHandlers(io, socket);
+  setupCPHandlers(io, socket);
 });
 
 const PORT = process.env.PORT || 4000;
