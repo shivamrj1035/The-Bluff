@@ -57,15 +57,18 @@ export default function CPGameBoard() {
   const trickCardFor = (playerId) =>
     gs.currentTrick?.find(t => t.playerId === playerId)?.card || null;
 
-  // Must-follow-suit check: gray out unplayable cards
+  // Must-follow-suit check: gray out only rule-restricted cards
   const leadSuit = gs.leadSuit;
   const hasLeadSuit = leadSuit && hand.some(c => getCardSuit(c) === leadSuit);
-  const isPlayable = (card) => {
-    if (gs.state !== 'PLAYING') return false;
-    if (gs.currentTurn !== myId) return false;
+  const isValidSuit = (card) => {
     if (!leadSuit) return true;
     if (hasLeadSuit) return getCardSuit(card) === leadSuit;
     return true;
+  };
+  const isPlayable = (card) => {
+    if (gs.state !== 'PLAYING') return false;
+    if (gs.currentTurn !== myId) return false;
+    return isValidSuit(card);
   };
 
   // Trump selector visibility
@@ -128,7 +131,7 @@ export default function CPGameBoard() {
       </div>
 
       {/* ── MAIN TABLE AREA ───────────────────────────────────────────── */}
-      <div style={{ flex:1, display:'grid', gridTemplateRows:'auto 1fr auto', gridTemplateColumns:'auto 1fr auto', gap:8, padding:'12px 16px', overflow:'hidden' }}>
+      <div style={{ flex:1, display:'grid', gridTemplateRows:'auto 1fr auto', gridTemplateColumns:'auto 1fr auto', gap:8, padding:'12px 16px', overflow:'hidden', position:'relative' }}>
 
         {/* Top player (partner) */}
         <div style={{ gridColumn:'1/4', display:'flex', justifyContent:'center', alignItems:'flex-start', paddingTop:4 }}>
@@ -254,32 +257,29 @@ export default function CPGameBoard() {
             )}
           </AnimatePresence>
 
-          {/* ScoreBoard */}
-          <ScoreBoard
-            teams={gs.teams}
-            teamANames={teamA.map(p => p.name)}
-            teamBNames={teamB.map(p => p.name)}
-            trumpSuit={gs.trumpSuit}
-            targetCoats={gs.targetCoats}
-            trickCount={gs.trickCount}
-          />
 
           {/* Center trick cards */}
           <div style={{ display:'grid', gridTemplateAreas:'"tl tc tr" "ml mc mr" "bl bc br"', width:170, height:170, position:'relative' }}>
             {/* Cards in compass positions */}
             {[
-              { pos: topPlayer,   area: 'tc', top:'0',   left:'50%', transform:'translateX(-50%)' },
-              { pos: leftPlayer,  area: 'ml', top:'50%', left:'0',   transform:'translateY(-50%)' },
-              { pos: rightPlayer, area: 'mr', top:'50%', right:'0',  transform:'translateY(-50%)' },
-              { pos: bottomPlayer,area: 'bc', bottom:'0',left:'50%', transform:'translateX(-50%)' },
-            ].map(({ pos, top, left, right, bottom, transform }) => {
+              { pos: topPlayer,   area: 'tc', top:'0',   left:'50%', transform:'translateX(-50%)', initial: { y: -200, x: '-50%', opacity: 0 }, animate: { y: 0, x: '-50%', opacity: 1 } },
+              { pos: leftPlayer,  area: 'ml', top:'50%', left:'0',   transform:'translateY(-50%)', initial: { x: -200, y: '-50%', opacity: 0 }, animate: { x: 0, y: '-50%', opacity: 1 } },
+              { pos: rightPlayer, area: 'mr', top:'50%', right:'0',  transform:'translateY(-50%)', initial: { x: 200, y: '-50%', opacity: 0 }, animate: { x: 0, y: '-50%', opacity: 1 } },
+              { pos: bottomPlayer,area: 'bc', bottom:'0',left:'50%', transform:'translateX(-50%)', initial: { y: 200, x: '-50%', opacity: 0 }, animate: { y: 0, x: '-50%', opacity: 1 } },
+            ].map(({ pos, top, left, right, bottom, initial, animate }) => {
               if (!pos) return null;
               const card = trickCardFor(pos.id);
               if (!card) return null;
               return (
-                <div key={pos.id} style={{ position:'absolute', top, left, right, bottom, transform }}>
+                <motion.div 
+                  key={`${pos.id}-${card}`}
+                  initial={initial}
+                  animate={animate}
+                  transition={{ type: 'spring', stiffness: 250, damping: 25 }}
+                  style={{ position:'absolute', top, left, right, bottom }}
+                >
                   <CPCard cardId={card} trumpSuit={gs.trumpSuit} size="sm" />
-                </div>
+                </motion.div>
               );
             })}
           </div>
@@ -318,6 +318,18 @@ export default function CPGameBoard() {
             />
           )}
         </div>
+
+        {/* Absolutely positioned ScoreBoard at bottom left */}
+        <div style={{ position:'absolute', bottom: 16, left: 16, zIndex: 10 }}>
+          <ScoreBoard
+            teams={gs.teams}
+            teamANames={teamA.map(p => p.name)}
+            teamBNames={teamB.map(p => p.name)}
+            trumpSuit={gs.trumpSuit}
+            targetCoats={gs.targetCoats}
+            trickCount={gs.trickCount}
+          />
+        </div>
       </div>
 
       {/* ── MY HAND ───────────────────────────────────────────────────── */}
@@ -337,17 +349,21 @@ export default function CPGameBoard() {
         )}
 
         <div style={{ display:'flex', flexWrap:'wrap', gap:8, justifyContent:'center', maxWidth:'100%', overflowX:'auto' }}>
-          {hand.map(card => (
-            <CPCard
-              key={card}
-              cardId={card}
-              trumpSuit={gs.trumpSuit}
-              disabled={!isPlayable(card)}
-              selected={cpSelectedCard === card}
-              onClick={() => handleCardClick(card)}
-              size="md"
-            />
-          ))}
+          {hand.map(card => {
+            const playable = isPlayable(card);
+            const ruleRestricted = gs.state === 'PLAYING' && gs.currentTurn === myId && !isValidSuit(card);
+            return (
+              <CPCard
+                key={card}
+                cardId={card}
+                trumpSuit={gs.trumpSuit}
+                disabled={ruleRestricted}
+                selected={cpSelectedCard === card}
+                onClick={playable ? () => handleCardClick(card) : undefined}
+                size="md"
+              />
+            );
+          })}
           {hand.length === 0 && gs.state === 'PLAYING' && (
             <p style={{ color:'#374151', fontSize:'0.85rem', fontWeight:600 }}>No cards in hand</p>
           )}
