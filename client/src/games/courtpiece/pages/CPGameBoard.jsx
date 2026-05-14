@@ -258,18 +258,24 @@ export default function CPGameBoard() {
           <div style={{ display:'grid', gridTemplateAreas:'"tl tc tr" "ml mc mr" "bl bc br"', width:170, height:170, position:'relative' }}>
             {/* Cards in compass positions */}
             {[
-              { pos: topPlayer,   area: 'tc', top:'0',   left:'50%', transform:'translateX(-50%)' },
-              { pos: leftPlayer,  area: 'ml', top:'50%', left:'0',   transform:'translateY(-50%)' },
-              { pos: rightPlayer, area: 'mr', top:'50%', right:'0',  transform:'translateY(-50%)' },
-              { pos: bottomPlayer,area: 'bc', bottom:'0',left:'50%', transform:'translateX(-50%)' },
-            ].map(({ pos, top, left, right, bottom, transform }) => {
+              { pos: topPlayer,   area: 'tc', top:'0',   left:'50%', transform:'translateX(-50%)', initial: { y: -200, x: '-50%', opacity: 0 }, animate: { y: 0, x: '-50%', opacity: 1 } },
+              { pos: leftPlayer,  area: 'ml', top:'50%', left:'0',   transform:'translateY(-50%)', initial: { x: -200, y: '-50%', opacity: 0 }, animate: { x: 0, y: '-50%', opacity: 1 } },
+              { pos: rightPlayer, area: 'mr', top:'50%', right:'0',  transform:'translateY(-50%)', initial: { x: 200, y: '-50%', opacity: 0 }, animate: { x: 0, y: '-50%', opacity: 1 } },
+              { pos: bottomPlayer,area: 'bc', bottom:'0',left:'50%', transform:'translateX(-50%)', initial: { y: 200, x: '-50%', opacity: 0 }, animate: { y: 0, x: '-50%', opacity: 1 } },
+            ].map(({ pos, top, left, right, bottom, initial, animate }) => {
               if (!pos) return null;
               const card = trickCardFor(pos.id);
               if (!card) return null;
               return (
-                <div key={pos.id} style={{ position:'absolute', top, left, right, bottom, transform }}>
+                <motion.div 
+                  key={`${pos.id}-${card}`}
+                  initial={initial}
+                  animate={animate}
+                  transition={{ type: 'spring', stiffness: 250, damping: 25 }}
+                  style={{ position:'absolute', top, left, right, bottom }}
+                >
                   <CPCard cardId={card} trumpSuit={gs.trumpSuit} size="sm" />
-                </div>
+                </motion.div>
               );
             })}
           </div>
