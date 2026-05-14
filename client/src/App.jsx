@@ -7,11 +7,16 @@ import GameBoard from './games/bluff/pages/GameBoard';
 import ExploreGamesPage from './pages/ExploreGamesPage';
 import BluffEntryPage from './games/bluff/pages/BluffEntryPage';
 import ProfilePage from './pages/ProfilePage';
+import AdminPage from './pages/AdminPage';
 import ClerkSync from './components/common/ClerkSync';
 import { useGameStore } from './games/bluff/store/useGameStore';
 
 export default function App() {
-  const { status, gameState, screen } = useGameStore();
+  const { status, gameState, screen, fetchSettings } = useGameStore();
+
+  React.useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
 
   const params = new URLSearchParams(window.location.search);
   const roomParam = params.get('room');
@@ -31,7 +36,8 @@ export default function App() {
             : screen === 'JOIN' ? <JoinPage />
               : screen === 'EXPLORE' ? <ExploreGamesPage />
                 : screen === 'PROFILE' ? <ProfilePage />
-                  : <LandingPage />
+                  : screen === 'ADMIN' ? <AdminPage />
+                    : <LandingPage />
       )}
 
       {(status === 'CONNECTING' || status === 'RECONNECTING') && (
@@ -43,7 +49,7 @@ export default function App() {
         }}>
           <div className="panel" style={{ padding: '48px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
             <div style={{
-              width: '40px', height: '40px', border: '3px solid #a78bfa',
+              width: '40px', height: '40px', border: '3px solid var(--primary-light)',
               borderTopColor: 'transparent', borderRadius: '50%',
               animation: 'spin 0.8s linear infinite',
             }} />

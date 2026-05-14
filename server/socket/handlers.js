@@ -229,7 +229,7 @@ function setupHandlers(io, socket) {
     try {
       const normalizedRoomId = normalizeRoomId(roomId);
       const trimmedName = String(playerName || "").trim().slice(0, 12);
-      const safeAvatar = String(avatar || "P").slice(0, 2);
+      const safeAvatar = String(avatar || "P").trim().slice(0, 20); // avatar IDs can be up to 20 chars (e.g. 'crazy1', 'rocket', 'ninja')
       const isCreateRequest = !normalizedRoomId;
 
       let effectiveRoomId = normalizedRoomId;
@@ -628,4 +628,21 @@ function getRoomForHttp(roomId) {
   return roomCache.get(roomId) || null;
 }
 
-module.exports = { setupHandlers, getRoomForHttp };
+function getActiveRoomsList() {
+  const list = [];
+  for (const roomId of activeRooms) {
+    const room = roomCache.get(roomId);
+    if (room) {
+      list.push({
+        roomId,
+        state: room.state,
+        players: room.players.map(p => ({ name: p.name, isConnected: p.isConnected })),
+        lastActivityAt: room.lastActivityAt,
+        expiresAt: room.expiresAt,
+      });
+    }
+  }
+  return list;
+}
+
+module.exports = { setupHandlers, getRoomForHttp, getActiveRoomsList };

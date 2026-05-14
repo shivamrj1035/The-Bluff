@@ -26,3 +26,16 @@ async function requestProfile({ token, profile }) {
 export async function syncProfile(token, profile) {
   return requestProfile({ token, profile });
 }
+
+// Read profile without overwriting (GET)
+export async function getProfile(token) {
+  const response = await fetch(buildUrl('/api/profile'), {
+    method: 'GET',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!response.ok) {
+    const message = await response.text().catch(() => '');
+    throw new Error(message || 'Unable to fetch profile');
+  }
+  return response.json();
+}
