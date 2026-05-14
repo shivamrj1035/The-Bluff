@@ -1,26 +1,113 @@
-import React from 'react';
-import { Toaster } from './components/Toast';
-import { useGameStore } from './store/useGameStore';
+import React, { lazy, Suspense } from 'react';
+import { Toaster } from './components/common/Toast';
 import LandingPage from './pages/LandingPage';
-import JoinPage from './pages/JoinPage';
-import LobbyPage from './pages/LobbyPage';
-import GameBoard from './pages/GameBoard';
+import JoinPage from './games/bluff/pages/JoinPage';
+import LobbyPage from './games/bluff/pages/LobbyPage';
+import GameBoard from './games/bluff/pages/GameBoard';
+import ExploreGamesPage from './pages/ExploreGamesPage';
+import BluffEntryPage from './games/bluff/pages/BluffEntryPage';
+import ProfilePage from './pages/ProfilePage';
+import AdminPage from './pages/AdminPage';
+import ClerkSync from './components/common/ClerkSync';
+import { useGameStore } from './games/bluff/store/useGameStore';
+import { useCPStore } from './games/courtpiece/store/useCPStore';
+
+// Court Piece pages — lazy loaded so they don't affect Bluff bundle
+const CourtPieceEntryPage = lazy(() => import('./games/courtpiece/pages/CourtPieceEntryPage'));
+const CPJoinPage = lazy(() => import('./games/courtpiece/pages/CPJoinPage'));
+const CPLobbyPage = lazy(() => import('./games/courtpiece/pages/CPLobbyPage'));
+const CPGameBoard = lazy(() => import('./games/courtpiece/pages/CPGameBoard'));
+
+const Spinner = () => (
+  <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f0a1a' }}>
+    <div style={{ width: 36, height: 36, border: '3px solid #fb923c', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+    <style>{`@keyframes spin { to { transform:rotate(360deg); } }`}</style>
+  </div>
+);
 
 export default function App() {
-  const { status, gameState, screen } = useGameStore();
+  const { status, gameState, screen, fetchSettings } = useGameStore();
+
+  React.useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
+  const { cpStatus, cpGameState, cpScreen } = useCPStore();
 
   const params = new URLSearchParams(window.location.search);
   const roomParam = params.get('room');
+  const gameParam = (params.get('game') || 'bluff').toLowerCase();
+  const shouldOpenBluffJoin = Boolean(roomParam) && (gameParam === 'bluff');
+  const shouldOpenCPJoin = Boolean(roomParam) && (gameParam === 'courtpiece');
 
-  // Inlined rendering logic for stability
+  // ── Court Piece is active (connected to a CP room) ──────────────────────
+  if (cpStatus === 'CONNECTING' || cpStatus === 'RECONNECTING') {
+    return (
+      <Suspense fallback={<Spinner />}>
+        <Toaster /><ClerkSync />
+        <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'radial-gradient(ellipse at 50% 0%,#1a0a2a,#04020d)', gap: 24 }}>
+          <div style={{ width: 40, height: 40, border: '3px solid #fb923c', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+          <p style={{ color: '#fff', fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>
+            {cpStatus === 'RECONNECTING' ? 'Reconnecting...' : 'Connecting...'}
+          </p>
+          <style>{`@keyframes spin { to { transform:rotate(360deg); } }`}</style>
+        </div>
+      </Suspense>
+    );
+  }
+
+  if (cpStatus === 'CONNECTED') {
+    const isInCPGame = cpGameState && cpGameState.state !== 'WAITING';
+    return (
+      <Suspense fallback={<Spinner />}>
+        <Toaster /><ClerkSync />
+        {isInCPGame ? <CPGameBoard /> : <CPLobbyPage />}
+      </Suspense>
+    );
+  }
+
+  // ── Court Piece entry/join (idle state, CP screens) ─────────────────────
+  if (cpStatus === 'IDLE' || cpStatus === 'ERROR') {
+    if (shouldOpenCPJoin) {
+      return (
+        <Suspense fallback={<Spinner />}>
+          <Toaster /><ClerkSync />
+          <CPJoinPage />
+        </Suspense>
+      );
+    }
+    if (cpScreen === 'CP_ENTRY') {
+      return (
+        <Suspense fallback={<Spinner />}>
+          <Toaster /><ClerkSync />
+          <CourtPieceEntryPage />
+        </Suspense>
+      );
+    }
+    if (cpScreen === 'CP_JOIN') {
+      return (
+        <Suspense fallback={<Spinner />}>
+          <Toaster /><ClerkSync />
+          <CPJoinPage />
+        </Suspense>
+      );
+    }
+  }
+
+  // ── Bluff game (original routing — unchanged) ────────────────────────────
   return (
     <>
       <Toaster />
-      
+      <ClerkSync />
+
       {(status === 'IDLE' || status === 'ERROR') && (
-        roomParam && status !== 'ERROR'
+        shouldOpenBluffJoin && status !== 'ERROR'
           ? <JoinPage />
-          : screen === 'JOIN' ? <JoinPage /> : <LandingPage />
+          : screen === 'BLUFF_ENTRY' ? <BluffEntryPage />
+            : screen === 'JOIN' ? <JoinPage />
+              : screen === 'EXPLORE' ? <ExploreGamesPage />
+                : screen === 'PROFILE' ? <ProfilePage />
+                  : screen === 'ADMIN' ? <AdminPage />
+                    : <LandingPage />
       )}
 
       {(status === 'CONNECTING' || status === 'RECONNECTING') && (
@@ -32,7 +119,7 @@ export default function App() {
         }}>
           <div className="panel" style={{ padding: '48px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
             <div style={{
-              width: '40px', height: '40px', border: '3px solid #a78bfa',
+              width: '40px', height: '40px', border: '3px solid var(--primary-light)',
               borderTopColor: 'transparent', borderRadius: '50%',
               animation: 'spin 0.8s linear infinite',
             }} />

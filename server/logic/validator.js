@@ -25,8 +25,8 @@ function validateAction(room, playerId, action, payload) {
         return { valid: false, message: "Not your turn." };
 
       const { cardIds, declaredRank } = payload || {};
-      if (!cardIds || cardIds.length === 0 || cardIds.length > 4)
-        return { valid: false, message: "Must play 1-4 cards." };
+      if (!cardIds || cardIds.length === 0 || cardIds.length > 8)
+        return { valid: false, message: "Must play 1-8 cards." };
 
       const playerHand = hands[playerId] || [];
       const hasAllCards = cardIds.every((cardId) => playerHand.includes(cardId));

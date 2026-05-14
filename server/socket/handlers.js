@@ -4,7 +4,16 @@ const { validateAction } = require("../logic/validator");
 const { serializeState } = require("./sync");
 const redis = require("../redisClient");
 
+// ─── Court Piece imports ───────────────────────────────────────────────────────
+const { CP_EVENTS, CP_GAME_STATES } = require("../logic/courtpiece/constants");
+const { createCPRoom, cpReducer } = require("../logic/courtpiece/gameState");
+const { validateCPAction } = require("../logic/courtpiece/validator");
+const { serializeCPState } = require("./cpSync");
+
 const ROOM_TTL = 60 * 60 * 4; // 4 hours in seconds
+const ROOM_TTL_MS = ROOM_TTL * 1000;
+const EMPTY_ROOM_GRACE_MS = 5 * 60 * 1000;
+const ROOM_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 // ─────────────────────────────────────────────
 //  IN-MEMORY CACHE  (primary storage)
@@ -49,6 +58,8 @@ async function getRoom(roomId) {
 
 // Write to cache immediately; schedule Redis flush (no immediate Redis write)
 function saveRoom(roomId, room) {
+  room.lastActivityAt = Date.now();
+  room.expiresAt = room.lastActivityAt + ROOM_TTL_MS;
   roomCache.set(roomId, room);
   dirtyRooms.add(roomId);
 }
@@ -61,6 +72,15 @@ async function deleteRoom(roomId) {
     await redis.del(`room:${roomId}`);
   } catch (e) {
     console.error("[deleteRoom Redis error]", e.message);
+  }
+}
+
+async function persistRoomImmediately(roomId, room) {
+  try {
+    await redis.set(`room:${roomId}`, JSON.stringify(room), "EX", ROOM_TTL);
+  } catch (e) {
+    dirtyRooms.add(roomId);
+    console.error(`[Persist error] room ${roomId}:`, e.message);
   }
 }
 
@@ -111,7 +131,27 @@ function startGlobalTimer(io) {
         }
 
         const now = Date.now();
-        const isPicking    = room.state === GAME_STATES.BLUFF_PICKING;
+        if (room.emptySince && now - room.emptySince >= EMPTY_ROOM_GRACE_MS) {
+          deleteRoom(roomId).catch((err) => {
+            console.error(`[ROOM DELETE error] ${roomId}:`, err.message);
+          });
+          activeRooms.delete(roomId);
+          console.log(`[ROOM EXPIRED] ${roomId} — empty grace elapsed`);
+          continue;
+        }
+
+        if (room.expiresAt && now >= room.expiresAt) {
+          io.to(roomId).emit(EVENTS.ERROR, { message: "This table expired due to inactivity." });
+          io.to(roomId).emit("room_closed");
+          deleteRoom(roomId).catch((err) => {
+            console.error(`[ROOM DELETE error] ${roomId}:`, err.message);
+          });
+          activeRooms.delete(roomId);
+          console.log(`[ROOM EXPIRED] ${roomId} — inactive too long`);
+          continue;
+        }
+
+        const isPicking = room.state === GAME_STATES.BLUFF_PICKING;
         const isResolution = room.state === GAME_STATES.ROUND_RESOLUTION;
         const isPlayerTurn = room.state === GAME_STATES.PLAYER_TURN;
 
@@ -163,29 +203,76 @@ function pickNewHost(room, departingSocketId) {
   return candidate ? candidate.id : null;
 }
 
+function normalizeRoomId(rawRoomId) {
+  return String(rawRoomId || "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 8);
+}
+
+function generateRoomCode() {
+  let code = "";
+  for (let i = 0; i < 6; i += 1) {
+    code += ROOM_CODE_CHARS[Math.floor(Math.random() * ROOM_CODE_CHARS.length)];
+  }
+  return code;
+}
+
+async function generateUniqueRoomId() {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const candidate = generateRoomCode();
+    const existing = getRoomFromCache(candidate) || await getRoom(candidate);
+    if (!existing) return candidate;
+  }
+  throw new Error("Unable to generate unique room code");
+}
+
 function setupHandlers(io, socket) {
   startGlobalTimer(io);
 
   // --- JOIN ROOM ---
   socket.on(EVENTS.JOIN_ROOM, async ({ roomId, playerName, avatar }) => {
     try {
-      let room = await getRoom(roomId);
+      const normalizedRoomId = normalizeRoomId(roomId);
+      const trimmedName = String(playerName || "").trim().slice(0, 12);
+      const safeAvatar = String(avatar || "P").trim().slice(0, 20); // avatar IDs can be up to 20 chars (e.g. 'crazy1', 'rocket', 'ninja')
+      const isCreateRequest = !normalizedRoomId;
+
+      let effectiveRoomId = normalizedRoomId;
+      if (isCreateRequest) {
+        effectiveRoomId = await generateUniqueRoomId();
+      }
+
+      let room = await getRoom(effectiveRoomId);
+
+      if (room && room.expiresAt && Date.now() >= room.expiresAt) {
+        await deleteRoom(effectiveRoomId);
+        activeRooms.delete(effectiveRoomId);
+        room = null;
+      }
+
+      if (!room && !isCreateRequest) {
+        socket.emit(EVENTS.ERROR, { message: "Table not found or expired." });
+        return;
+      }
+
       if (!room) {
-        room = createRoom(roomId);
+        room = createRoom(effectiveRoomId);
         room.hostId = socket.id;
       }
 
       // 1. Reconnection: player with same name
-      const existingPlayer = room.players.find((p) => p.name === playerName);
+      const existingPlayer = room.players.find((p) => p.name === trimmedName);
       if (existingPlayer) {
         const oldId = existingPlayer.id;
         existingPlayer.id = socket.id;
         existingPlayer.isConnected = true;
+        existingPlayer.avatar = safeAvatar || existingPlayer.avatar;
 
-        if (room.hostId === oldId)          room.hostId = socket.id;
-        if (room.currentTurn === oldId)     room.currentTurn = socket.id;
-        if (room.bluffPickerId === oldId)   room.bluffPickerId = socket.id;
-        if (room.bluffTargetId === oldId)   room.bluffTargetId = socket.id;
+        if (room.hostId === oldId) room.hostId = socket.id;
+        if (room.currentTurn === oldId) room.currentTurn = socket.id;
+        if (room.bluffPickerId === oldId) room.bluffPickerId = socket.id;
+        if (room.bluffTargetId === oldId) room.bluffTargetId = socket.id;
         if (room.lastPlayerToPlay === oldId) room.lastPlayerToPlay = socket.id;
 
         if (room.hands[oldId]) {
@@ -200,29 +287,58 @@ function setupHandlers(io, socket) {
         }
 
         socketRoomMap.delete(oldId);
+        room.emptySince = null;
 
       } else {
         // 2. New joiner
         if (room.state === GAME_STATES.WAITING) {
+          if (!trimmedName) {
+            socket.emit(EVENTS.ERROR, { message: "Enter your player name." });
+            return;
+          }
+          if (room.players.length >= (room.maxPlayers || 8)) {
+            socket.emit(EVENTS.ERROR, { message: "This table is full." });
+            return;
+          }
           room.players.push({
             id: socket.id,
-            name: playerName || "Player",
-            avatar: avatar || "P",
+            name: trimmedName,
+            avatar: safeAvatar || "P",
             isConnected: true,
             cardCount: 0,
           });
+          room.emptySince = null;
         } else {
-          console.log(`[SPECTATOR] ${playerName} joined room ${roomId}`);
+          console.log(`[SPECTATOR] ${trimmedName || "Spectator"} joined room ${effectiveRoomId}`);
         }
       }
 
-      socketRoomMap.set(socket.id, roomId);
-      saveRoom(roomId, room);
-      activeRooms.add(roomId);
-      socket.join(roomId);
+      const connectedHost = room.players.find((p) => p.id === room.hostId && p.isConnected);
+      if (!connectedHost) {
+        const fallbackHost = room.players.find((p) => p.isConnected);
+        if (fallbackHost) {
+          room.hostId = fallbackHost.id;
+        }
+      }
 
-      console.log(`[JOIN] ${playerName} (${socket.id}) → room ${roomId}`);
-      emitState(io, roomId, room);
+      socketRoomMap.set(socket.id, effectiveRoomId);
+      saveRoom(effectiveRoomId, room);
+      activeRooms.add(effectiveRoomId);
+      socket.join(effectiveRoomId);
+      await persistRoomImmediately(effectiveRoomId, room);
+
+      socket.emit(EVENTS.ROOM_INFO, {
+        roomId: effectiveRoomId,
+        game: "bluff",
+        state: room.state,
+        playerCount: room.players.length,
+        maxPlayers: room.maxPlayers || 8,
+        isHost: room.hostId === socket.id,
+        inviteUrl: `?game=bluff&room=${effectiveRoomId}`,
+      });
+
+      console.log(`[JOIN] ${trimmedName || "Spectator"} (${socket.id}) → room ${effectiveRoomId}`);
+      emitState(io, effectiveRoomId, room);
     } catch (err) {
       console.error("[JOIN error]", err);
       socket.emit(EVENTS.ERROR, { message: "Join failed." });
@@ -474,9 +590,9 @@ function setupHandlers(io, socket) {
       // If all players disconnected → destroy room entirely
       const anyConnected = room.players.some((p) => p.isConnected);
       if (!anyConnected) {
-        await deleteRoom(roomId);
-        activeRooms.delete(roomId);
-        console.log(`[ROOM DELETED] ${roomId} — all players disconnected`);
+        room.emptySince = Date.now();
+        saveRoom(roomId, room);
+        console.log(`[ROOM IDLE] ${roomId} — waiting for reconnect grace window`);
         return;
       }
 
@@ -518,4 +634,351 @@ function getRoomForHttp(roomId) {
   return roomCache.get(roomId) || null;
 }
 
-module.exports = { setupHandlers, getRoomForHttp };
+function getActiveRoomsList() {
+  const list = [];
+  for (const roomId of activeRooms) {
+    const room = roomCache.get(roomId);
+    if (room) {
+      list.push({
+        roomId,
+        state: room.state,
+        players: room.players.map(p => ({ name: p.name, isConnected: p.isConnected })),
+        lastActivityAt: room.lastActivityAt,
+        expiresAt: room.expiresAt,
+      });
+    }
+  }
+  return list;
+}
+
+module.exports = { setupHandlers, getRoomForHttp, getActiveRoomsList, setupCPHandlers, getCPRoomForHttp };
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  COURT PIECE HANDLERS
+//  Completely isolated from Bluff. Separate caches, separate Redis prefix (cproom:).
+// ══════════════════════════════════════════════════════════════════════════════
+
+const cpRoomCache = new Map();
+const cpDirtyRooms = new Set();
+const cpActiveRooms = new Set();
+const cpSocketRoomMap = new Map();
+const CP_ROOM_TTL = 60 * 60 * 4;
+const CP_ROOM_TTL_MS = CP_ROOM_TTL * 1000;
+
+function getCPRoomFromCache(roomId) {
+  return cpRoomCache.get(roomId) || null;
+}
+
+async function getCPRoom(roomId) {
+  if (cpRoomCache.has(roomId)) return cpRoomCache.get(roomId);
+  try {
+    const data = await redis.get(`cproom:${roomId}`);
+    if (data) {
+      const room = JSON.parse(data);
+      cpRoomCache.set(roomId, room);
+      return room;
+    }
+  } catch (e) {
+    console.error('[CP Cache miss Redis error]', e.message);
+  }
+  return null;
+}
+
+function saveCPRoom(roomId, room) {
+  room.lastActivityAt = Date.now();
+  room.expiresAt = room.lastActivityAt + CP_ROOM_TTL_MS;
+  cpRoomCache.set(roomId, room);
+  cpDirtyRooms.add(roomId);
+}
+
+async function deleteCPRoom(roomId) {
+  cpRoomCache.delete(roomId);
+  cpDirtyRooms.delete(roomId);
+  try { await redis.del(`cproom:${roomId}`); } catch (e) { }
+}
+
+async function persistCPRoomImmediately(roomId, room) {
+  try {
+    await redis.set(`cproom:${roomId}`, JSON.stringify(room), 'EX', CP_ROOM_TTL);
+  } catch (e) {
+    cpDirtyRooms.add(roomId);
+    console.error(`[CP Persist error] room ${roomId}:`, e.message);
+  }
+}
+
+setInterval(async () => {
+  if (cpDirtyRooms.size === 0) return;
+  const toFlush = [...cpDirtyRooms];
+  cpDirtyRooms.clear();
+  for (const roomId of toFlush) {
+    const room = cpRoomCache.get(roomId);
+    if (!room) continue;
+    try {
+      await redis.set(`cproom:${roomId}`, JSON.stringify(room), 'EX', CP_ROOM_TTL);
+    } catch (e) {
+      cpDirtyRooms.add(roomId);
+    }
+  }
+}, 30_000);
+
+function emitCPState(io, roomId, room) {
+  if (!room) return;
+  const roomSockets = io.sockets.adapter.rooms.get(roomId);
+  if (!roomSockets) return;
+  for (const socketId of roomSockets) {
+    io.to(socketId).emit(CP_EVENTS.CP_GAME_STATE, serializeCPState(room, socketId));
+  }
+}
+
+function getCPRoomForHttp(roomId) {
+  return cpRoomCache.get(roomId) || null;
+}
+
+function pickCPNewHost(room, departingId) {
+  const candidate = room.players.find(p => p.id !== departingId && p.isConnected);
+  return candidate ? candidate.id : null;
+}
+
+function setupCPHandlers(io, socket) {
+  // ── CP_JOIN_ROOM ────────────────────────────────────────────────────────
+  socket.on(CP_EVENTS.CP_JOIN_ROOM, async ({ roomId, playerName, avatar }) => {
+    try {
+      const rawId = String(roomId || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+      const trimmedName = String(playerName || '').trim().slice(0, 12);
+      const safeAvatar = String(avatar || 'P').slice(0, 2);
+      const isCreate = !rawId;
+
+      let effectiveRoomId = rawId;
+      if (isCreate) {
+        // Generate unique CP room code
+        for (let i = 0; i < 20; i++) {
+          let code = '';
+          for (let j = 0; j < 6; j++) code += ROOM_CODE_CHARS[Math.floor(Math.random() * ROOM_CODE_CHARS.length)];
+          const exists = getCPRoomFromCache(code) || await getCPRoom(code);
+          if (!exists) { effectiveRoomId = code; break; }
+        }
+        if (!effectiveRoomId) { socket.emit(CP_EVENTS.CP_ERROR, { message: 'Could not create room.' }); return; }
+      }
+
+      let room = await getCPRoom(effectiveRoomId);
+
+      if (room && room.expiresAt && Date.now() >= room.expiresAt) {
+        await deleteCPRoom(effectiveRoomId);
+        cpActiveRooms.delete(effectiveRoomId);
+        room = null;
+      }
+
+      if (!room && !isCreate) {
+        socket.emit(CP_EVENTS.CP_ERROR, { message: 'Table not found or expired.' });
+        return;
+      }
+
+      if (!room) {
+        room = createCPRoom(effectiveRoomId);
+        room.hostId = socket.id;
+      }
+
+      // Reconnect by name
+      const existing = room.players.find(p => p.name === trimmedName);
+      if (existing) {
+        const oldId = existing.id;
+        existing.id = socket.id;
+        existing.isConnected = true;
+        existing.avatar = safeAvatar || existing.avatar;
+        if (room.hostId === oldId) room.hostId = socket.id;
+        if (room.currentTurn === oldId) room.currentTurn = socket.id;
+        if (room.trumpSelecterId === oldId) room.trumpSelecterId = socket.id;
+        // Update hands key
+        if (room.hands[oldId]) { room.hands[socket.id] = room.hands[oldId]; delete room.hands[oldId]; }
+        // Update revealCards key
+        if (room.revealCards[oldId]) { room.revealCards[socket.id] = room.revealCards[oldId]; delete room.revealCards[oldId]; }
+        // Update currentTrick player references
+        room.currentTrick = room.currentTrick.map(t => t.playerId === oldId ? { ...t, playerId: socket.id } : t);
+        cpSocketRoomMap.delete(oldId);
+        room.emptySince = null;
+      } else {
+        if (room.state === CP_GAME_STATES.WAITING) {
+          if (!trimmedName) { socket.emit(CP_EVENTS.CP_ERROR, { message: 'Enter your player name.' }); return; }
+          if (room.players.length >= 4) { socket.emit(CP_EVENTS.CP_ERROR, { message: 'Table is full (4 players max).' }); return; }
+          room.players.push({ id: socket.id, name: trimmedName, avatar: safeAvatar || 'P', isConnected: true, cardCount: 0 });
+          room.emptySince = null;
+        } else {
+          console.log(`[CP SPECTATOR] ${trimmedName} joined ${effectiveRoomId}`);
+        }
+      }
+
+      // Ensure host is a connected player
+      if (!room.players.find(p => p.id === room.hostId && p.isConnected)) {
+        const fb = room.players.find(p => p.isConnected);
+        if (fb) room.hostId = fb.id;
+      }
+
+      cpSocketRoomMap.set(socket.id, effectiveRoomId);
+      saveCPRoom(effectiveRoomId, room);
+      cpActiveRooms.add(effectiveRoomId);
+      socket.join(effectiveRoomId);
+      await persistCPRoomImmediately(effectiveRoomId, room);
+
+      socket.emit(CP_EVENTS.CP_ROOM_INFO, {
+        roomId: effectiveRoomId,
+        game: 'courtpiece',
+        state: room.state,
+        playerCount: room.players.length,
+        maxPlayers: 4,
+        isHost: room.hostId === socket.id,
+        inviteUrl: `?game=courtpiece&room=${effectiveRoomId}`,
+      });
+
+      console.log(`[CP JOIN] ${trimmedName} (${socket.id}) → room ${effectiveRoomId}`);
+      emitCPState(io, effectiveRoomId, room);
+    } catch (err) {
+      console.error('[CP JOIN error]', err);
+      socket.emit(CP_EVENTS.CP_ERROR, { message: 'Join failed.' });
+    }
+  });
+
+  // ── CP_START_GAME ───────────────────────────────────────────────────────
+  socket.on(CP_EVENTS.CP_START_GAME, async ({ roomId }) => {
+    try {
+      let room = await getCPRoom(roomId);
+      if (!room || room.hostId !== socket.id) return;
+      if (room.players.filter(p => p.isConnected).length !== 4) {
+        socket.emit(CP_EVENTS.CP_ERROR, { message: 'Need exactly 4 players to start.' });
+        return;
+      }
+      room = cpReducer(room, { type: 'CP_START_GAME', playerId: socket.id });
+      saveCPRoom(roomId, room);
+      io.to(roomId).emit(CP_EVENTS.CP_GAME_STARTED);
+      emitCPState(io, roomId, room);
+      // Transition to trump selection after 3s reveal animation
+      setTimeout(() => {
+        let r = getCPRoomFromCache(roomId);
+        if (!r || r.state !== CP_GAME_STATES.TRUMP_REVEAL) return;
+        r = cpReducer(r, { type: 'CP_BEGIN_TRUMP_SELECTION' });
+        saveCPRoom(roomId, r);
+        emitCPState(io, roomId, r);
+      }, 3500);
+    } catch (err) { console.error('[CP START_GAME error]', err); }
+  });
+
+  // ── CP_SELECT_TRUMP ─────────────────────────────────────────────────────
+  socket.on(CP_EVENTS.CP_SELECT_TRUMP, async ({ roomId, suit }) => {
+    try {
+      let room = await getCPRoom(roomId);
+      if (!room) return;
+      const validation = validateCPAction(room, socket.id, 'CP_SELECT_TRUMP', { suit });
+      if (!validation.valid) { socket.emit(CP_EVENTS.CP_ERROR, { message: validation.message }); return; }
+      room = cpReducer(room, { type: 'CP_SELECT_TRUMP', playerId: socket.id, payload: { suit } });
+      saveCPRoom(roomId, room);
+      emitCPState(io, roomId, room);
+    } catch (err) { console.error('[CP SELECT_TRUMP error]', err); }
+  });
+
+  // ── CP_REQUEST_REDEAL ───────────────────────────────────────────────────
+  socket.on(CP_EVENTS.CP_REQUEST_REDEAL, async ({ roomId }) => {
+    try {
+      let room = await getCPRoom(roomId);
+      if (!room) return;
+      const validation = validateCPAction(room, socket.id, 'CP_REQUEST_REDEAL', {});
+      if (!validation.valid) { socket.emit(CP_EVENTS.CP_ERROR, { message: validation.message }); return; }
+      room = cpReducer(room, { type: 'CP_REQUEST_REDEAL', playerId: socket.id });
+      saveCPRoom(roomId, room);
+      emitCPState(io, roomId, room);
+    } catch (err) { console.error('[CP REQUEST_REDEAL error]', err); }
+  });
+
+  // ── CP_PLAY_CARD ────────────────────────────────────────────────────────
+  socket.on(CP_EVENTS.CP_PLAY_CARD, async ({ roomId, card }) => {
+    try {
+      let room = await getCPRoom(roomId);
+      if (!room) return;
+      const validation = validateCPAction(room, socket.id, 'CP_PLAY_CARD', { card });
+      if (!validation.valid) { socket.emit(CP_EVENTS.CP_ERROR, { message: validation.message }); return; }
+      room = cpReducer(room, { type: 'CP_PLAY_CARD', playerId: socket.id, payload: { card } });
+      saveCPRoom(roomId, room);
+      emitCPState(io, roomId, room);
+      // Auto-resolve trick after animation delay
+      if (room.state === CP_GAME_STATES.TRICK_RESOLUTION) {
+        setTimeout(() => {
+          let r = getCPRoomFromCache(roomId);
+          if (!r || r.state !== CP_GAME_STATES.TRICK_RESOLUTION) return;
+          r = cpReducer(r, { type: 'CP_NEXT_TRICK' });
+          saveCPRoom(roomId, r);
+          emitCPState(io, roomId, r);
+        }, 2500);
+      }
+    } catch (err) { console.error('[CP PLAY_CARD error]', err); }
+  });
+
+  // ── CP_KICK_PLAYER ──────────────────────────────────────────────────────
+  socket.on(CP_EVENTS.CP_KICK_PLAYER, async ({ roomId, targetId }) => {
+    try {
+      let room = await getCPRoom(roomId);
+      if (!room || room.hostId !== socket.id || targetId === socket.id) return;
+      room = cpReducer(room, { type: 'CP_KICK_PLAYER', payload: { targetId } });
+      saveCPRoom(roomId, room);
+      io.to(targetId).emit(CP_EVENTS.CP_KICKED);
+      emitCPState(io, roomId, room);
+    } catch (err) { console.error('[CP KICK_PLAYER error]', err); }
+  });
+
+  // ── CP_CLOSE_GAME ───────────────────────────────────────────────────────
+  socket.on(CP_EVENTS.CP_CLOSE_GAME, async ({ roomId }) => {
+    try {
+      let room = await getCPRoom(roomId);
+      if (!room || room.hostId !== socket.id) return;
+      room = cpReducer(room, { type: 'CP_RESET_TO_LOBBY' });
+      saveCPRoom(roomId, room);
+      emitCPState(io, roomId, room);
+    } catch (err) { console.error('[CP CLOSE_GAME error]', err); }
+  });
+
+  // ── CP_RESTART_GAME ─────────────────────────────────────────────────────
+  socket.on(CP_EVENTS.CP_RESTART_GAME, async ({ roomId }) => {
+    try {
+      let room = await getCPRoom(roomId);
+      if (!room || room.hostId !== socket.id) return;
+      // Full match reset (coats too)
+      room = cpReducer(room, { type: 'CP_RESET_TO_LOBBY' });
+      room.teams = { A: { tricks: 0, coats: 0 }, B: { tricks: 0, coats: 0 } };
+      saveCPRoom(roomId, room);
+      emitCPState(io, roomId, room);
+    } catch (err) { console.error('[CP RESTART_GAME error]', err); }
+  });
+
+  // ── CP_REORDER_PLAYERS ──────────────────────────────────────────────────
+  socket.on(CP_EVENTS.CP_REORDER_PLAYERS, async ({ roomId, orderedIds }) => {
+    try {
+      let room = await getCPRoom(roomId);
+      if (!room || room.hostId !== socket.id || room.state !== CP_GAME_STATES.WAITING) return;
+      room = cpReducer(room, { type: 'CP_REORDER_PLAYERS', payload: { orderedIds } });
+      saveCPRoom(roomId, room);
+      emitCPState(io, roomId, room);
+    } catch (err) { console.error('[CP REORDER_PLAYERS error]', err); }
+  });
+
+  // ── DISCONNECT (CP side) ────────────────────────────────────────────────
+  socket.on('disconnect', async () => {
+    try {
+      const cpRoomId = cpSocketRoomMap.get(socket.id);
+      cpSocketRoomMap.delete(socket.id);
+      if (!cpRoomId) return;
+      let room = getCPRoomFromCache(cpRoomId) || await getCPRoom(cpRoomId);
+      if (!room) return;
+      const player = room.players.find(p => p.id === socket.id);
+      if (player) player.isConnected = false;
+      const anyConnected = room.players.some(p => p.isConnected);
+      if (!anyConnected) { room.emptySince = Date.now(); saveCPRoom(cpRoomId, room); return; }
+      if (room.hostId === socket.id) {
+        const newHostId = pickCPNewHost(room, socket.id);
+        if (newHostId) {
+          room = cpReducer(room, { type: 'CP_TRANSFER_HOST', payload: { newHostId } });
+          const nh = room.players.find(p => p.id === newHostId);
+          io.to(cpRoomId).emit(CP_EVENTS.CP_HOST_TRANSFERRED, { newHostId, newHostName: nh?.name || 'Unknown' });
+        }
+      }
+      saveCPRoom(cpRoomId, room);
+      emitCPState(io, cpRoomId, room);
+    } catch (err) { console.error('[CP DISCONNECT error]', err); }
+  });
+}

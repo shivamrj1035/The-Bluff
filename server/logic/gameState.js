@@ -6,6 +6,7 @@ function createRoom(roomId) {
     roomId,
     state: GAME_STATES.WAITING,
     hostId: null,
+    maxPlayers: 8,
     players: [],        // ordered array — host can reorder in lobby
     hands: {},
     pile: [],
@@ -24,6 +25,9 @@ function createRoom(roomId) {
     timerDuration: 60,
     turnStartTime: null,
     createdAt: Date.now(),
+    lastActivityAt: Date.now(),
+    expiresAt: Date.now() + (60 * 60 * 4 * 1000),
+    emptySince: null,
   };
 }
 
