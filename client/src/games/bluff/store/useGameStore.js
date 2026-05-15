@@ -4,6 +4,62 @@ import { syncProfile, getProfile } from '../../../lib/profileApi';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || '/';
 
+// ─── Theme token defaults (mirrors :root in index.css) ───────────────────────
+export const THEME_DEFAULTS = {
+  primary:       '#7c3aed',
+  primaryLight:  '#a78bfa',
+  secondary:     '#6d28d9',
+  bg:            '#010409',
+  bg2:           '#0d1117',
+  text:          '#f0f9ff',
+  muted:         '#94a3b8',
+  gold:          '#f59e0b',
+  green:         '#10b981',
+  red:           '#ef4444',
+};
+
+/**
+ * Apply a theme object to CSS custom properties on :root.
+ * Any missing key falls back to THEME_DEFAULTS.
+ * @param {object} theme - Partial or full theme object from site settings
+ */
+export function applyTheme(theme = {}) {
+  const root = document.documentElement;
+  const t = { ...THEME_DEFAULTS, ...theme };
+
+  root.style.setProperty('--primary',       t.primary);
+  root.style.setProperty('--primary-light', t.primaryLight);
+  root.style.setProperty('--secondary',     t.secondary);
+  root.style.setProperty('--bg',            t.bg);
+  root.style.setProperty('--bg2',           t.bg2);
+  root.style.setProperty('--text',          t.text);
+  root.style.setProperty('--muted',         t.muted);
+  root.style.setProperty('--gold',          t.gold);
+  root.style.setProperty('--green',         t.green);
+  root.style.setProperty('--red',           t.red);
+
+  // Derived alias variables used across the site
+  root.style.setProperty('--accent-purple',  t.primary);
+  root.style.setProperty('--accent-glow',    t.primary + '4d');
+  root.style.setProperty('--border-bright',  t.primary + '33');
+  root.style.setProperty('--shadow-p',       t.primary + '4d');
+  // Landing page aliases
+  root.style.setProperty('--landing-bg',     t.bg);
+}
+
+/**
+ * Remove all inline CSS variable overrides → CSS file defaults take back over.
+ */
+export function removeThemeOverrides() {
+  const root = document.documentElement;
+  const vars = [
+    '--primary', '--primary-light', '--secondary',
+    '--bg', '--bg2', '--text', '--muted', '--gold', '--green', '--red',
+    '--accent-purple', '--accent-glow', '--border-bright', '--shadow-p', '--landing-bg',
+  ];
+  vars.forEach(v => root.style.removeProperty(v));
+}
+
 // Connection status types
 // IDLE | CONNECTING | CONNECTED | RECONNECTING | ERROR
 let socket = null;
@@ -151,20 +207,8 @@ export const useGameStore = create((set, get) => ({
       const data = await resp.json();
       if (data) {
         set({ siteSettings: data });
-        // Apply theme variables to CSS
-        if (data.theme) {
-          const root = document.documentElement;
-          if (data.theme.primary) {
-            root.style.setProperty('--primary', data.theme.primary);
-            root.style.setProperty('--primary-light', data.theme.primary + 'cc');
-            root.style.setProperty('--secondary', data.theme.primary + 'dd');
-            root.style.setProperty('--border-bright', data.theme.primary + '33');
-            root.style.setProperty('--shadow-p', data.theme.primary + '4d');
-            // Also update alias variables used across the site
-            root.style.setProperty('--accent-purple', data.theme.primary);
-            root.style.setProperty('--accent-glow', data.theme.primary + '4d');
-          }
-          if (data.theme.bg) root.style.setProperty('--bg', data.theme.bg);
+        if (data.theme && Object.keys(data.theme).length > 0) {
+          applyTheme(data.theme);
         }
       }
       return data;
@@ -188,25 +232,36 @@ export const useGameStore = create((set, get) => ({
       const data = await resp.json();
       if (data.success) {
         set({ siteSettings: newSettings });
-        // Re-apply theme
-        if (newSettings.theme) {
-          const root = document.documentElement;
-          if (newSettings.theme.primary) {
-            root.style.setProperty('--primary', newSettings.theme.primary);
-            root.style.setProperty('--primary-light', newSettings.theme.primary + 'cc');
-            root.style.setProperty('--secondary', newSettings.theme.primary + 'dd');
-            root.style.setProperty('--border-bright', newSettings.theme.primary + '33');
-            root.style.setProperty('--shadow-p', newSettings.theme.primary + '4d');
-            // Also update alias variables used across the site
-            root.style.setProperty('--accent-purple', newSettings.theme.primary);
-            root.style.setProperty('--accent-glow', newSettings.theme.primary + '4d');
-          }
-          if (newSettings.theme.bg) root.style.setProperty('--bg', newSettings.theme.bg);
+        if (newSettings.theme && Object.keys(newSettings.theme).length > 0) {
+          applyTheme(newSettings.theme);
         }
       }
       return data;
     } catch (err) {
       console.error('Failed to update settings:', err);
+    }
+  },
+
+  resetTheme: async () => {
+    removeThemeOverrides();
+    const { getAuthToken } = get();
+    const token = await getAuthToken();
+    try {
+      // Persist empty theme so reload also stays at defaults
+      const resp = await fetch(`${SOCKET_URL.replace(/\/$/, '')}/api/admin/settings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ ...get().siteSettings, theme: {} })
+      });
+      const data = await resp.json();
+      if (data.success) {
+        set(state => ({ siteSettings: { ...state.siteSettings, theme: {} } }));
+      }
+    } catch (err) {
+      console.error('Failed to reset theme:', err);
     }
   },
 

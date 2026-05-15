@@ -46,7 +46,7 @@ export default function ChatInput({ compact = false }) {
           style={{
             width: 36, height: 36, borderRadius: '50%', border: 'none',
             background: open ? 'rgba(8,145,178,0.25)' : 'rgba(255,255,255,0.06)',
-            color: open ? '#a78bfa' : '#6b7280',
+            color: open ? 'var(--primary-light)' : '#6b7280',
             cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: '1.1rem', transition: 'all 0.2s', flexShrink: 0,
             boxShadow: open ? '0 0 0 1px rgba(8,145,178,0.4)' : 'none',

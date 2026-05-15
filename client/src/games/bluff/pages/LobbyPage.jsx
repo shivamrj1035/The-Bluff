@@ -7,7 +7,7 @@ import ChatInput from '../../../components/common/ChatInput';
 import AvatarDisplay from '../../../components/common/AvatarDisplay';
 
 const css = `
-.lobby-wrap { display:flex; height:100vh; width:100vw; overflow:hidden; background:radial-gradient(ellipse at 30% 0%, #06202a 0%, #031015 55%, #01080b 100%); font-family:'Inter',sans-serif; }
+.lobby-wrap { display:flex; height:100vh; width:100vw; overflow:hidden; background:var(--bg); font-family:'Outfit',sans-serif; }
 .lobby-sidebar { width:200px; flex-shrink:0; display:flex; flex-direction:column; padding:16px 12px; border-right:1px solid rgba(255,255,255,0.05); background:rgba(0,0,0,0.2); gap:6px; overflow-y:auto; }
 .lobby-logo { display:flex; align-items:center; gap:8px; padding:8px 6px 14px; }
 .lobby-logo span { font-size:0.88rem; font-weight:900; color:#fff; letter-spacing:-0.01em; }
@@ -87,7 +87,7 @@ const css = `
 .safety-safe { font-size:0.65rem; color:#10b981; font-weight:800; margin:0; }
 .tips-list { display:flex; flex-direction:column; gap:4px; }
 .tip-item { font-size:0.66rem; color:#6b7280; display:flex; gap:5px; }
-.tip-item::before { content:'•'; color:#6d28d9; flex-shrink:0; }
+.tip-item::before { content:'•'; color:var(--secondary); flex-shrink:0; }
 .activity-list { display:flex; flex-direction:column; gap:6px; }
 .act-item { display:flex; align-items:center; gap:6px; }
 .act-av { width:20px; height:20px; border-radius:50%; background:linear-gradient(135deg,#f97316,#ea580c); display:flex; align-items:center; justify-content:center; font-size:0.55rem; font-weight:900; color:#fff; flex-shrink:0; }
@@ -165,7 +165,7 @@ export default function LobbyPage() {
   if (!gameState) {
     return (
       <div style={{ height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'radial-gradient(ellipse at 50% 0%, #06202a 0%, #031015 60%, #01080b 100%)', gap: 16 }}>
-        <div style={{ width: 40, height: 40, border: '3px solid #6d28d9', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        <div style={{ width: 40, height: 40, border: '3px solid var(--secondary)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
         <p style={{ color: 'var(--primary-light)', fontWeight: 800, fontSize: '0.9rem', letterSpacing: '0.1em', margin: 0 }}>JOINING ROOM...</p>
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
@@ -179,7 +179,7 @@ export default function LobbyPage() {
       {/* ── Sidebar ── */}
       <aside className="lobby-sidebar">
         <div className="lobby-logo">
-          <span className="spade">♠</span>
+          <img src="/logo.png" alt="Logo" style={{ width: '22px', height: '22px', borderRadius: '4px', objectFit: 'contain' }} />
           <span>THE BLUFF</span>
         </div>
         {[
@@ -237,7 +237,7 @@ export default function LobbyPage() {
 
           {/* Invite link */}
           <div className="invite-link-row">
-            <span style={{ color: '#6d28d9', fontSize: 14 }}>🔗</span>
+            <span style={{ color: 'var(--secondary)', fontSize: 14 }}>🔗</span>
             <code>{window.location.origin}?room={roomId}</code>
             <button onClick={copyLink} className={`copy-btn${copied ? ' copied' : ''}`}>
               {copied ? '✓ Copied' : '📋 Copy Link'}

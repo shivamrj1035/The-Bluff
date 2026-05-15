@@ -65,8 +65,7 @@ export default function BluffEntryPage() {
         minHeight: '100vh',
         width: '100vw',
         overflow: 'hidden',
-        background:
-          'radial-gradient(circle at 20% 15%, rgba(8,145,178,0.22), transparent 24%), radial-gradient(circle at 85% 20%, rgba(20,184,166,0.12), transparent 20%), linear-gradient(180deg, #06202a 0%, #031015 58%, #01080b 100%)',
+        background: 'var(--bg)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -129,7 +128,7 @@ export default function BluffEntryPage() {
           maxWidth: 440,
           borderRadius: 26,
           padding: '28px 24px 22px',
-          background: 'linear-gradient(160deg, rgba(3, 31, 39, 0.95), rgba(1, 10, 13, 0.96))',
+          background: 'var(--bg2)',
           border: '1px solid var(--border-bright)',
           boxShadow: '0 28px 70px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.03)',
           backdropFilter: 'blur(16px)',
@@ -151,7 +150,7 @@ export default function BluffEntryPage() {
               style={{
                 margin: '0 0 8px',
                 fontSize: '0.72rem',
-                color: '#f59e0b',
+                color: 'var(--gold)',
                 fontWeight: 800,
                 letterSpacing: '0.16em',
               }}

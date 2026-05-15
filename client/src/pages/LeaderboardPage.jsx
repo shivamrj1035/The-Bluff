@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../games/bluff/store/useGameStore';
-import { TrophyIcon, SpadeIcon, CrownIcon, UsersIcon, ArrowLeftIcon, EnergyIcon, ShieldIcon } from '../components/common/Icons';
+import { TrophyIcon, CrownIcon, UsersIcon, ArrowLeftIcon, EnergyIcon, ShieldIcon } from '../components/common/Icons';
 import AvatarDisplay from '../components/common/AvatarDisplay';
 
 export default function LeaderboardPage() {
@@ -54,7 +54,7 @@ export default function LeaderboardPage() {
           <motion.div
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', background: 'rgba(124, 58, 237, 0.1)', padding: '8px 16px', borderRadius: '100px', color: 'var(--primary-light)', fontSize: '0.8rem', fontWeight: 800, letterSpacing: '0.1em', marginBottom: '16px' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', background: 'rgba(var(--primary-rgb,124,58,237), 0.1)', padding: '8px 16px', borderRadius: '100px', color: 'var(--primary-light)', fontSize: '0.8rem', fontWeight: 800, letterSpacing: '0.1em', marginBottom: '16px', background: 'var(--border-bright)' }}
           >
             <TrophyIcon size={16} /> GLOBAL RANKINGS
           </motion.div>
@@ -96,7 +96,7 @@ export default function LeaderboardPage() {
                 >
                   <div style={{ position: 'relative', width: '80px', height: '80px', margin: '0 auto 16px' }}>
                     <AvatarDisplay avatarId={topThree[1].avatar_url} size={80} animated={true} />
-                    <div style={{ position: 'absolute', bottom: '-5px', right: '-5px', background: '#94a3b8', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '0.9rem', border: '4px solid #01080b' }}>2</div>
+                    <div style={{ position: 'absolute', bottom: '-5px', right: '-5px', background: '#94a3b8', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '0.9rem', border: '4px solid var(--bg)' }}>2</div>
                   </div>
                   <h3 style={{ fontSize: '1.2rem', marginBottom: '4px' }}>{topThree[1].username}</h3>
                   <div style={{ color: 'var(--gold)', fontWeight: 800, fontSize: '0.9rem', marginBottom: '12px' }}>{topThree[1].coins} 💰</div>
@@ -114,12 +114,12 @@ export default function LeaderboardPage() {
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ delay: 0.3 }}
                   className="lp-game-card"
-                  style={{ textAlign: 'center', padding: '40px 24px', border: '1px solid var(--primary-light)', boxShadow: '0 0 40px rgba(124, 58, 237, 0.2)' }}
+                  style={{ textAlign: 'center', padding: '40px 24px', border: '1px solid var(--primary-light)', boxShadow: '0 0 40px var(--shadow-p)' }}
                 >
                   <div style={{ position: 'relative', width: '100px', height: '100px', margin: '0 auto 20px' }}>
                     <CrownIcon size={32} color="var(--gold)" style={{ position: 'absolute', top: '-25px', left: '50%', transform: 'translateX(-50%)' }} />
                     <AvatarDisplay avatarId={topThree[0].avatar_url} size={100} animated={true} />
-                    <div style={{ position: 'absolute', bottom: '-5px', right: '-5px', background: 'var(--gold)', width: '40px', height: '40px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '1.1rem', border: '4px solid #01080b', color: '#000' }}>1</div>
+                    <div style={{ position: 'absolute', bottom: '-5px', right: '-5px', background: 'var(--gold)', width: '40px', height: '40px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '1.1rem', border: '4px solid var(--bg)', color: '#000' }}>1</div>
                   </div>
                   <h3 style={{ fontSize: '1.5rem', marginBottom: '4px' }}>{topThree[0].username}</h3>
                   <div style={{ color: 'var(--gold)', fontWeight: 800, fontSize: '1.1rem', marginBottom: '16px' }}>{topThree[0].coins} 💰</div>
@@ -141,7 +141,7 @@ export default function LeaderboardPage() {
                 >
                   <div style={{ position: 'relative', width: '80px', height: '80px', margin: '0 auto 16px' }}>
                     <AvatarDisplay avatarId={topThree[2].avatar_url} size={80} animated={true} />
-                    <div style={{ position: 'absolute', bottom: '-5px', right: '-5px', background: '#b45309', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '0.9rem', border: '4px solid #01080b' }}>3</div>
+                    <div style={{ position: 'absolute', bottom: '-5px', right: '-5px', background: '#b45309', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '0.9rem', border: '4px solid var(--bg)' }}>3</div>
                   </div>
                   <h3 style={{ fontSize: '1.2rem', marginBottom: '4px' }}>{topThree[2].username}</h3>
                   <div style={{ color: 'var(--gold)', fontWeight: 800, fontSize: '0.9rem', marginBottom: '12px' }}>{topThree[2].coins} 💰</div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useGameStore } from '../games/bluff/store/useGameStore';
+import { useGameStore, applyTheme } from '../games/bluff/store/useGameStore';
+import { THEME_DEFAULTS } from '../games/bluff/store/useGameStore';
 import {
   SettingsIcon, GridIcon, UsersIcon, TrophyIcon, 
   ArrowLeftIcon, EnergyIcon, TrashIcon, XIcon,
@@ -16,16 +17,24 @@ const TABS = [
 ];
 
 export default function AdminPage() {
-  const { setScreen, siteSettings, updateSettings, isAdmin, getAuthToken } = useGameStore();
+  const { setScreen, siteSettings, updateSettings, resetTheme, isAdmin, getAuthToken } = useGameStore();
   const [activeTab, setActiveTab] = useState('stats');
   const [stats, setStats] = useState(null);
   const [rooms, setRooms] = useState([]);
   const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
   const [cmsData, setCmsData] = useState(siteSettings || {});
 
   const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || '';
   const apiBase = SOCKET_URL.replace(/\/$/, '');
+
+  // Sync cmsData when siteSettings arrive from store
+  useEffect(() => {
+    if (siteSettings) {
+      setCmsData(siteSettings);
+    }
+  }, [siteSettings]);
 
   useEffect(() => {
     if (!isAdmin()) {
@@ -68,8 +77,19 @@ export default function AdminPage() {
     setLoading(true);
     await updateSettings(cmsData);
     setLoading(false);
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 2500);
   };
-  
+
+  const handleResetTheme = async () => {
+    setLoading(true);
+    await resetTheme();
+    setCmsData(prev => ({ ...prev, theme: {} }));
+    setLoading(false);
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 2500);
+  };
+
   const handleTerminateRoom = async (roomId) => {
     if (!window.confirm(`Are you sure you want to terminate room ${roomId}? This will kick all players.`)) return;
     const token = await getAuthToken();
@@ -144,7 +164,7 @@ export default function AdminPage() {
                   padding: '12px 16px',
                   borderRadius: '10px',
                   border: 'none',
-                  background: activeTab === tab.id ? 'rgba(124, 58, 237, 0.15)' : 'transparent',
+                  background: activeTab === tab.id ? 'var(--border-bright)' : 'transparent',
                   color: activeTab === tab.id ? 'var(--primary-light)' : 'var(--dim)',
                   fontWeight: 700,
                   cursor: 'pointer',
@@ -278,36 +298,122 @@ export default function AdminPage() {
                       </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                      <div>
-                        <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', fontWeight: 700 }}>Primary Color</label>
-                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                          <input 
-                            type="color" 
-                            value={cmsData.theme?.primary || '#7c3aed'} 
-                            onChange={e => setCmsData({...cmsData, theme: { ...cmsData.theme, primary: e.target.value }})}
-                            style={{ width: '40px', height: '40px', border: 'none', background: 'none', cursor: 'pointer' }}
-                          />
-                          <code style={{ background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '4px' }}>{cmsData.theme?.primary || '#7c3aed'}</code>
+                    {/* ─── Color Theme ─────────────────────────────────── */}
+                    <div style={{ borderTop: '1px solid var(--border)', paddingTop: '24px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '1rem', fontWeight: 800, marginBottom: '4px' }}>🎨 Color Theme</label>
+                          <p style={{ fontSize: '0.78rem', color: 'var(--muted)', margin: 0 }}>Changes apply live across the entire application</p>
                         </div>
+                        <button
+                          onClick={handleResetTheme}
+                          disabled={loading}
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '6px',
+                            padding: '8px 16px', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.35)',
+                            background: 'rgba(239,68,68,0.08)', color: '#f87171', fontWeight: 700,
+                            fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap',
+                          }}
+                        >
+                          ↺ Reset Defaults
+                        </button>
                       </div>
-                      <div>
-                        <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', fontWeight: 700 }}>Background Color</label>
-                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                          <input 
-                            type="color" 
-                            value={cmsData.theme?.bg || '#010409'} 
-                            onChange={e => setCmsData({...cmsData, theme: { ...cmsData.theme, bg: e.target.value }})}
-                            style={{ width: '40px', height: '40px', border: 'none', background: 'none', cursor: 'pointer' }}
-                          />
-                          <code style={{ background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '4px' }}>{cmsData.theme?.bg || '#010409'}</code>
-                        </div>
+
+                      {/* Live preview swatch strip */}
+                      <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', height: '32px', borderRadius: '10px', overflow: 'hidden' }}>
+                        {[
+                          cmsData.theme?.primary       || THEME_DEFAULTS.primary,
+                          cmsData.theme?.primaryLight  || THEME_DEFAULTS.primaryLight,
+                          cmsData.theme?.secondary     || THEME_DEFAULTS.secondary,
+                          cmsData.theme?.gold          || THEME_DEFAULTS.gold,
+                          cmsData.theme?.green         || THEME_DEFAULTS.green,
+                          cmsData.theme?.red           || THEME_DEFAULTS.red,
+                          cmsData.theme?.bg2           || THEME_DEFAULTS.bg2,
+                          cmsData.theme?.bg            || THEME_DEFAULTS.bg,
+                        ].map((color, i) => (
+                          <div key={i} style={{ flex: 1, background: color, borderRadius: '4px', transition: 'background 0.3s' }} />
+                        ))}
+                      </div>
+
+                      {/* Color pickers grid */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                        {[
+                          { label: 'Primary Color',  key: 'primary',      icon: '●' },
+                          { label: 'Primary Light',  key: 'primaryLight', icon: '◑' },
+                          { label: 'Secondary',      key: 'secondary',    icon: '◎' },
+                          { label: 'Background',     key: 'bg',           icon: '▪' },
+                          { label: 'Surface',        key: 'bg2',          icon: '□' },
+                          { label: 'Text Color',     key: 'text',         icon: 'T' },
+                          { label: 'Muted Text',     key: 'muted',        icon: 'T' },
+                          { label: 'Gold Accent',    key: 'gold',         icon: '★' },
+                          { label: 'Success',        key: 'green',        icon: '✓' },
+                          { label: 'Danger',         key: 'red',          icon: '✕' },
+                        ].map(({ label, key, icon }) => {
+                          const currentVal = cmsData.theme?.[key] || THEME_DEFAULTS[key];
+                          return (
+                            <div
+                              key={key}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: '12px',
+                                padding: '10px 14px', borderRadius: '10px',
+                                background: 'rgba(255,255,255,0.03)',
+                                border: '1px solid rgba(255,255,255,0.06)',
+                                transition: 'border-color 0.2s',
+                              }}
+                            >
+                              {/* Color swatch button */}
+                              <div style={{ position: 'relative', flexShrink: 0 }}>
+                                <div style={{
+                                  width: '36px', height: '36px', borderRadius: '8px',
+                                  background: currentVal,
+                                  border: '2px solid rgba(255,255,255,0.15)',
+                                  boxShadow: `0 2px 8px ${currentVal}66`,
+                                  cursor: 'pointer', overflow: 'hidden',
+                                  transition: 'box-shadow 0.2s',
+                                }}>
+                                  <input
+                                    type="color"
+                                    value={currentVal}
+                                    onChange={e => {
+                                      const newTheme = { ...cmsData.theme, [key]: e.target.value };
+                                      setCmsData({ ...cmsData, theme: newTheme });
+                                      applyTheme(newTheme);
+                                    }}
+                                    style={{
+                                      position: 'absolute', inset: '-4px', width: 'calc(100% + 8px)',
+                                      height: 'calc(100% + 8px)', border: 'none',
+                                      background: 'none', cursor: 'pointer', opacity: 0,
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--dim)', marginBottom: '2px' }}>{label}</div>
+                                <code style={{
+                                  fontSize: '0.72rem', color: currentVal,
+                                  background: 'rgba(0,0,0,0.3)',
+                                  padding: '1px 6px', borderRadius: '4px',
+                                  fontWeight: 700, letterSpacing: '0.04em',
+                                }}>
+                                  {currentVal}
+                                </code>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
 
-                    <button className="btn btn-primary" onClick={handleSaveSettings} disabled={loading} style={{ marginTop: '20px' }}>
-                      {loading ? 'Saving...' : 'Save Configuration'}
-                    </button>
+                    <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+                      <button
+                        className="btn btn-primary"
+                        onClick={handleSaveSettings}
+                        disabled={loading}
+                        style={{ flex: 1 }}
+                      >
+                        {loading ? 'Saving...' : saveSuccess ? '✓ Saved!' : 'Save Configuration'}
+                      </button>
+                    </div>
                   </div>
                 )}
 

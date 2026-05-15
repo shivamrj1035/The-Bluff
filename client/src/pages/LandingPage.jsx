@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../games/bluff/store/useGameStore';
+import { useCPStore } from '../games/courtpiece/store/useCPStore';
 import AuthDialog from '../components/common/AuthDialog';
 import {
-  SpadeIcon, HeartIcon, DiamondIcon,
   GridIcon, EnergyIcon, LockIcon,
   ShieldIcon, GiftIcon, PlayIcon,
   ArrowRightIcon, UsersIcon, TrophyIcon,
@@ -14,24 +14,31 @@ import { REGISTERED_GAMES } from '../constants/registeredGames';
 
 export default function LandingPage() {
   const { setScreen, playerName, avatar, user, profile, signOut, siteSettings, isAdmin } = useGameStore();
+  const { setCPScreen } = useCPStore();
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [pendingScreen, setPendingScreen] = useState(null);
+  const [isPendingCP, setIsPendingCP] = useState(false);
 
-  const goToProtectedScreen = (screen) => {
+  const goToProtectedScreen = (screen, isCPScreen = false) => {
     if (!user) {
       setPendingScreen(screen);
+      setIsPendingCP(isCPScreen);
       setIsAuthOpen(true);
       return;
     }
-    setScreen(screen);
+    if (isCPScreen) setCPScreen(screen);
+    else setScreen(screen);
   };
 
   useEffect(() => {
     if (!user || !pendingScreen) return;
-    setScreen(pendingScreen);
+    if (isPendingCP) setCPScreen(pendingScreen);
+    else setScreen(pendingScreen);
+    
     setPendingScreen(null);
-  }, [pendingScreen, setScreen, user]);
+    setIsPendingCP(false);
+  }, [pendingScreen, setScreen, setCPScreen, user, isPendingCP]);
 
   const metrics = [
     { value: '2.3K+', label: 'players online' },
@@ -76,10 +83,8 @@ export default function LandingPage() {
       <div className="lp-bg-curve" />
 
       <header className="lp-header">
-        <div className="lp-logo">
-          <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <SpadeIcon size={20} color="#fff" />
-          </div>
+        <div className="lp-logo" onClick={() => window.location.reload()} style={{ cursor: 'pointer' }}>
+          <img src="/logo.png" alt="Logo" style={{ width: '32px', height: '32px', borderRadius: '8px', objectFit: 'contain' }} />
           {siteSettings?.header_title || 'MULTIPLAYER GAMING HUB'}
         </div>
 

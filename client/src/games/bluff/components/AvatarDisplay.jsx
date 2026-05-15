@@ -79,7 +79,7 @@ const AvatarDisplay = ({
           alignItems: 'center',
           justifyContent: 'center',
           fontSize: `${emojiSize}px`,
-          boxShadow: showBorder ? `0 0 12px ${avatarData.gradient.split(',')[0].match(/#[\da-f]+/i)?.[0] || '#6d28d9'}66` : 'none',
+          boxShadow: showBorder ? `0 0 12px var(--shadow-p)` : 'none',
           border: showBorder ? `2px solid rgba(255,255,255,0.15)` : 'none',
           flexShrink: 0,
         }}

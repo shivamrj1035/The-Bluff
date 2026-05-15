@@ -2009,12 +2009,12 @@ body {
 }
 
 .join-field:focus-within {
-  border-color: rgba(124, 58, 237, 0.5);
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+  border-color: var(--border-bright);
+  box-shadow: 0 0 0 3px var(--shadow-p);
 }
 
 .join-prefix {
-  color: #6d28d9;
+  color: var(--secondary);
   font-size: 0.95rem;
   font-weight: 900;
   flex: 0 0 auto;
@@ -2043,7 +2043,7 @@ body {
   padding: 14px 18px;
   border: none;
   border-radius: 14px;
-  background: linear-gradient(135deg, #6d28d9, #4c1d95);
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
   color: #fff;
   font-size: 0.94rem;
   font-weight: 800;
@@ -2052,7 +2052,7 @@ body {
   justify-content: center;
   gap: 8px;
   cursor: pointer;
-  box-shadow: 0 10px 26px rgba(124, 58, 237, 0.32);
+  box-shadow: 0 10px 26px var(--shadow-p);
   transition: opacity 0.2s, transform 0.2s;
 }
 
@@ -2071,7 +2071,7 @@ body {
 .join-back-btn {
   background: none;
   border: none;
-  color: #6d28d9;
+  color: var(--secondary);
   font-size: 0.86rem;
   font-weight: 800;
   cursor: pointer;
@@ -2196,69 +2196,58 @@ body {
   gap: 40px;
 }
 
-.preloader-cards {
+.preloader-logo-container {
   position: relative;
-  width: 120px;
-  height: 120px;
+  width: 140px;
+  height: 140px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.preloader-card {
+.preloader-logo-glow {
   position: absolute;
-  width: 60px;
-  height: 84px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1.5px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  backdrop-filter: blur(8px);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
-  animation: preloader-card-shuffle 3s infinite ease-in-out;
-  animation-delay: var(--delay);
-  opacity: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, var(--primary) 0%, transparent 70%);
+  opacity: 0.4;
+  filter: blur(15px);
+  animation: preloader-glow-pulse 2s infinite ease-in-out;
 }
 
-.preloader-card-inner {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.preloader-logo-img {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  z-index: 2;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  animation: preloader-logo-float 3s infinite ease-in-out;
 }
 
-@keyframes preloader-card-shuffle {
-  0% {
-    transform: translate(0, 40px) rotate(0deg) scale(0.8);
-    opacity: 0;
-    z-index: 1;
-  }
-  15% {
-    transform: translate(0, 0) rotate(0deg) scale(1);
-    opacity: 1;
-    z-index: 2;
-  }
-  35% {
-    transform: translate(40px, -20px) rotate(15deg) scale(1);
-    opacity: 1;
-    z-index: 1;
-  }
-  55% {
-    transform: translate(0, 0) rotate(0deg) scale(1);
-    opacity: 1;
-    z-index: 2;
-  }
-  75% {
-    transform: translate(-40px, -20px) rotate(-15deg) scale(1);
-    opacity: 1;
-    z-index: 1;
-  }
-  100% {
-    transform: translate(0, 40px) rotate(0deg) scale(0.8);
-    opacity: 0;
-    z-index: 1;
-  }
+.preloader-ring {
+  position: absolute;
+  width: 110px;
+  height: 110px;
+  border: 2px solid transparent;
+  border-top-color: var(--primary-light);
+  border-bottom-color: var(--primary-light);
+  border-radius: 50%;
+  animation: preloader-spin 2s infinite linear;
+}
+
+@keyframes preloader-glow-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.3; }
+  50% { transform: scale(1.2); opacity: 0.5; }
+}
+
+@keyframes preloader-logo-float {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-10px) scale(1.05); }
+}
+
+@keyframes preloader-spin {
+  to { transform: rotate(360deg); }
 }
 
 .preloader-text-container {

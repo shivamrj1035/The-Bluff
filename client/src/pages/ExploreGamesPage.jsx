@@ -6,7 +6,6 @@ import AuthDialog from '../components/common/AuthDialog';
 import AvatarDisplay from '../components/common/AvatarDisplay';
 import { REGISTERED_GAMES } from '../constants/registeredGames';
 import {
-  SpadeIcon,
   GridIcon, EnergyIcon,
   UsersIcon, TrophyIcon,
   ChevronDownIcon, CrownIcon, HomeIcon,
@@ -25,11 +24,13 @@ export default function ExploreGamesPage() {
   const [sortBy, setSortBy] = useState('Popular');
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [pendingScreen, setPendingScreen] = useState(null);
+   const [pendingScreen, setPendingScreen] = useState(null);
+  const [isPendingCP, setIsPendingCP] = useState(false);
 
   const goToProtectedScreen = (screen, isCPScreen = false) => {
     if (!user) {
       setPendingScreen(screen);
+      setIsPendingCP(isCPScreen);
       setIsAuthOpen(true);
       return;
     }
@@ -39,9 +40,12 @@ export default function ExploreGamesPage() {
 
   useEffect(() => {
     if (!user || !pendingScreen) return;
-    setScreen(pendingScreen);
+    if (isPendingCP) setCPScreen(pendingScreen);
+    else setScreen(pendingScreen);
+
     setPendingScreen(null);
-  }, [pendingScreen, setScreen, user]);
+    setIsPendingCP(false);
+  }, [pendingScreen, setScreen, setCPScreen, user, isPendingCP]);
 
   const tabs = ['All Games', 'Popular', 'Classic', 'Strategy', 'Party', 'Quick Play'];
 
@@ -67,9 +71,7 @@ export default function ExploreGamesPage() {
       {/* Sidebar */}
       <aside className="explore-sidebar">
         <div className="sidebar-logo" onClick={() => setScreen('LANDING')}>
-          <div className="logo-icon">
-            <SpadeIcon size={24} color="#fff" />
-          </div>
+          <img src="/logo.png" alt="Logo" style={{ width: '32px', height: '32px', borderRadius: '8px', objectFit: 'contain' }} />
           <span>GAMING HUB</span>
         </div>
 
@@ -106,7 +108,7 @@ export default function ExploreGamesPage() {
 
         <div className="sidebar-promo">
           <div className="promo-icon">
-            <TrophyIcon size={24} color="#a78bfa" />
+            <TrophyIcon size={24} color="var(--primary-light)" />
           </div>
           <h5>Invite & Earn</h5>
           <p>Invite your friends and earn exciting rewards</p>

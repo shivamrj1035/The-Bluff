@@ -212,7 +212,7 @@ export default function GameBoard() {
   return (
     <div style={{
       height: '100vh', width: '100vw', overflow: 'hidden', position: 'relative',
-      background: 'radial-gradient(circle at 50% 50%, #1a1a2e 0%, #0a0a0c 100%)',
+      background: 'var(--bg)',
     }}>
 
       {/* ── Card Movement Animation ── */}
@@ -238,7 +238,7 @@ export default function GameBoard() {
         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
           {!isPortrait && (
             <div className="panel-sm" style={{ padding: '6px 12px' }}>
-              <span style={{ fontWeight: 900, color: '#a78bfa', fontSize: '0.7rem' }}>THE BLUFF</span>
+              <span style={{ fontWeight: 900, color: 'var(--primary-light)', fontSize: '0.7rem' }}>THE BLUFF</span>
             </div>
           )}
 
@@ -255,7 +255,7 @@ export default function GameBoard() {
                 navigator.clipboard.writeText(`${window.location.origin}?room=${serverRoomId}`);
                 toast.success('Invite link copied!');
               }}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6d28d9', padding: '1px', display: 'flex', alignItems: 'center' }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--secondary)', padding: '1px', display: 'flex', alignItems: 'center' }}
             >
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
@@ -283,14 +283,14 @@ export default function GameBoard() {
           {currentPlayer && !isEnded && !isPickingPhase && !isResolution && (
             <div className="panel-sm" style={{
               padding: '4px 10px', display: 'flex', alignItems: 'center', gap: '6px',
-              border: isMyTurn ? '1.5px solid #6d28d9' : '1px solid rgba(255,255,255,0.1)',
+              border: isMyTurn ? '1.5px solid var(--secondary)' : '1px solid rgba(255,255,255,0.1)',
               background: isMyTurn ? 'rgba(8,145,178,0.15)' : 'rgba(0,0,0,0.2)',
             }}>
               <div style={{ position: 'relative', width: '18px', height: '18px' }}>
                 <svg style={{ transform: 'rotate(-90deg)', width: '18px', height: '18px' }}>
                   <circle cx="9" cy="9" r="7" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="2" />
                   <circle cx="9" cy="9" r="7" fill="none"
-                    stroke={timeLeft < 10 ? '#ef4444' : '#6d28d9'} strokeWidth="2"
+                    stroke={timeLeft < 10 ? '#ef4444' : 'var(--secondary)'} strokeWidth="2"
                     strokeDasharray="44"
                     strokeDashoffset={44 - (44 * timeLeft / (isPickingPhase ? 20 : (gameState.timerDuration || 60)))} />
                 </svg>
@@ -332,7 +332,7 @@ export default function GameBoard() {
                 border: '1px solid rgba(103,232,249,0.4)',
                 borderRadius: '8px', display: 'inline-block',
               }}>
-                <p style={{ margin: 0, fontSize: isPortrait ? '0.45rem' : '0.55rem', fontWeight: 900, color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                <p style={{ margin: 0, fontSize: isPortrait ? '0.45rem' : '0.55rem', fontWeight: 900, color: 'var(--primary-light)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                   {lastMove.playerName}
                 </p>
                 <p style={{ margin: '1px 0 0', fontSize: isPortrait ? '0.65rem' : '0.8rem', fontWeight: 900, color: '#fff' }}>
@@ -403,7 +403,7 @@ export default function GameBoard() {
           >
             <div className={`panel-sm${isActive ? ' active-pulse' : ''}`} style={{
               padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '6px', minWidth: '90px',
-              border: isActive ? '2.5px solid #6d28d9' : '1.5px solid rgba(255,255,255,0.08)',
+              border: isActive ? '2.5px solid var(--secondary)' : '1.5px solid rgba(255,255,255,0.08)',
               background: isActive ? 'rgba(8,145,178,0.3)' : 'rgba(255,255,255,0.04)',
               boxShadow: isActive ? '0 0 25px rgba(8,145,178,0.4)' : 'none',
               position: 'relative', overflow: 'hidden',
@@ -502,7 +502,7 @@ export default function GameBoard() {
                         cursor: isMyTurn ? 'pointer' : 'default', flexShrink: 0,
                         transform: `translateY(${selected ? -18 : 0}px)`,
                         transition: 'transform 0.2s ease',
-                        filter: selected ? 'drop-shadow(0 0 6px #6d28d9)' : 'none',
+                        filter: selected ? 'drop-shadow(0 0 6px var(--secondary))' : 'none',
                       }}
                       onClick={() => isMyTurn && !isPickingPhase && !isEnded && toggleCard(cardId)}
                     >
@@ -541,7 +541,7 @@ export default function GameBoard() {
                         position: 'absolute', left: '50%', bottom: '20px',
                         x: tx, y: selected ? -35 : 0,
                         zIndex: i, cursor: isMyTurn ? 'pointer' : 'default',
-                        filter: selected ? 'drop-shadow(0 0 8px #6d28d9)' : 'none',
+                        filter: selected ? 'drop-shadow(0 0 8px var(--secondary))' : 'none',
                       }}
                       onClick={() => isMyTurn && !isPickingPhase && !isEnded && toggleCard(cardId)}
                     >
@@ -575,7 +575,7 @@ export default function GameBoard() {
               <p style={{ fontSize: isPortrait ? '0.6rem' : '0.7rem', fontWeight: 900, color: '#fff', margin: 0, textTransform: 'uppercase' }}>
                 {myHand.length} CARDS
               </p>
-              <p style={{ fontSize: '0.55rem', fontWeight: 800, color: '#6d28d9', margin: 0 }}>{myInfo?.name}</p>
+              <p style={{ fontSize: '0.55rem', fontWeight: 800, color: 'var(--secondary)', margin: 0 }}>{myInfo?.name}</p>
             </div>
           </div>
 
@@ -709,7 +709,7 @@ export default function GameBoard() {
                   {players.find(p => p.id === gameState.bluffTargetId)?.name || '...'}
                 </span>
               </p>
-              <div style={{ fontSize: '2.5rem', fontWeight: 900, color: timeLeft < 6 ? '#ef4444' : '#6d28d9', marginTop: 6 }}>{timeLeft}s</div>
+              <div style={{ fontSize: '2.5rem', fontWeight: 900, color: timeLeft < 6 ? '#ef4444' : 'var(--secondary)', marginTop: 6 }}>{timeLeft}s</div>
             </div>
 
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center', padding: '0 20px', maxWidth: '700px' }}>
@@ -724,8 +724,8 @@ export default function GameBoard() {
                     onClick={() => bluffPickerId === playerId && pickBluffCard(idx)}
                     style={{
                       cursor: bluffPickerId === playerId ? 'pointer' : 'default',
-                      filter: isSelected ? 'drop-shadow(0 0 20px #6d28d9)' : 'none',
-                      border: isSelected ? '2.5px solid #6d28d9' : '2px solid transparent',
+                      filter: isSelected ? 'drop-shadow(0 0 20px var(--secondary))' : 'none',
+                      border: isSelected ? '2.5px solid var(--secondary)' : '2px solid transparent',
                       borderRadius: '10px', transition: 'border 0.15s',
                     }}
                   >
@@ -735,7 +735,7 @@ export default function GameBoard() {
               }) || <p style={{ color: '#6b7280', fontSize: '0.8rem' }}>Waiting for cards...</p>}
             </div>
 
-            <p style={{ color: '#6d28d9', fontWeight: 900, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+            <p style={{ color: 'var(--secondary)', fontWeight: 900, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
               {bluffPickerId === playerId ? 'SELECT A CARD NOW!' : 'Waiting for decision...'}
             </p>
           </motion.div>

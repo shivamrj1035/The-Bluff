@@ -1,32 +1,26 @@
 import React from 'react';
-import { SpadeIcon, HeartIcon, ClubIcon, DiamondIcon } from './Icons';
+import { useGameStore } from '../../games/bluff/store/useGameStore';
 
 const Preloader = ({ isExiting }) => {
-  const cards = [
-    { icon: <SpadeIcon size={32} />, color: '#fff', delay: '0s' },
-    { icon: <HeartIcon size={32} color="#ef4444" />, color: '#ef4444', delay: '0.2s' },
-    { icon: <ClubIcon size={32} />, color: '#fff', delay: '0.4s' },
-    { icon: <DiamondIcon size={32} color="#ef4444" />, color: '#ef4444', delay: '0.6s' },
-  ];
-
+  const { siteSettings } = useGameStore();
+  
   return (
     <div className={`preloader-overlay ${isExiting ? 'exit' : ''}`}>
       <div className="preloader-content">
-        <div className="preloader-cards">
-          {cards.map((card, index) => (
-            <div 
-              key={index} 
-              className="preloader-card" 
-              style={{ '--delay': card.delay }}
-            >
-              <div className="preloader-card-inner">
-                {card.icon}
-              </div>
-            </div>
-          ))}
+        <div className="preloader-logo-container">
+          <div className="preloader-logo-glow" />
+          <img 
+            src="/logo.png" 
+            alt="Logo" 
+            className="preloader-logo-img"
+          />
+          <div className="preloader-ring" />
         </div>
+        
         <div className="preloader-text-container">
-          <h2 className="preloader-title">CardNexus</h2>
+          <h2 className="preloader-title">
+            {siteSettings?.header_title || 'GameArena'}
+          </h2>
           <div className="preloader-bar">
             <div className="preloader-progress"></div>
           </div>
@@ -38,3 +32,4 @@ const Preloader = ({ isExiting }) => {
 };
 
 export default Preloader;
+

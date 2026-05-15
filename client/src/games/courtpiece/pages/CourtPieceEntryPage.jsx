@@ -55,23 +55,24 @@ export default function CourtPieceEntryPage() {
   return (
     <div style={{
       minHeight: '100vh', width: '100vw', overflow: 'hidden',
-      background: 'radial-gradient(circle at 20% 15%, rgba(251,146,60,0.18), transparent 28%), radial-gradient(circle at 82% 22%, rgba(16,185,129,0.12), transparent 24%), linear-gradient(180deg, #0f0a1a 0%, #080512 55%, #030208 100%)',
+      background: 'var(--bg)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: 20, position: 'relative',
     }}>
       <AuthDialog isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
 
       {/* Ambient glows */}
-      <div style={{ position: 'absolute', inset: 'auto auto 10% -60px', width: 200, height: 200, borderRadius: '50%', background: 'radial-gradient(circle,rgba(251,146,60,0.22),transparent 68%)', filter: 'blur(12px)', pointerEvents: 'none' }} />
-      <div style={{ position: 'absolute', inset: '12% -80px auto auto', width: 240, height: 240, borderRadius: '50%', background: 'radial-gradient(circle,rgba(16,185,129,0.14),transparent 70%)', filter: 'blur(12px)', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', inset: 'auto auto 10% -60px', width: 200, height: 200, borderRadius: '50%', background: 'radial-gradient(circle, var(--accent-glow), transparent 68%)', filter: 'blur(12px)', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', inset: '12% -80px auto auto', width: 240, height: 240, borderRadius: '50%', background: 'radial-gradient(circle, var(--green), transparent 70%)', filter: 'blur(12px)', pointerEvents: 'none' }} />
 
       {/* Back button */}
       <div style={{ position: 'absolute', top: 20, left: 20 }}>
         <button
           onClick={() => {
-            navigate('/admin');
+            setCPScreen('LANDING');
+            setScreen('EXPLORE');
           }}
-          style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#9ca3af', fontSize: '0.82rem', fontWeight: 700, padding: '9px 14px', borderRadius: 12, cursor: 'pointer', backdropFilter: 'blur(8px)' }}
+          style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'var(--muted)', fontSize: '0.82rem', fontWeight: 700, padding: '9px 14px', borderRadius: 12, cursor: 'pointer', backdropFilter: 'blur(8px)' }}
         >
           ← Explore
         </button>
@@ -83,8 +84,8 @@ export default function CourtPieceEntryPage() {
         transition={{ duration: 0.4 }}
         style={{
           width: '100%', maxWidth: 440, borderRadius: 26, padding: '28px 24px 22px',
-          background: 'linear-gradient(160deg, rgba(15,10,35,0.97), rgba(5,3,12,0.98))',
-          border: '1px solid rgba(251,146,60,0.22)',
+          background: 'var(--bg2)',
+          border: '1px solid var(--border-bright)',
           boxShadow: '0 28px 70px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.03)',
           backdropFilter: 'blur(16px)', position: 'relative', zIndex: 1,
         }}
@@ -92,16 +93,16 @@ export default function CourtPieceEntryPage() {
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 22 }}>
           <div>
-            <p style={{ margin: '0 0 8px', fontSize: '0.72rem', color: '#fb923c', fontWeight: 800, letterSpacing: '0.16em' }}>
+            <p style={{ margin: '0 0 8px', fontSize: '0.72rem', color: 'var(--gold)', fontWeight: 800, letterSpacing: '0.16em' }}>
               COURT PIECE TABLE
             </p>
             <h1 style={{ margin: 0, fontSize: '2.1rem', lineHeight: 0.95, fontWeight: 900, letterSpacing: '-0.03em' }}>
-              <span style={{ color: '#fff' }}>Play </span>
-              <span style={{ background: 'linear-gradient(135deg,#fb923c,#10b981)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              <span style={{ color: 'var(--text)' }}>Play </span>
+              <span style={{ background: 'linear-gradient(135deg, var(--gold), var(--green))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                 Court Piece
               </span>
             </h1>
-            <p style={{ margin: '6px 0 0', fontSize: '0.78rem', color: '#6b7280' }}>
+            <p style={{ margin: '6px 0 0', fontSize: '0.78rem', color: 'var(--muted)' }}>
               Rang · Coat Piece · Classic Indian Card Game
             </p>
           </div>
@@ -120,24 +121,24 @@ export default function CourtPieceEntryPage() {
         {/* Stats */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 18 }}>
           {stats.map(s => (
-            <div key={s.label} style={{ padding: '12px 10px', borderRadius: 16, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>
-              <strong style={{ display: 'block', fontSize: '0.9rem', color: '#fff' }}>{s.value}</strong>
-              <span style={{ fontSize: '0.65rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.12em' }}>{s.label}</span>
+            <div key={s.label} style={{ padding: '12px 10px', borderRadius: 16, background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', textAlign: 'center' }}>
+              <strong style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text)' }}>{s.value}</strong>
+              <span style={{ fontSize: '0.65rem', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.12em' }}>{s.label}</span>
             </div>
           ))}
         </div>
 
         {/* Name input */}
         <div style={{ marginBottom: 18 }}>
-          <p style={{ margin: '0 0 8px', fontSize: '0.68rem', fontWeight: 800, color: '#6b7280', letterSpacing: '0.14em' }}>PLAYER NAME</p>
+          <p style={{ margin: '0 0 8px', fontSize: '0.68rem', fontWeight: 800, color: 'var(--muted)', letterSpacing: '0.14em' }}>PLAYER NAME</p>
           <div style={{
             display: 'flex', alignItems: 'center', gap: 12,
             background: 'rgba(255,255,255,0.05)',
-            border: `1px solid ${editingName ? 'rgba(251,146,60,0.5)' : 'rgba(255,255,255,0.08)'}`,
+            border: `1px solid ${editingName ? 'var(--primary)' : 'var(--border)'}`,
             borderRadius: 16, padding: '13px 14px',
-            boxShadow: editingName ? '0 0 0 3px rgba(251,146,60,0.12)' : 'none',
+            boxShadow: editingName ? '0 0 0 3px var(--accent-glow)' : 'none',
           }}>
-            <span style={{ color: '#6b7280' }}>👤</span>
+            <span style={{ color: 'var(--muted)' }}>👤</span>
             <input
               ref={nameRef}
               value={name}
@@ -146,10 +147,10 @@ export default function CourtPieceEntryPage() {
               onBlur={() => setEditingName(false)}
               placeholder="Enter your name"
               maxLength={12}
-              style={{ flex: 1, background: 'none', border: 'none', outline: 'none', color: '#fff', fontSize: '0.98rem', fontWeight: 700, minWidth: 0 }}
+              style={{ flex: 1, background: 'none', border: 'none', outline: 'none', color: 'var(--text)', fontSize: '0.98rem', fontWeight: 700, minWidth: 0 }}
             />
             <button onClick={() => { setEditingName(true); nameRef.current?.focus(); }}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fb923c', fontSize: 15, padding: 0 }}>
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)', fontSize: 15, padding: 0 }}>
               ✏️
             </button>
           </div>
@@ -162,10 +163,10 @@ export default function CourtPieceEntryPage() {
             onClick={handleCreate} disabled={loading}
             style={{
               width: '100%', padding: '15px 18px',
-              background: 'linear-gradient(135deg,#c2410c,#9a3412)',
-              border: 'none', borderRadius: 16, color: '#fff', fontSize: '0.96rem', fontWeight: 800, cursor: 'pointer',
+              background: 'linear-gradient(135deg, var(--primary), var(--secondary))',
+              border: 'none', borderRadius: 16, color: 'var(--text)', fontSize: '0.96rem', fontWeight: 800, cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-              boxShadow: '0 10px 28px rgba(251,146,60,0.32)',
+              boxShadow: '0 10px 28px var(--shadow-p)',
             }}
           >
             <span>👑 Create Private Table</span>
@@ -177,8 +178,8 @@ export default function CourtPieceEntryPage() {
             onClick={handleJoin} disabled={loading}
             style={{
               width: '100%', padding: '15px 18px',
-              background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: 16, color: '#e5e7eb', fontSize: '0.96rem', fontWeight: 800, cursor: 'pointer',
+              background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)',
+              borderRadius: 16, color: 'var(--dim)', fontSize: '0.96rem', fontWeight: 800, cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
             }}
           >
@@ -188,11 +189,11 @@ export default function CourtPieceEntryPage() {
         </div>
 
         {/* Feature pills */}
-        <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.06)', display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 10 }}>
+        <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid var(--border)', display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 10 }}>
           {features.map(([title, text]) => (
-            <div key={title} style={{ padding: '10px 12px', borderRadius: 14, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.04)' }}>
-              <div style={{ color: '#fff', fontSize: '0.82rem', fontWeight: 800, marginBottom: 4 }}>{title}</div>
-              <div style={{ color: '#94a3b8', fontSize: '0.74rem', lineHeight: 1.4 }}>{text}</div>
+            <div key={title} style={{ padding: '10px 12px', borderRadius: 14, background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)' }}>
+              <div style={{ color: 'var(--text)', fontSize: '0.82rem', fontWeight: 800, marginBottom: 4 }}>{title}</div>
+              <div style={{ color: 'var(--muted)', fontSize: '0.74rem', lineHeight: 1.4 }}>{text}</div>
             </div>
           ))}
         </div>

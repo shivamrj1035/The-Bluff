@@ -21,8 +21,15 @@ const CPLobbyPage = lazy(() => import('./games/courtpiece/pages/CPLobbyPage'));
 const CPGameBoard = lazy(() => import('./games/courtpiece/pages/CPGameBoard'));
 
 const Spinner = () => (
-  <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f0a1a' }}>
-    <div style={{ width: 36, height: 36, border: '3px solid #fb923c', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+  <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', gap: '20px' }}>
+    <div style={{ position: 'relative', width: '60px', height: '60px' }}>
+      <img src="/logo.png" alt="Loading" style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '12px', zIndex: 2, position: 'relative' }} />
+      <div style={{ 
+        position: 'absolute', inset: '-10px', borderRadius: '50%', 
+        border: '3px solid transparent', borderTopColor: 'var(--primary)', 
+        animation: 'spin 1s linear infinite' 
+      }} />
+    </div>
     <style>{`@keyframes spin { to { transform:rotate(360deg); } }`}</style>
   </div>
 );
@@ -57,9 +64,9 @@ export default function App() {
     return (
       <Suspense fallback={<Spinner />}>
         <Toaster /><ClerkSync />
-        <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'radial-gradient(ellipse at 50% 0%,#1a0a2a,#04020d)', gap: 24 }}>
-          <div style={{ width: 40, height: 40, border: '3px solid #fb923c', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-          <p style={{ color: '#fff', fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>
+        <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', gap: 24 }}>
+          <div style={{ width: 40, height: 40, border: '3px solid var(--primary)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+          <p style={{ color: 'var(--text)', fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>
             {cpStatus === 'RECONNECTING' ? 'Reconnecting...' : 'Connecting...'}
           </p>
           <style>{`@keyframes spin { to { transform:rotate(360deg); } }`}</style>
@@ -129,7 +136,7 @@ export default function App() {
         <div style={{
           height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column',
           alignItems: 'center', justifyContent: 'center',
-          background: 'radial-gradient(ellipse at 50% 0%, #1a0a3d 0%, #0c0c1a 60%, #060614 100%)',
+          background: 'var(--bg)',
           gap: '24px',
         }}>
           <div className="panel" style={{ padding: '48px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
@@ -138,10 +145,10 @@ export default function App() {
               borderTopColor: 'transparent', borderRadius: '50%',
               animation: 'spin 0.8s linear infinite',
             }} />
-            <p style={{ color: '#fff', fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>
+            <p style={{ color: 'var(--text)', fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>
               {status === 'RECONNECTING' ? 'Reconnecting...' : 'Connecting...'}
             </p>
-            <p style={{ color: '#6b7280', fontSize: '0.9rem', fontWeight: 500, margin: 0 }}>Establishing secure session</p>
+            <p style={{ color: 'var(--muted)', fontSize: '0.9rem', fontWeight: 500, margin: 0 }}>Establishing secure session</p>
           </div>
           <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
         </div>

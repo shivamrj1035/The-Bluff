@@ -34,7 +34,7 @@ export default function Avatar({ name, avatar, size = 40, fontSize = '1rem' }) {
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontSize: size * 0.75,
         flexShrink: 0,
-        boxShadow: `0 4px 12px ${emojiData.gradient.includes('#f97316') ? '#f9731666' : emojiData.gradient.includes('#6d28d9') ? '#6d28d966' : '#7c3aed66'}`,
+        boxShadow: `0 4px 12px var(--shadow-p)`,
         border: '0.5px solid rgba(255,255,255,0.2)',
         userSelect: 'none',
       }}>
@@ -76,7 +76,7 @@ export const TrashIcon = ({ size = 20 }) => (
 );
 
 export const MaskIcon = ({ size = 20 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#a78bfa' }}>
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--primary-light)' }}>
     <circle cx="12" cy="12" r="10" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /><path d="M9 9h.01" /><path d="M15 9h.01" />
   </svg>
 );
@@ -205,7 +205,7 @@ export const BellIcon = ({ size = 20 }) => (
     strokeWidth="2.5"
     strokeLinecap="round"
     strokeLinejoin="round"
-    style={{ color: '#a78bfa' }}
+    style={{ color: 'var(--primary-light)' }}
   >
     <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 7h18s-3 0-3-7" />
     <path d="M13.73 21a2 2 0 0 1-3.46 0" />
@@ -222,7 +222,7 @@ export const SearchIcon = ({ size = 20 }) => (
     strokeWidth="2.5"
     strokeLinecap="round"
     strokeLinejoin="round"
-    style={{ color: '#a78bfa' }}
+    style={{ color: 'var(--primary-light)' }}
   >
     <circle cx="11" cy="11" r="7" />
     <path d="M20 20l-3.5-3.5" />
