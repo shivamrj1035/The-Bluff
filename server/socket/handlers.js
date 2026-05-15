@@ -924,6 +924,9 @@ function pickCPNewHost(room, departingId) {
 
 function setupCPHandlers(io, socket) {
   startCPGlobalTimer(io);
+
+  const normalizeId = (id) => String(id || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+
   // ── CP_JOIN_ROOM ────────────────────────────────────────────────────────
   socket.on(CP_EVENTS.CP_JOIN_ROOM, async ({ roomId, playerName, avatar, userId }) => {
     try {
@@ -936,7 +939,7 @@ function setupCPHandlers(io, socket) {
         }
       }
 
-      const rawId = String(roomId || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+      const rawId = normalizeId(roomId);
       const trimmedName = String(playerName || '').trim().slice(0, 12);
       const safeAvatar = String(avatar || 'P').slice(0, 2);
       const isCreate = !rawId;
@@ -975,8 +978,8 @@ function setupCPHandlers(io, socket) {
         room.hostId = socket.id;
       }
 
-      // Reconnect by name
-      const existing = room.players.find(p => p.name === trimmedName);
+      // Reconnect by userId or name
+      const existing = room.players.find(p => (userId && p.userId === userId) || p.name === trimmedName);
       if (existing) {
         const oldId = existing.id;
         existing.id = socket.id;
@@ -997,7 +1000,14 @@ function setupCPHandlers(io, socket) {
         if (room.state === CP_GAME_STATES.WAITING) {
           if (!trimmedName) { socket.emit(CP_EVENTS.CP_ERROR, { message: 'Enter your player name.' }); return; }
           if (room.players.length >= 4) { socket.emit(CP_EVENTS.CP_ERROR, { message: 'Table is full (4 players max).' }); return; }
-          room.players.push({ id: socket.id, name: trimmedName, avatar: safeAvatar || 'P', isConnected: true, cardCount: 0 });
+          room.players.push({ 
+            id: socket.id, 
+            userId, // Store userId for robust reconnection
+            name: trimmedName, 
+            avatar: safeAvatar || 'P', 
+            isConnected: true, 
+            cardCount: 0 
+          });
           room.emptySince = null;
         } else {
           console.log(`[CP SPECTATOR] ${trimmedName} joined ${effectiveRoomId}`);
@@ -1037,7 +1047,8 @@ function setupCPHandlers(io, socket) {
   // ── CP_ADD_BOT ──────────────────────────────────────────────────────────
   socket.on(CP_EVENTS.CP_ADD_BOT, async ({ roomId }) => {
     try {
-      let room = await getCPRoom(roomId);
+      const nid = normalizeId(roomId);
+      let room = await getCPRoom(nid);
       if (!room || room.hostId !== socket.id) return;
       if (room.state !== CP_GAME_STATES.WAITING) {
         socket.emit(CP_EVENTS.CP_ERROR, { message: 'Can only add bots in the lobby.' });
@@ -1061,8 +1072,9 @@ function setupCPHandlers(io, socket) {
       });
       room.emptySince = null;
 
-      saveCPRoom(roomId, room);
-      emitCPState(io, roomId, room);
+      saveCPRoom(nid, room);
+      await persistCPRoomImmediately(nid, room);
+      emitCPState(io, nid, room);
     } catch (err) {
       console.error('[CP ADD_BOT error]', err);
     }
@@ -1071,67 +1083,70 @@ function setupCPHandlers(io, socket) {
   // ── CP_START_GAME ───────────────────────────────────────────────────────
   socket.on(CP_EVENTS.CP_START_GAME, async ({ roomId }) => {
     try {
-      let room = await getCPRoom(roomId);
+      const nid = normalizeId(roomId);
+      let room = await getCPRoom(nid);
       if (!room || room.hostId !== socket.id) return;
       if (room.players.filter(p => p.isConnected).length !== 4) {
         socket.emit(CP_EVENTS.CP_ERROR, { message: 'Need exactly 4 players to start.' });
         return;
       }
       room = cpReducer(room, { type: 'CP_START_GAME', playerId: socket.id });
-      saveCPRoom(roomId, room);
-      io.to(roomId).emit(CP_EVENTS.CP_GAME_STARTED);
-      emitCPState(io, roomId, room);
+      saveCPRoom(nid, room);
+      io.to(nid).emit(CP_EVENTS.CP_GAME_STARTED);
+      emitCPState(io, nid, room);
       // Transition to trump selection after 3s reveal animation
       setTimeout(() => {
-        let r = getCPRoomFromCache(roomId);
+        let r = getCPRoomFromCache(nid);
         if (!r || r.state !== CP_GAME_STATES.TRUMP_REVEAL) return;
         r = cpReducer(r, { type: 'CP_BEGIN_TRUMP_SELECTION' });
-        saveCPRoom(roomId, r);
-        emitCPState(io, roomId, r);
+        saveCPRoom(nid, r);
+        emitCPState(io, nid, r);
       }, 3500);
     } catch (err) { console.error('[CP START_GAME error]', err); }
   });
 
-  // ── CP_SELECT_TRUMP ─────────────────────────────────────────────────────
   socket.on(CP_EVENTS.CP_SELECT_TRUMP, async ({ roomId, suit }) => {
     try {
-      let room = await getCPRoom(roomId);
+      const nid = normalizeId(roomId);
+      let room = await getCPRoom(nid);
       if (!room) return;
       const validation = validateCPAction(room, socket.id, 'CP_SELECT_TRUMP', { suit });
       if (!validation.valid) { socket.emit(CP_EVENTS.CP_ERROR, { message: validation.message }); return; }
       room = cpReducer(room, { type: 'CP_SELECT_TRUMP', playerId: socket.id, payload: { suit } });
-      saveCPRoom(roomId, room);
-      emitCPState(io, roomId, room);
+      saveCPRoom(nid, room);
+      emitCPState(io, nid, room);
     } catch (err) { console.error('[CP SELECT_TRUMP error]', err); }
   });
 
   // ── CP_REQUEST_REDEAL ───────────────────────────────────────────────────
   socket.on(CP_EVENTS.CP_REQUEST_REDEAL, async ({ roomId }) => {
     try {
-      let room = await getCPRoom(roomId);
+      const nid = normalizeId(roomId);
+      let room = await getCPRoom(nid);
       if (!room) return;
       const validation = validateCPAction(room, socket.id, 'CP_REQUEST_REDEAL', {});
       if (!validation.valid) { socket.emit(CP_EVENTS.CP_ERROR, { message: validation.message }); return; }
       room = cpReducer(room, { type: 'CP_REQUEST_REDEAL', playerId: socket.id });
-      saveCPRoom(roomId, room);
-      emitCPState(io, roomId, room);
+      saveCPRoom(nid, room);
+      emitCPState(io, nid, room);
     } catch (err) { console.error('[CP REQUEST_REDEAL error]', err); }
   });
 
   // ── CP_PLAY_CARD ────────────────────────────────────────────────────────
   socket.on(CP_EVENTS.CP_PLAY_CARD, async ({ roomId, card }) => {
     try {
-      let room = await getCPRoom(roomId);
+      const nid = normalizeId(roomId);
+      let room = await getCPRoom(nid);
       if (!room) return;
       const validation = validateCPAction(room, socket.id, 'CP_PLAY_CARD', { card });
       if (!validation.valid) { socket.emit(CP_EVENTS.CP_ERROR, { message: validation.message }); return; }
       room = cpReducer(room, { type: 'CP_PLAY_CARD', playerId: socket.id, payload: { card } });
-      saveCPRoom(roomId, room);
-      emitCPState(io, roomId, room);
+      saveCPRoom(nid, room);
+      emitCPState(io, nid, room);
       // Auto-resolve trick after animation delay
       if (room.state === CP_GAME_STATES.TRICK_RESOLUTION) {
         setTimeout(() => {
-          let r = getCPRoomFromCache(roomId);
+          let r = getCPRoomFromCache(nid);
           if (!r || r.state !== CP_GAME_STATES.TRICK_RESOLUTION) return;
           r = cpReducer(r, { type: 'CP_NEXT_TRICK' });
           
@@ -1150,15 +1165,15 @@ function setupCPHandlers(io, socket) {
             for (const wp of winningTeamPlayers) {
               recordGameResult({
                 gameType: 'courtpiece',
-                roomId,
+                roomId: nid,
                 players: playersData,
                 winnerId: wp.id
               }).catch(err => console.error('[DB] CP recordGameResult error:', err));
             }
           }
 
-          saveCPRoom(roomId, r);
-          emitCPState(io, roomId, r);
+          saveCPRoom(nid, r);
+          emitCPState(io, nid, r);
         }, 2500);
       }
     } catch (err) { console.error('[CP PLAY_CARD error]', err); }
@@ -1167,66 +1182,71 @@ function setupCPHandlers(io, socket) {
   // ── CP_KICK_PLAYER ──────────────────────────────────────────────────────
   socket.on(CP_EVENTS.CP_KICK_PLAYER, async ({ roomId, targetId }) => {
     try {
-      let room = await getCPRoom(roomId);
+      const nid = normalizeId(roomId);
+      let room = await getCPRoom(nid);
       if (!room || room.hostId !== socket.id || targetId === socket.id) return;
       room = cpReducer(room, { type: 'CP_KICK_PLAYER', payload: { targetId } });
-      saveCPRoom(roomId, room);
+      saveCPRoom(nid, room);
       io.to(targetId).emit(CP_EVENTS.CP_KICKED);
-      emitCPState(io, roomId, room);
+      emitCPState(io, nid, room);
     } catch (err) { console.error('[CP KICK_PLAYER error]', err); }
   });
 
   // ── CHAT MESSAGE ────────────────────────────────────────────────────────
   socket.on(CP_EVENTS.CHAT_MESSAGE, ({ roomId, message }) => {
     try {
-      const room = getCPRoomFromCache(roomId);
+      const nid = normalizeId(roomId);
+      const room = getCPRoomFromCache(nid);
       if (!room) return;
       const player = room.players.find(p => p.id === socket.id);
       if (!player) return;
       const text = String(message || '').trim().slice(0, 120);
       if (!text) return;
-      io.to(roomId).emit(CP_EVENTS.CHAT_BROADCAST, {
+      io.to(nid).emit(CP_EVENTS.CHAT_BROADCAST, {
         senderId: socket.id,
         senderName: player.name,
         message: text,
         ts: Date.now(),
       });
-      console.log(`[CP CHAT] ${player.name} in ${roomId}: "${text}"`);
+      console.log(`[CP CHAT] ${player.name} in ${nid}: "${text}"`);
     } catch (err) { console.error('[CP CHAT_MESSAGE error]', err); }
   });
 
   // ── CP_CLOSE_GAME ───────────────────────────────────────────────────────
   socket.on(CP_EVENTS.CP_CLOSE_GAME, async ({ roomId }) => {
     try {
-      let room = await getCPRoom(roomId);
+      const nid = normalizeId(roomId);
+      let room = await getCPRoom(nid);
       if (!room || room.hostId !== socket.id) return;
       room = cpReducer(room, { type: 'CP_RESET_TO_LOBBY' });
-      saveCPRoom(roomId, room);
-      emitCPState(io, roomId, room);
+      saveCPRoom(nid, room);
+      emitCPState(io, nid, room);
     } catch (err) { console.error('[CP CLOSE_GAME error]', err); }
   });
 
   // ── CP_RESTART_GAME ─────────────────────────────────────────────────────
   socket.on(CP_EVENTS.CP_RESTART_GAME, async ({ roomId }) => {
     try {
-      let room = await getCPRoom(roomId);
+      const nid = normalizeId(roomId);
+      let room = await getCPRoom(nid);
       if (!room || room.hostId !== socket.id) return;
       // Full match reset (coats too)
       room = cpReducer(room, { type: 'CP_RESET_TO_LOBBY' });
       room.teams = { A: { tricks: 0, coats: 0 }, B: { tricks: 0, coats: 0 } };
-      saveCPRoom(roomId, room);
-      emitCPState(io, roomId, room);
+      saveCPRoom(nid, room);
+      emitCPState(io, nid, room);
     } catch (err) { console.error('[CP RESTART_GAME error]', err); }
   });
 
   // ── CP_REORDER_PLAYERS ──────────────────────────────────────────────────
   socket.on(CP_EVENTS.CP_REORDER_PLAYERS, async ({ roomId, orderedIds }) => {
     try {
-      let room = await getCPRoom(roomId);
+      const nid = normalizeId(roomId);
+      let room = await getCPRoom(nid);
       if (!room || room.hostId !== socket.id || room.state !== CP_GAME_STATES.WAITING) return;
       room = cpReducer(room, { type: 'CP_REORDER_PLAYERS', payload: { orderedIds } });
-      saveCPRoom(roomId, room);
-      emitCPState(io, roomId, room);
+      saveCPRoom(nid, room);
+      emitCPState(io, nid, room);
     } catch (err) { console.error('[CP REORDER_PLAYERS error]', err); }
   });
 

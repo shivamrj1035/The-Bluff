@@ -34,6 +34,12 @@ export default function CPLobbyPage() {
     else toast.info(`👑 ${cpHostTransferredName} is the new host`);
   }, [cpHostTransferredId, cpHostTransferredName, myId]);
 
+  // Error toast
+  const { cpError } = useCPStore();
+  useEffect(() => {
+    if (cpError) toast.error(cpError);
+  }, [cpError]);
+
   const copyInvite = () => {
     const url = `${window.location.origin}?game=courtpiece&room=${cpRoomId}`;
     navigator.clipboard.writeText(url).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
@@ -194,7 +200,7 @@ export default function CPLobbyPage() {
             {copied ? '✅ Link Copied!' : '🔗 Copy Invite Link'}
           </button>
 
-          {isHost && connectedCount < 4 && (
+          {isHost && players.length < 4 && (
             <motion.button
               whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
               onClick={cpAddBot}
