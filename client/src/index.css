@@ -2308,3 +2308,303 @@ body {
   margin: 0;
   letter-spacing: 0.05em;
 }
+
+/* ─── ADMIN CMS REDESIGN ─── */
+.admin-cms-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  animation: admin-fade-in 0.4s ease-out;
+  padding-bottom: 80px; /* space for sticky footer */
+}
+
+@keyframes admin-fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.admin-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 24px;
+  transition: all 0.3s ease;
+}
+
+.admin-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.admin-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 12px;
+}
+
+.admin-card-header i, .admin-card-header svg {
+  color: var(--primary-light);
+  filter: drop-shadow(0 0 8px var(--accent-glow));
+}
+
+.admin-card-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+/* Premium Toggle Switch */
+.admin-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.admin-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.admin-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(255, 255, 255, 0.1);
+  transition: .4s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.admin-slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 2px;
+  background-color: #fff;
+  transition: .4s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+input:checked + .admin-slider {
+  background-color: var(--primary);
+  border-color: var(--primary-light);
+  box-shadow: 0 0 15px var(--accent-glow);
+}
+
+input:checked + .admin-slider:before {
+  transform: translateX(20px);
+}
+
+/* Sticky Action Footer */
+.admin-sticky-footer {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 48px);
+  max-width: 900px;
+  background: rgba(13, 17, 23, 0.8);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05);
+  z-index: 100;
+  animation: admin-footer-slide 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes admin-footer-slide {
+  from { transform: translate(-50%, 100px); opacity: 0; }
+  to { transform: translate(-50%, 0); opacity: 1; }
+}
+
+.admin-footer-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--dim);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.admin-form-group {
+  margin-bottom: 16px;
+}
+
+.admin-form-group label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.admin-game-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.admin-game-toggle-card {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.2s ease;
+}
+
+.admin-game-toggle-card:hover {
+  background: rgba(124, 58, 237, 0.05);
+  border-color: var(--primary-light);
+}
+
+.game-toggle-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.game-toggle-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.game-toggle-status {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+/* Premium Switch */
+.admin-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+}
+
+.admin-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.admin-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.1);
+  transition: .4s;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.admin-slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+input:checked + .admin-slider {
+  background-color: var(--primary);
+}
+
+input:focus + .admin-slider {
+  box-shadow: 0 0 1px var(--primary);
+}
+
+input:checked + .admin-slider:before {
+  transform: translateX(20px);
+}
+
+.color-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.color-input-wrapper {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.color-preview {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  padding: 0;
+  background: none;
+}
+
+.color-preview::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.color-preview::-webkit-color-swatch {
+  border: none;
+  border-radius: 6px;
+}
+
+.admin-save-footer {
+  position: sticky;
+  bottom: 0;
+  background: rgba(1, 4, 9, 0.8);
+  backdrop-filter: blur(20px);
+  margin: 0 -24px -24px;
+  padding: 20px 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  justify-content: flex-end;
+  border-bottom-left-radius: 20px;
+  border-bottom-right-radius: 20px;
+  z-index: 10;
+}
+
+.save-btn {
+  width: auto !important;
+  min-width: 180px;
+  gap: 10px;
+}
+
+.save-btn i.spinning {
+  animation: spin 1s linear infinite;
+}

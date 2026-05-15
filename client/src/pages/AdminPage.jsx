@@ -248,79 +248,107 @@ export default function AdminPage() {
                 )}
 
                 {activeTab === 'cms' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', fontWeight: 700 }}>Header Title</label>
-                      <input 
-                        className="inp" 
-                        value={cmsData.header_title || ''} 
-                        onChange={e => setCmsData({...cmsData, header_title: e.target.value})}
-                      />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', fontWeight: 700 }}>Hero Title</label>
-                      <input 
-                        className="inp" 
-                        value={cmsData.hero_title || ''} 
-                        onChange={e => setCmsData({...cmsData, hero_title: e.target.value})}
-                      />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', fontWeight: 700 }}>Hero Description</label>
-                      <textarea 
-                        className="inp" 
-                        rows="3" 
-                        style={{ resize: 'none' }}
-                        value={cmsData.hero_subtitle || ''} 
-                        onChange={e => setCmsData({...cmsData, hero_subtitle: e.target.value})}
-                      />
-                    </div>
-
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '12px', fontSize: '0.9rem', fontWeight: 700 }}>Enabled Games</label>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
-                        {REGISTERED_GAMES.map(game => (
-                          <div key={game.id} className="player-row" style={{ justifyContent: 'space-between' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: game.accent + '22', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <PlayIcon size={16} color={game.accent} />
-                              </div>
-                              <span style={{ fontWeight: 700 }}>{game.title}</span>
-                            </div>
+                  <div className="admin-cms-container">
+                    <div className="admin-grid">
+                      {/* --- Site Content Card --- */}
+                      <div className="admin-card">
+                        <div className="admin-card-header">
+                          <SettingsIcon size={20} />
+                          <h3>Site Content</h3>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                          <div className="admin-form-group">
+                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', fontWeight: 700 }}>Header Title</label>
                             <input 
-                              type="checkbox" 
-                              checked={cmsData.enabled_games?.includes(game.id)} 
-                              onChange={() => handleToggleGame(game.id)}
-                              style={{ width: '20px', height: '20px', accentColor: 'var(--primary)' }}
+                              className="inp" 
+                              placeholder="e.g. GameArena"
+                              value={cmsData.header_title || ''} 
+                              onChange={e => setCmsData({...cmsData, header_title: e.target.value})}
                             />
                           </div>
-                        ))}
+                          <div className="admin-form-group">
+                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', fontWeight: 700 }}>Hero Title</label>
+                            <input 
+                              className="inp" 
+                              placeholder="e.g. The Ultimate Card Game Hub"
+                              value={cmsData.hero_title || ''} 
+                              onChange={e => setCmsData({...cmsData, hero_title: e.target.value})}
+                            />
+                          </div>
+                          <div className="admin-form-group">
+                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', fontWeight: 700 }}>Hero Description</label>
+                            <textarea 
+                              className="inp" 
+                              rows="3" 
+                              style={{ resize: 'none' }}
+                              placeholder="Enter sub-text for landing page..."
+                              value={cmsData.hero_subtitle || ''} 
+                              onChange={e => setCmsData({...cmsData, hero_subtitle: e.target.value})}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* --- Registered Games Card --- */}
+                      <div className="admin-card">
+                        <div className="admin-card-header">
+                          <GridIcon size={20} />
+                          <h3>Registered Games</h3>
+                        </div>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--muted)', marginBottom: '16px' }}>
+                          Enable or disable games globally on the landing page.
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          {REGISTERED_GAMES.map(game => (
+                            <div key={game.id} className="player-row" style={{ 
+                              justifyContent: 'space-between', 
+                              background: 'rgba(255,255,255,0.02)',
+                              padding: '12px 16px',
+                              borderRadius: '12px'
+                            }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <div style={{ 
+                                  width: '32px', height: '32px', borderRadius: '8px', 
+                                  background: game.accent + '22', display: 'flex', 
+                                  alignItems: 'center', justifyContent: 'center' 
+                                }}>
+                                  <PlayIcon size={16} color={game.accent} />
+                                </div>
+                                <span style={{ fontWeight: 700 }}>{game.title}</span>
+                              </div>
+                              <label className="admin-switch">
+                                <input 
+                                  type="checkbox" 
+                                  checked={cmsData.enabled_games?.includes(game.id)} 
+                                  onChange={() => handleToggleGame(game.id)}
+                                />
+                                <span className="admin-slider"></span>
+                              </label>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
 
-                    {/* ─── Color Theme ─────────────────────────────────── */}
-                    <div style={{ borderTop: '1px solid var(--border)', paddingTop: '24px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-                        <div>
-                          <label style={{ display: 'block', fontSize: '1rem', fontWeight: 800, marginBottom: '4px' }}>🎨 Color Theme</label>
-                          <p style={{ fontSize: '0.78rem', color: 'var(--muted)', margin: 0 }}>Changes apply live across the entire application</p>
+                    {/* --- Color Theme Card --- */}
+                    <div className="admin-card" style={{ width: '100%' }}>
+                      <div className="admin-card-header" style={{ justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <SettingsIcon size={20} />
+                          <h3>Visual Branding & Theme</h3>
                         </div>
                         <button
                           onClick={handleResetTheme}
                           disabled={loading}
-                          style={{
-                            display: 'inline-flex', alignItems: 'center', gap: '6px',
-                            padding: '8px 16px', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.35)',
-                            background: 'rgba(239,68,68,0.08)', color: '#f87171', fontWeight: 700,
-                            fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap',
-                          }}
+                          className="btn-outline btn-sm"
+                          style={{ width: 'auto', borderColor: 'rgba(239, 68, 68, 0.2)', color: 'var(--red)' }}
                         >
-                          ↺ Reset Defaults
+                          Reset to Defaults
                         </button>
                       </div>
 
                       {/* Live preview swatch strip */}
-                      <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', height: '32px', borderRadius: '10px', overflow: 'hidden' }}>
+                      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', height: '40px', borderRadius: '12px', overflow: 'hidden', padding: '4px', background: 'rgba(0,0,0,0.2)' }}>
                         {[
                           cmsData.theme?.primary       || THEME_DEFAULTS.primary,
                           cmsData.theme?.primaryLight  || THEME_DEFAULTS.primaryLight,
@@ -331,45 +359,36 @@ export default function AdminPage() {
                           cmsData.theme?.bg2           || THEME_DEFAULTS.bg2,
                           cmsData.theme?.bg            || THEME_DEFAULTS.bg,
                         ].map((color, i) => (
-                          <div key={i} style={{ flex: 1, background: color, borderRadius: '4px', transition: 'background 0.3s' }} />
+                          <div key={i} style={{ flex: 1, background: color, borderRadius: '6px', transition: 'background 0.3s', boxShadow: 'inset 0 0 10px rgba(0,0,0,0.2)' }} />
                         ))}
                       </div>
 
-                      {/* Color pickers grid */}
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                      <div className="admin-grid">
                         {[
-                          { label: 'Primary Color',  key: 'primary',      icon: '●' },
-                          { label: 'Primary Light',  key: 'primaryLight', icon: '◑' },
-                          { label: 'Secondary',      key: 'secondary',    icon: '◎' },
-                          { label: 'Background',     key: 'bg',           icon: '▪' },
-                          { label: 'Surface',        key: 'bg2',          icon: '□' },
-                          { label: 'Text Color',     key: 'text',         icon: 'T' },
-                          { label: 'Muted Text',     key: 'muted',        icon: 'T' },
-                          { label: 'Gold Accent',    key: 'gold',         icon: '★' },
-                          { label: 'Success',        key: 'green',        icon: '✓' },
-                          { label: 'Danger',         key: 'red',          icon: '✕' },
-                        ].map(({ label, key, icon }) => {
+                          { label: 'Primary Brand',  key: 'primary' },
+                          { label: 'Light Accent',   key: 'primaryLight' },
+                          { label: 'Secondary',      key: 'secondary' },
+                          { label: 'Main BG',        key: 'bg' },
+                          { label: 'Surface/Card',   key: 'bg2' },
+                          { label: 'Base Text',      key: 'text' },
+                          { label: 'Muted Text',     key: 'muted' },
+                          { label: 'Gold/Coins',     key: 'gold' },
+                          { label: 'Success/Win',    key: 'green' },
+                          { label: 'Danger/Error',   key: 'red' },
+                        ].map(({ label, key }) => {
                           const currentVal = cmsData.theme?.[key] || THEME_DEFAULTS[key];
                           return (
-                            <div
-                              key={key}
-                              style={{
-                                display: 'flex', alignItems: 'center', gap: '12px',
-                                padding: '10px 14px', borderRadius: '10px',
-                                background: 'rgba(255,255,255,0.03)',
-                                border: '1px solid rgba(255,255,255,0.06)',
-                                transition: 'border-color 0.2s',
-                              }}
-                            >
-                              {/* Color swatch button */}
-                              <div style={{ position: 'relative', flexShrink: 0 }}>
+                            <div key={key} style={{ 
+                              display: 'flex', alignItems: 'center', gap: '12px',
+                              padding: '12px', borderRadius: '12px',
+                              background: 'rgba(255,255,255,0.02)',
+                              border: '1px solid rgba(255,255,255,0.05)'
+                            }}>
+                              <div style={{ position: 'relative', width: '40px', height: '40px' }}>
                                 <div style={{
-                                  width: '36px', height: '36px', borderRadius: '8px',
-                                  background: currentVal,
-                                  border: '2px solid rgba(255,255,255,0.15)',
-                                  boxShadow: `0 2px 8px ${currentVal}66`,
-                                  cursor: 'pointer', overflow: 'hidden',
-                                  transition: 'box-shadow 0.2s',
+                                  width: '100%', height: '100%', borderRadius: '8px',
+                                  background: currentVal, border: '2px solid rgba(255,255,255,0.1)',
+                                  boxShadow: `0 4px 12px ${currentVal}44`, cursor: 'pointer'
                                 }}>
                                   <input
                                     type="color"
@@ -379,24 +398,13 @@ export default function AdminPage() {
                                       setCmsData({ ...cmsData, theme: newTheme });
                                       applyTheme(newTheme);
                                     }}
-                                    style={{
-                                      position: 'absolute', inset: '-4px', width: 'calc(100% + 8px)',
-                                      height: 'calc(100% + 8px)', border: 'none',
-                                      background: 'none', cursor: 'pointer', opacity: 0,
-                                    }}
+                                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
                                   />
                                 </div>
                               </div>
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--dim)', marginBottom: '2px' }}>{label}</div>
-                                <code style={{
-                                  fontSize: '0.72rem', color: currentVal,
-                                  background: 'rgba(0,0,0,0.3)',
-                                  padding: '1px 6px', borderRadius: '4px',
-                                  fontWeight: 700, letterSpacing: '0.04em',
-                                }}>
-                                  {currentVal}
-                                </code>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--muted)', marginBottom: '2px' }}>{label}</div>
+                                <code style={{ fontSize: '0.8rem', color: currentVal, fontWeight: 800 }}>{currentVal.toUpperCase()}</code>
                               </div>
                             </div>
                           );
@@ -404,15 +412,22 @@ export default function AdminPage() {
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-                      <button
-                        className="btn btn-primary"
-                        onClick={handleSaveSettings}
-                        disabled={loading}
-                        style={{ flex: 1 }}
-                      >
-                        {loading ? 'Saving...' : saveSuccess ? '✓ Saved!' : 'Save Configuration'}
-                      </button>
+                    {/* --- Sticky Action Footer --- */}
+                    <div className="admin-sticky-footer">
+                      <div className="admin-footer-info">
+                        <ShieldIcon size={18} />
+                        <span>You have unsaved changes in the CMS configuration.</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '12px' }}>
+                        <button
+                          className="btn btn-primary"
+                          onClick={handleSaveSettings}
+                          disabled={loading}
+                          style={{ minWidth: '200px' }}
+                        >
+                          {loading ? 'Saving...' : saveSuccess ? '✓ Settings Saved' : 'Save Configuration'}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
