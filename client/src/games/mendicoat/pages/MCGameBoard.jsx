@@ -137,54 +137,71 @@ export default function MCGameBoard() {
         {/* Sidebar Statistics */}
         <div style={{
           position: 'absolute', left: 24, top: '50%', transform: 'translateY(-50%)',
-          width: 190, background: 'rgba(15,10,25,0.85)', backdropFilter: 'blur(12px)',
+          width: 240, background: 'rgba(15,10,25,0.85)', backdropFilter: 'blur(12px)',
           borderRadius: 24, border: '1px solid rgba(255,255,255,0.08)', padding: 20,
-          display: 'flex', flexDirection: 'column', gap: 16, zIndex: 10,
+          display: 'flex', flexDirection: 'column', gap: 20, zIndex: 10,
           boxShadow: '0 20px 50px rgba(0,0,0,0.5)'
         }}>
-          {/* Trump suit */}
-          <div>
-            <span style={{ fontSize: '0.6rem', fontWeight: 800, color: '#64748b', letterSpacing: '0.05em' }}>TRUMP</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6 }}>
-              <span style={{ fontSize: '1.4rem', color: SUIT_COLOR[gs.trumpSuit] || '#64748b' }}>{SUIT_SYMBOL[gs.trumpSuit] || '—'}</span>
-              <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>{SUIT_NAME[gs.trumpSuit] || 'None'}</span>
+          {/* Top Row: Trump & Tricks Left */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#64748b', letterSpacing: '0.05em' }}>TRUMP</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                <span style={{ fontSize: '1.4rem', color: SUIT_COLOR[gs.trumpSuit] || '#64748b' }}>{SUIT_SYMBOL[gs.trumpSuit] || '—'}</span>
+                <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>{SUIT_NAME[gs.trumpSuit] || 'None'}</span>
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#64748b', letterSpacing: '0.05em' }}>TRICKS LEFT</span>
+              <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#fff', marginTop: 4 }}>{13 - (gs.trickCount || 0)}</div>
             </div>
           </div>
 
-          {/* Tricks left */}
-          <div style={{ textAlign: 'center' }}>
-            <span style={{ fontSize: '0.6rem', fontWeight: 800, color: '#64748b', letterSpacing: '0.05em' }}>TRICKS LEFT</span>
-            <div style={{ fontSize: '2rem', fontWeight: 900, color: '#fff' }}>{13 - (gs.trickCount || 0)}</div>
-          </div>
+          <div style={{ height: 1, background: 'rgba(255,255,255,0.05)' }} />
 
-          {/* Team scorecards — shows Mendis (10s) + Tricks */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/* Team scorecards */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {['A', 'B'].map(t => (
-              <div key={t}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
-                  <span style={{ fontSize: '0.7rem', fontWeight: 800, color: TEAM_COLORS[t] }}>TEAM {t}</span>
-                  <span style={{ fontSize: '0.55rem', color: '#64748b', fontWeight: 700 }}>
-                    🃏{gs.teams?.[t]?.tricks || 0} · 🔟{gs.teams?.[t]?.mendis || 0}
-                  </span>
+              <div key={t} style={{
+                background: 'rgba(255,255,255,0.03)',
+                borderRadius: 16, padding: 12, border: `1px solid rgba(255,255,255,0.05)`
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 900, color: TEAM_COLORS[t] }}>TEAM {t}</span>
                 </div>
-                <div style={{ fontSize: '0.6rem', color: '#94a3b8', marginBottom: 5, fontWeight: 600 }}>
+                <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginBottom: 12, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {players.filter((_, i) => i % 2 === (t === 'A' ? 0 : 1)).map(p => p.id === myId ? 'You' : p.name).join(' & ')}
                 </div>
+
+                <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
+                   <div style={{ flex: 1, background: 'rgba(0,0,0,0.3)', padding: '6px 10px', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 700 }}>10s</span>
+                      <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#fff' }}>{gs.teams?.[t]?.mendis || 0}</span>
+                   </div>
+                   <div style={{ flex: 1, background: 'rgba(0,0,0,0.3)', padding: '6px 10px', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 700 }}>TRICKS</span>
+                      <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#fff' }}>{gs.teams?.[t]?.tricks || 0}</span>
+                   </div>
+                </div>
+
                 {/* Coat count */}
-                <div style={{ display: 'flex', gap: 4 }}>
-                  {Array.from({ length: 5 }).map((_, ci) => (
-                    <div key={ci} style={{
-                      width: 20, height: 20, borderRadius: 5,
-                      background: ci < (gs.teams?.[t]?.coats || 0) ? TEAM_COLORS[t] : 'rgba(255,255,255,0.08)',
-                      border: `1px solid ${ci < (gs.teams?.[t]?.coats || 0) ? TEAM_COLORS[t] : 'rgba(255,255,255,0.05)'}`,
-                    }} />
-                  ))}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                   <span style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 800 }}>COATS</span>
+                   <div style={{ display: 'flex', gap: 4 }}>
+                     {Array.from({ length: 5 }).map((_, ci) => (
+                       <div key={ci} style={{
+                         width: 14, height: 14, borderRadius: 4,
+                         background: ci < (gs.teams?.[t]?.coats || 0) ? TEAM_COLORS[t] : 'rgba(255,255,255,0.08)',
+                         border: `1px solid ${ci < (gs.teams?.[t]?.coats || 0) ? TEAM_COLORS[t] : 'rgba(255,255,255,0.05)'}`,
+                       }} />
+                     ))}
+                   </div>
                 </div>
               </div>
             ))}
           </div>
 
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: 10, textAlign: 'center', fontSize: '0.55rem', fontWeight: 800, color: '#64748b' }}>
+          <div style={{ textAlign: 'center', fontSize: '0.65rem', fontWeight: 800, color: '#64748b' }}>
             MOST 10s WINS
           </div>
         </div>
