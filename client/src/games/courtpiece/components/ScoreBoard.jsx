@@ -58,7 +58,6 @@ export default function ScoreBoard({ teams, teamANames = [], teamBNames = [], tr
             </span>
             <div style={{ display: 'flex', gap: 8 }}>
               <span style={{ fontSize: '0.65rem', color: '#9ca3af' }}>Tricks</span>
-              <span style={{ fontSize: '0.65rem', color: '#9ca3af' }}>Coats</span>
             </div>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -66,23 +65,9 @@ export default function ScoreBoard({ teams, teamANames = [], teamBNames = [], tr
               {names.join(' & ')}
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <span style={{ fontSize: '1.1rem', fontWeight: 900, color: '#fff', minWidth: 28, textAlign: 'center' }}>
+              <span style={{ fontSize: '1.4rem', fontWeight: 900, color: '#fff', minWidth: 28, textAlign: 'center' }}>
                 {team.tricks}
               </span>
-              {/* Coat pips */}
-              <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                {Array.from({ length: targetCoats }).map((_, i) => (
-                  <motion.div
-                    key={i}
-                    animate={i < team.coats ? { scale: [1, 1.3, 1] } : {}}
-                    style={{
-                      width: 8, height: 8, borderRadius: '50%',
-                      background: i < team.coats ? color : 'rgba(255,255,255,0.1)',
-                      border: `1px solid ${i < team.coats ? color : 'rgba(255,255,255,0.15)'}`,
-                    }}
-                  />
-                ))}
-              </div>
             </div>
           </div>
         </div>

@@ -1,11 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 
-const SUIT_COLOR = { H: '#ef4444', D: '#ef4444', S: '#1e293b', C: '#1e293b' };
+const SUIT_COLOR = { H: '#ef4444', D: '#ef4444', C: '#000000', S: '#000000' };
 const SUIT_SYMBOL = { H: '♥', D: '♦', C: '♣', S: '♠' };
 const RANK_DISPLAY = {
-  '2':'2','3':'3','4':'4','5':'5','6':'6','7':'7','8':'8','9':'9',
-  '10':'10','J':'J','Q':'Q','K':'K','A':'A',
+  '2': '2', '3': '3', '4': '4', '5': '5', '6': '6', '7': '7', '8': '8', '9': '9',
+  '10': '10', 'J': 'J', 'Q': 'Q', 'K': 'K', 'A': 'A',
 };
 
 /**
@@ -30,15 +30,34 @@ export default function CPCard({
   style = {},
 }) {
   const dims = size === 'sm'
-    ? { w: 56, h: 80, rank: '0.8rem', suit: '1.2rem', center: '32px' }
+    ? { w: 52, h: 76, rank: '0.75rem', suit: '1.1rem' }
     : size === 'lg'
-    ? { w: 90, h: 130, rank: '1.2rem', suit: '1.9rem', center: '56px' }
-    : { w: 72, h: 104, rank: '1rem', suit: '1.4rem', center: '44px' };
+      ? { w: 90, h: 130, rank: '1.2rem', suit: '1.9rem' }
+      : { w: 68, h: 98, rank: '0.9rem', suit: '1.4rem' };
 
-  const isBack = !cardId || cardId === 'X' || faceDown;
-  const [suit, rank] = !isBack ? cardId.split('_') : ['?', '?'];
-  const color = SUIT_COLOR[suit] || '#1e293b';
-  const symbol = SUIT_SYMBOL[suit] || '';
+  if (!cardId || cardId === 'X' || faceDown) {
+    return (
+      <motion.div
+        whileHover={onClick ? { y: -4 } : {}}
+        onClick={onClick}
+        style={{
+          width: dims.w, height: dims.h,
+          borderRadius: 10,
+          background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)',
+          border: '1.5px solid rgba(167,139,250,0.25)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          cursor: onClick ? 'pointer' : 'default',
+          ...style,
+        }}
+      >
+        <span style={{ fontSize: dims.suit, opacity: 0.3 }}>🂠</span>
+      </motion.div>
+    );
+  }
+
+  const [suit, rank] = cardId.split('_');
+  const color = SUIT_COLOR[suit] || '#fff';
+  const symbol = SUIT_SYMBOL[suit] || suit;
   const isTrump = suit === trumpSuit;
   const displayRank = RANK_DISPLAY[rank] || rank;
 
@@ -46,7 +65,7 @@ export default function CPCard({
     <motion.div
       whileHover={!disabled && onClick && !isBack ? { y: -8, scale: 1.05 } : {}}
       whileTap={!disabled && onClick && !isBack ? { scale: 0.98 } : {}}
-      animate={{ 
+      animate={{
         y: selected ? -15 : 0,
         rotateY: isBack ? 180 : 0
       }}
@@ -55,11 +74,29 @@ export default function CPCard({
       style={{
         width: dims.w,
         height: dims.h,
+        borderRadius: 10,
+        background: disabled
+          ? 'linear-gradient(160deg, #1c1c2e, #111118)'
+          : 'linear-gradient(160deg, #ffffff 0%, #f1f5f9 100%)',
+        border: selected
+          ? `2px solid ${color}`
+          : isTrump
+            ? `1.5px solid ${color}55`
+            : '1.5px solid rgba(255,255,255,0.12)',
+        boxShadow: selected
+          ? `0 0 18px ${color}88, 0 8px 24px rgba(0,0,0,0.4)`
+          : isTrump
+            ? `0 0 10px ${color}33, 0 4px 16px rgba(0,0,0,0.3)`
+            : '0 4px 16px rgba(0,0,0,0.3)',
+        cursor: disabled ? 'not-allowed' : onClick ? 'pointer' : 'default',
         position: 'relative',
-        cursor: (onClick && !disabled) ? 'pointer' : 'default',
-        transformStyle: 'preserve-3d',
-        perspective: '1000px',
-        opacity: disabled ? 0.4 : 1,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        padding: '5px 6px',
+        opacity: disabled ? 0.38 : 1,
+        transition: 'opacity 0.2s, box-shadow 0.2s',
+        userSelect: 'none',
         ...style,
       }}
     >
@@ -70,11 +107,11 @@ export default function CPCard({
         transition: 'transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
         transform: isBack ? 'rotateY(180deg)' : 'rotateY(0deg)',
         borderRadius: 12,
-        boxShadow: selected 
+        boxShadow: selected
           ? `0 0 25px #f59e0b99, 0 10px 30px rgba(0,0,0,0.5)`
-          : isTrump 
-          ? `0 0 15px ${color}44, 0 4px 12px rgba(0,0,0,0.3)`
-          : '0 4px 12px rgba(0,0,0,0.3)',
+          : isTrump
+            ? `0 0 15px ${color}44, 0 4px 12px rgba(0,0,0,0.3)`
+            : '0 4px 12px rgba(0,0,0,0.3)',
       }}>
         {/* ── FRONT FACE ── */}
         <div style={{
@@ -95,9 +132,11 @@ export default function CPCard({
             <span style={{ fontSize: `calc(${dims.rank} * 0.9)`, color }}>{symbol}</span>
           </div>
 
-          {/* Center Symbol */}
-          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-            <span style={{ fontSize: dims.center, color, opacity: 0.1 }}>{symbol}</span>
+          {/* Center suit symbol */}
+          <div style={{ textAlign: 'center', display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
+            <span style={{ fontSize: `calc(${dims.suit} * 1.6)`, color: disabled ? '#444' : color, filter: `drop-shadow(0 2px 6px ${color}66)` }}>
+              {symbol}
+            </span>
           </div>
 
           {/* Bottom Corner */}
@@ -137,4 +176,3 @@ export default function CPCard({
     </motion.div>
   );
 }
-
