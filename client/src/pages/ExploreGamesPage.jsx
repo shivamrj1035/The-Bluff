@@ -2,9 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../games/bluff/store/useGameStore';
 import { useCPStore } from '../games/courtpiece/store/useCPStore';
+import { useMCStore } from '../games/mendicoat/store/useMCStore';
 import AuthDialog from '../components/common/AuthDialog';
 import AvatarDisplay from '../components/common/AvatarDisplay';
-import { REGISTERED_GAMES } from '../constants/registeredGames';
+import { REGISTERED_GAMES, isGameActive } from '../constants/registeredGames';
 import {
   GridIcon, EnergyIcon,
   UsersIcon, TrophyIcon,
@@ -20,49 +21,48 @@ import {
 export default function ExploreGamesPage() {
   const { setScreen, playerName, avatar, user, profile, signOut, siteSettings, isAdmin } = useGameStore();
   const { setCPScreen } = useCPStore();
+  const { setMCScreen } = useMCStore();
   const [activeTab, setActiveTab] = useState('All Games');
   const [sortBy, setSortBy] = useState('Popular');
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-   const [pendingScreen, setPendingScreen] = useState(null);
-  const [isPendingCP, setIsPendingCP] = useState(false);
+  const [pendingScreen, setPendingScreen] = useState(null);
+  const [pendingGameType, setPendingGameType] = useState('bluff');
 
-  const goToProtectedScreen = (screen, isCPScreen = false) => {
+  const goToProtectedScreen = (screen, gameType = 'bluff') => {
     if (!user) {
       setPendingScreen(screen);
-      setIsPendingCP(isCPScreen);
+      setPendingGameType(gameType);
       setIsAuthOpen(true);
       return;
     }
-    if (isCPScreen) setCPScreen(screen);
+    
+    if (gameType === 'courtpiece') setCPScreen(screen);
+    else if (gameType === 'mendicoat') setMCScreen(screen);
     else setScreen(screen);
   };
 
   useEffect(() => {
     if (!user || !pendingScreen) return;
-    if (isPendingCP) setCPScreen(pendingScreen);
+    
+    if (pendingGameType === 'courtpiece') setCPScreen(pendingScreen);
+    else if (pendingGameType === 'mendicoat') setMCScreen(pendingScreen);
     else setScreen(pendingScreen);
 
     setPendingScreen(null);
-    setIsPendingCP(false);
-  }, [pendingScreen, setScreen, setCPScreen, user, isPendingCP]);
+  }, [pendingScreen, setScreen, setCPScreen, setMCScreen, user, pendingGameType]);
 
   const tabs = ['All Games', 'Popular', 'Classic', 'Strategy', 'Party', 'Quick Play'];
 
-  // All games that actually exist in the codebase
-  const allGames = REGISTERED_GAMES.map(g => ({
-    ...g,
-    active: siteSettings?.enabled_games ? siteSettings.enabled_games.includes(g.id) : (g.id === 'bluff'),
-    status: (siteSettings?.enabled_games ? siteSettings.enabled_games.includes(g.id) : (g.id === 'bluff')) ? 'READY TO PLAY' : 'COMING SOON'
-  }));
-
-  // Mock games to fill the grid if needed (UX choice to show potential)
-  const comingSoonGames = [
-    { id: 'joker', title: 'Joker Game', desc: 'Master the wild card!', players: '2-4 Players', time: '20-40 min', status: 'COMING SOON', image: '/joker_thumbnail.png', active: false, accent: '#f59e0b', category: 'Strategy' },
-    { id: 'uno', title: 'UNO', desc: 'The classic card game!', players: '2-10 Players', time: '10-20 min', status: 'COMING SOON', isPopular: true, image: '/uno_thumbnail.png', active: false, accent: '#ef4444', category: 'Party' },
-  ].filter(msg => !allGames.find(ag => ag.id === msg.id));
-
-  const games = [...allGames, ...comingSoonGames];
+  // Map registry to UI-ready game objects
+  const games = REGISTERED_GAMES.map(g => {
+    const active = isGameActive(g.id, siteSettings?.enabled_games);
+    return {
+      ...g,
+      active,
+      status: active ? 'READY TO PLAY' : 'COMING SOON'
+    };
+  });
 
   return (
     <div className="explore-container">
@@ -233,8 +233,9 @@ export default function ExploreGamesPage() {
               transition={{ delay: idx * 0.05 }}
               onClick={() => {
                 if (!game.active) return;
-                if (game.entryScreen === 'BLUFF_ENTRY') goToProtectedScreen('BLUFF_ENTRY');
-                else if (game.entryScreen === 'CP_ENTRY') goToProtectedScreen('CP_ENTRY', true);
+                if (game.entryScreen === 'BLUFF_ENTRY') goToProtectedScreen('BLUFF_ENTRY', 'bluff');
+                else if (game.entryScreen === 'CP_ENTRY') goToProtectedScreen('CP_ENTRY', 'courtpiece');
+                else if (game.entryScreen === 'MC_ENTRY') goToProtectedScreen('MC_ENTRY', 'mendicoat');
               }}
             >
               <div className="card-media">

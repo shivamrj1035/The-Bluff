@@ -24,8 +24,8 @@ export const REGISTERED_GAMES = [
     isNew: true,
     isPopular: true,
     category: 'Strategy',
-    cpScreen: null,           // null = uses Bluff routing
     entryScreen: 'BLUFF_ENTRY',
+    isImplemented: true,
   },
   {
     id: 'courtpiece',
@@ -38,10 +38,60 @@ export const REGISTERED_GAMES = [
     isNew: true,
     isPopular: false,
     category: 'Classic',
-    cpScreen: 'CP_ENTRY',     // non-null = uses CP routing
     entryScreen: 'CP_ENTRY',
+    isImplemented: true,
+  },
+  {
+    id: 'mendicoat',
+    title: 'MendiCoat',
+    desc: 'Capture 10s (Mendis) to win! 2v2 Team Battle.',
+    players: '4 Players',
+    time: '20-40 min',
+    image: '/court_piece_thumbnail.png', // Placeholder
+    accent: '#10b981',
+    isNew: true,
+    isPopular: false,
+    category: 'Classic',
+    entryScreen: 'MC_ENTRY',
+    isImplemented: true,
+  },
+  {
+    id: 'joker',
+    title: 'Joker Game',
+    desc: 'Master the wild card!',
+    players: '2-4 Players',
+    time: '20-40 min',
+    image: '/joker_thumbnail.png',
+    accent: '#f59e0b',
+    category: 'Strategy',
+    isImplemented: false,
+  },
+  {
+    id: 'uno',
+    title: 'UNO',
+    desc: 'The classic card game!',
+    players: '2-10 Players',
+    time: '10-20 min',
+    image: '/uno_thumbnail.png',
+    accent: '#ef4444',
+    category: 'Party',
+    isImplemented: false,
   },
 ];
+
+/**
+ * Helper to determine if a game should be playable.
+ * A game is "Active" if it is both implemented and enabled by admin.
+ */
+export const isGameActive = (gameId, enabledGames) => {
+  const game = REGISTERED_GAMES.find(g => g.id === gameId);
+  if (!game || !game.isImplemented) return false;
+  
+  // If no settings yet, default to bluff
+  if (!enabledGames) return gameId === 'bluff';
+  
+  return enabledGames.includes(gameId);
+};
 
 /** Default enabled games when no settings exist in DB yet */
 export const DEFAULT_ENABLED_GAMES = ['bluff'];

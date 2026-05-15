@@ -1,19 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  AreaChart, Area, PieChart, Pie, Cell
+} from 'recharts';
 import { useGameStore, applyTheme } from '../games/bluff/store/useGameStore';
 import { THEME_DEFAULTS } from '../games/bluff/store/useGameStore';
 import {
-  SettingsIcon, GridIcon, UsersIcon, TrophyIcon, 
+  SettingsIcon, GridIcon, UsersIcon, TrophyIcon,
   ArrowLeftIcon, EnergyIcon, TrashIcon, XIcon,
-  PlayIcon, ShieldIcon, CrownIcon
+  PlayIcon, ShieldIcon, CrownIcon, LayoutIcon,
+  SearchIcon, BellIcon, LogOutIcon, MoreVerticalIcon
 } from '../components/common/Icons';
 import { REGISTERED_GAMES } from '../constants/registeredGames';
 
 const TABS = [
-  { id: 'stats', label: 'Dashboard', icon: <EnergyIcon size={18} /> },
-  { id: 'rooms', label: 'Live Rooms', icon: <GridIcon size={18} /> },
-  { id: 'cms', label: 'CMS & Theme', icon: <SettingsIcon size={18} /> },
-  { id: 'users', label: 'Players', icon: <UsersIcon size={18} /> },
+  { id: 'stats', label: 'Dashboard', icon: <LayoutIcon size={20} /> },
+  { id: 'rooms', label: 'Game Rooms', icon: <GridIcon size={20} /> },
+  { id: 'games', label: 'Games Management', icon: <PlayIcon size={20} /> },
+  { id: 'cms', label: 'CMS Settings', icon: <SettingsIcon size={20} /> },
+  { id: 'users', label: 'Player Database', icon: <UsersIcon size={20} /> },
 ];
 
 export default function AdminPage() {
@@ -131,265 +137,381 @@ export default function AdminPage() {
     setCmsData({ ...cmsData, enabled_games: newEnabled });
   };
 
-  return (
-    <div className="landing-wrapper" style={{ overflowY: 'auto' }}>
-      <div className="lp-bg-orb lp-bg-orb-left" />
-      <div className="lp-bg-orb lp-bg-orb-right" />
+  const chartData = useMemo(() => [
+    { name: 'Mon', players: 45, rooms: 12 },
+    { name: 'Tue', players: 52, rooms: 15 },
+    { name: 'Wed', players: 48, rooms: 14 },
+    { name: 'Thu', players: 61, rooms: 18 },
+    { name: 'Fri', players: 55, rooms: 16 },
+    { name: 'Sat', players: 80, rooms: 22 },
+    { name: 'Sun', players: 72, rooms: 20 },
+  ], []);
 
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px', position: 'relative', zIndex: 10 }}>
-        <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '40px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <button className="btn-outline btn-sm" onClick={() => setScreen('LANDING')} style={{ width: 'auto' }}>
-              <ArrowLeftIcon size={16} /> Back
+  const pieData = useMemo(() => [
+    { name: 'Bluff', value: 400, color: '#6366f1' },
+    { name: 'Court Piece', value: 300, color: '#f59e0b' },
+    { name: 'Rummy', value: 300, color: '#10b981' },
+    { name: 'Teen Patti', value: 200, color: '#ef4444' },
+  ], []);
+
+  return (
+    <div className="admin-v2-wrapper">
+      {/* Sidebar */}
+      <aside className="admin-v2-sidebar">
+        <div className="admin-v2-logo">
+          <div className="logo-icon">G</div>
+          <span>GameArena <small>Admin</small></span>
+        </div>
+
+        <nav className="admin-v2-nav">
+          {TABS.map(tab => (
+            <button
+              key={tab.id}
+              className={`admin-v2-nav-item ${activeTab === tab.id ? 'active' : ''}`}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              <span className="nav-icon">{tab.icon}</span>
+              <span className="nav-label">{tab.label}</span>
+              {activeTab === tab.id && <motion.div layoutId="nav-glow" className="nav-glow" />}
             </button>
-            <h1 style={{ margin: 0, fontSize: '2rem', fontWeight: 900 }}>Admin <span style={{ color: 'var(--primary)' }}>Panel</span></h1>
+          ))}
+        </nav>
+
+        <div className="admin-v2-sidebar-footer">
+          <button className="admin-v2-nav-item logout" onClick={() => setScreen('LANDING')}>
+            <span className="nav-icon"><LogOutIcon size={20} /></span>
+            <span className="nav-label">Exit Dashboard</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="admin-v2-main">
+        {/* Header */}
+        <header className="admin-v2-header">
+          <div className="header-search">
+            <SearchIcon size={18} />
+            <input
+              type="text"
+              placeholder="Search for players, rooms, or transactions..."
+              onChange={(e) => {
+                if (activeTab === 'users') {
+                  // Trigger local filtering or search
+                }
+              }}
+            />
           </div>
-          <div className="lp-panel-pill">
-            <ShieldIcon size={16} /> Authorized Administrator
+          <div className="header-actions">
+            <button className="header-icon-btn refresh" onClick={fetchData} title="Refresh Data">
+              <EnergyIcon size={20} className={loading ? 'spinning' : ''} />
+            </button>
+            <div className="header-icon-btn">
+              <BellIcon size={20} />
+              <span className="badge">3</span>
+            </div>
+            <div className="user-profile-pill">
+              <div className="avatar">A</div>
+              <div className="user-info">
+                <span className="name">Super Admin</span>
+                <span className="role">Platform Owner</span>
+              </div>
+            </div>
           </div>
         </header>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: '32px' }}>
-          {/* Sidebar */}
-          <aside className="panel" style={{ padding: '12px', height: 'fit-content' }}>
-            {TABS.map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  padding: '12px 16px',
-                  borderRadius: '10px',
-                  border: 'none',
-                  background: activeTab === tab.id ? 'var(--border-bright)' : 'transparent',
-                  color: activeTab === tab.id ? 'var(--primary-light)' : 'var(--dim)',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  marginBottom: '4px'
-                }}
-              >
-                {tab.icon}
-                {tab.label}
-              </button>
-            ))}
-          </aside>
-
-          {/* Main Content */}
-          <main className="panel" style={{ minHeight: '600px' }}>
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeTab}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2 }}
-              >
-                {activeTab === 'stats' && (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
-                    <div className="lp-metric-card" style={{ padding: '30px' }}>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>ACTIVE ROOMS</span>
-                      <div style={{ fontSize: '2.5rem', fontWeight: 900, marginTop: '10px' }}>{stats?.activeRooms || 0}</div>
+        {/* Content Area */}
+        <div className="admin-v2-content">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            >
+              {/* Dashboard Tab */}
+              {activeTab === 'stats' && (
+                <div className="admin-dashboard-view">
+                  <div className="section-header">
+                    <div>
+                      <h1>Platform Overview</h1>
+                      <p>Real-time analytics and performance metrics</p>
                     </div>
-                    <div className="lp-metric-card" style={{ padding: '30px' }}>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>PLAYERS ONLINE</span>
-                      <div style={{ fontSize: '2.5rem', fontWeight: 900, marginTop: '10px' }}>{stats?.totalPlayers || 0}</div>
-                    </div>
-                    <div className="lp-metric-card" style={{ padding: '30px' }}>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>TOTAL USERS</span>
-                      <div style={{ fontSize: '2.5rem', fontWeight: 900, marginTop: '10px' }}>{stats?.registeredUsers || 0}</div>
-                    </div>
-                    <div className="lp-metric-card" style={{ padding: '30px' }}>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>TOTAL ROOMS</span>
-                      <div style={{ fontSize: '2.5rem', fontWeight: 900, marginTop: '10px', color: 'var(--primary)' }}>{stats?.totalRoomsCreated || 0}</div>
+                    <div className="date-pill">
+                      {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
                     </div>
                   </div>
-                )}
 
-                {activeTab === 'rooms' && (
-                  <div>
-                    <h3 style={{ marginBottom: '20px' }}>Live Game Tables</h3>
-                    {!Array.isArray(rooms) || rooms.length === 0 ? (
-                      <div style={{ textAlign: 'center', padding: '40px', color: 'var(--muted)' }}>No active rooms or access denied.</div>
-                    ) : (
-                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead>
-                          <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
-                            <th style={{ padding: '12px' }}>Room ID</th>
-                            <th style={{ padding: '12px' }}>State</th>
-                            <th style={{ padding: '12px' }}>Players</th>
-                            <th style={{ padding: '12px' }}>Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {rooms.map(room => (
-                            <tr key={room.roomId} style={{ borderBottom: '1px solid var(--border)' }}>
-                              <td style={{ padding: '12px', fontWeight: 700 }}>{room.roomId}</td>
-                              <td style={{ padding: '12px' }}><span className="lp-panel-pill" style={{ fontSize: '0.7rem' }}>{room.state}</span></td>
-                              <td style={{ padding: '12px' }}>{room.players.length} online</td>
-                              <td style={{ padding: '12px' }}>
-                                <button 
-                                  className="btn-red btn-sm" 
-                                  style={{ width: 'auto' }}
-                                  onClick={() => handleTerminateRoom(room.roomId)}
-                                >
-                                  <TrashIcon size={14} /> Close
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    )}
+                  <div className="admin-metrics-grid">
+                    <div className="admin-v2-card metric-card">
+                      <div className="metric-icon players"><UsersIcon size={24} /></div>
+                      <div className="metric-info">
+                        <span className="label">Total Players</span>
+                        <h2 className="value">{stats?.registeredUsers || 0}</h2>
+                        <span className="trend positive">+12% from last week</span>
+                      </div>
+                    </div>
+                    <div className="admin-v2-card metric-card">
+                      <div className="metric-icon rooms"><GridIcon size={24} /></div>
+                      <div className="metric-info">
+                        <span className="label">Active Tables</span>
+                        <h2 className="value">{stats?.activeRooms || 0}</h2>
+                        <span className="trend positive">+5 active now</span>
+                      </div>
+                    </div>
+                    <div className="admin-v2-card metric-card">
+                      <div className="metric-icon revenue"><TrophyIcon size={24} /></div>
+                      <div className="metric-info">
+                        <span className="label">Platform Activity</span>
+                        <h2 className="value">{stats?.totalRoomsCreated || 0}</h2>
+                        <span className="label-sub">Total Sessions</span>
+                      </div>
+                    </div>
                   </div>
-                )}
 
-                {activeTab === 'cms' && (
-                  <div className="admin-cms-container">
-                    <div className="admin-grid">
-                      {/* --- Site Content Card --- */}
-                      <div className="admin-card">
-                        <div className="admin-card-header">
-                          <SettingsIcon size={20} />
-                          <h3>Site Content</h3>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                          <div className="admin-form-group">
-                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', fontWeight: 700 }}>Header Title</label>
-                            <input 
-                              className="inp" 
-                              placeholder="e.g. GameArena"
-                              value={cmsData.header_title || ''} 
-                              onChange={e => setCmsData({...cmsData, header_title: e.target.value})}
-                            />
-                          </div>
-                          <div className="admin-form-group">
-                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', fontWeight: 700 }}>Hero Title</label>
-                            <input 
-                              className="inp" 
-                              placeholder="e.g. The Ultimate Card Game Hub"
-                              value={cmsData.hero_title || ''} 
-                              onChange={e => setCmsData({...cmsData, hero_title: e.target.value})}
-                            />
-                          </div>
-                          <div className="admin-form-group">
-                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', fontWeight: 700 }}>Hero Description</label>
-                            <textarea 
-                              className="inp" 
-                              rows="3" 
-                              style={{ resize: 'none' }}
-                              placeholder="Enter sub-text for landing page..."
-                              value={cmsData.hero_subtitle || ''} 
-                              onChange={e => setCmsData({...cmsData, hero_subtitle: e.target.value})}
-                            />
-                          </div>
+                  <div className="admin-charts-grid">
+                    <div className="admin-v2-card chart-card main-chart">
+                      <div className="card-header">
+                        <h3>Player Engagement</h3>
+                        <div className="chart-legend">
+                          <span className="dot players"></span> Players
+                          <span className="dot rooms"></span> Rooms
                         </div>
                       </div>
+                      <div className="chart-container">
+                        <ResponsiveContainer width="100%" height={300}>
+                          <AreaChart data={chartData}>
+                            <defs>
+                              <linearGradient id="colorPlayers" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
+                                <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} dy={10} />
+                            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                            <Tooltip
+                              contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '12px' }}
+                              itemStyle={{ color: '#f8fafc' }}
+                            />
+                            <Area type="monotone" dataKey="players" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorPlayers)" />
+                            <Area type="monotone" dataKey="rooms" stroke="#f59e0b" strokeWidth={3} fill="transparent" />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
 
-                      {/* --- Registered Games Card --- */}
-                      <div className="admin-card">
-                        <div className="admin-card-header">
-                          <GridIcon size={20} />
-                          <h3>Registered Games</h3>
-                        </div>
-                        <p style={{ fontSize: '0.8rem', color: 'var(--muted)', marginBottom: '16px' }}>
-                          Enable or disable games globally on the landing page.
-                        </p>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                          {REGISTERED_GAMES.map(game => (
-                            <div key={game.id} className="player-row" style={{ 
-                              justifyContent: 'space-between', 
-                              background: 'rgba(255,255,255,0.02)',
-                              padding: '12px 16px',
-                              borderRadius: '12px'
-                            }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <div style={{ 
-                                  width: '32px', height: '32px', borderRadius: '8px', 
-                                  background: game.accent + '22', display: 'flex', 
-                                  alignItems: 'center', justifyContent: 'center' 
-                                }}>
-                                  <PlayIcon size={16} color={game.accent} />
-                                </div>
-                                <span style={{ fontWeight: 700 }}>{game.title}</span>
-                              </div>
-                              <label className="admin-switch">
-                                <input 
-                                  type="checkbox" 
-                                  checked={cmsData.enabled_games?.includes(game.id)} 
-                                  onChange={() => handleToggleGame(game.id)}
-                                />
-                                <span className="admin-slider"></span>
-                              </label>
+                    <div className="admin-v2-card chart-card pie-chart">
+                      <div className="card-header">
+                        <h3>Game Distribution</h3>
+                      </div>
+                      <div className="chart-container">
+                        <ResponsiveContainer width="100%" height={250}>
+                          <PieChart>
+                            <Pie
+                              data={pieData}
+                              innerRadius={60}
+                              outerRadius={80}
+                              paddingAngle={5}
+                              dataKey="value"
+                            >
+                              {pieData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.color} />
+                              ))}
+                            </Pie>
+                            <Tooltip
+                              contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '12px' }}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                        <div className="pie-legend">
+                          {pieData.map(item => (
+                            <div key={item.name} className="legend-item">
+                              <span className="dot" style={{ background: item.color }}></span>
+                              <span className="name">{item.name}</span>
+                              <span className="val">{((item.value / 1200) * 100).toFixed(0)}%</span>
                             </div>
                           ))}
                         </div>
                       </div>
                     </div>
+                  </div>
+                </div>
+              )}
 
-                    {/* --- Color Theme Card --- */}
-                    <div className="admin-card" style={{ width: '100%' }}>
-                      <div className="admin-card-header" style={{ justifyContent: 'space-between' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <SettingsIcon size={20} />
-                          <h3>Visual Branding & Theme</h3>
+              {/* Game Rooms Tab */}
+              {activeTab === 'rooms' && (
+                <div className="admin-rooms-view">
+                  <div className="section-header">
+                    <div>
+                      <h1>Live Game Rooms</h1>
+                      <p>Monitor and manage active game sessions</p>
+                    </div>
+                    <div className="badge-pill pulse">
+                      <span className="pulse-dot"></span>
+                      {rooms.length} Active Rooms
+                    </div>
+                  </div>
+
+                  <div className="admin-v2-card table-card">
+                    <table className="admin-v2-table">
+                      <thead>
+                        <tr>
+                          <th>Room ID</th>
+                          <th>Game State</th>
+                          <th>Players</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rooms.length === 0 ? (
+                          <tr><td colSpan="4" className="empty-state">No active rooms found</td></tr>
+                        ) : (
+                          rooms.map(room => (
+                            <tr key={room.roomId}>
+                              <td className="room-id">
+                                <code>{room.roomId}</code>
+                              </td>
+                              <td>
+                                <span className={`status-pill ${room.state.toLowerCase()}`}>
+                                  {room.state}
+                                </span>
+                              </td>
+                              <td>
+                                <div className="player-avatars">
+                                  {room.players.map((p, i) => (
+                                    <div key={i} className="mini-avatar" title={p.username}>{p.username[0]}</div>
+                                  ))}
+                                  <span className="count">{room.players.length} Players</span>
+                                </div>
+                              </td>
+                              <td>
+                                <button className="action-btn delete" onClick={() => handleTerminateRoom(room.roomId)}>
+                                  <TrashIcon size={16} />
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Games Management Tab */}
+              {activeTab === 'games' && (
+                <div className="admin-games-view">
+                  <div className="section-header">
+                    <div>
+                      <h1>Games Management</h1>
+                      <p>Configure and toggle available games</p>
+                    </div>
+                    <button className="btn-v2-primary save-btn" onClick={handleSaveSettings} disabled={loading}>
+                      {loading ? <i className="fas fa-spinner spinning"></i> : null}
+                      {saveSuccess ? '✓ Changes Saved' : 'Update Enabled Games'}
+                    </button>
+                  </div>
+
+                  <div className="admin-v2-grid">
+                    {REGISTERED_GAMES.map(game => (
+                      <div key={game.id} className="admin-v2-card game-config-card">
+                        <div className="game-preview" style={{ background: `linear-gradient(135deg, ${game.accent}33, ${game.accent}11)` }}>
+                          <PlayIcon size={32} color={game.accent} />
                         </div>
-                        <button
-                          onClick={handleResetTheme}
-                          disabled={loading}
-                          className="btn-outline btn-sm"
-                          style={{ width: 'auto', borderColor: 'rgba(239, 68, 68, 0.2)', color: 'var(--red)' }}
-                        >
-                          Reset to Defaults
-                        </button>
+                        <div className="game-info">
+                          <h3>{game.title}</h3>
+                          <p>{game.description || 'Global multiplayer card game'}</p>
+                          <div className="game-footer">
+                            <span className={`status ${cmsData.enabled_games?.includes(game.id) ? 'active' : 'inactive'}`}>
+                              {cmsData.enabled_games?.includes(game.id) ? 'Live' : 'Maintenance'}
+                            </span>
+                            <label className="admin-switch">
+                              <input
+                                type="checkbox"
+                                checked={cmsData.enabled_games?.includes(game.id)}
+                                onChange={() => handleToggleGame(game.id)}
+                              />
+                              <span className="admin-slider"></span>
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* CMS Settings Tab */}
+              {activeTab === 'cms' && (
+                <div className="admin-cms-view">
+                  <div className="section-header">
+                    <div>
+                      <h1>CMS & Branding</h1>
+                      <p>Customize site content and visual identity</p>
+                    </div>
+                    <button className="btn-v2-primary save-btn" onClick={handleSaveSettings} disabled={loading}>
+                      {loading ? <i className="fas fa-spinner spinning"></i> : null}
+                      {saveSuccess ? '✓ Settings Saved' : 'Update Changes'}
+                    </button>
+                  </div>
+
+                  <div className="admin-v2-grid-3">
+                    <div className="admin-v2-card cms-form-card">
+                      <div className="card-header"><h3>Site Information</h3></div>
+                      <div className="card-body">
+                        <div className="form-group">
+                          <label>Header Title</label>
+                          <input
+                            type="text"
+                            value={cmsData.header_title || ''}
+                            onChange={e => setCmsData({ ...cmsData, header_title: e.target.value })}
+                            placeholder="e.g. GameArena"
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label>Hero Title</label>
+                          <input
+                            type="text"
+                            value={cmsData.hero_title || ''}
+                            onChange={e => setCmsData({ ...cmsData, hero_title: e.target.value })}
+                            placeholder="Welcome Message"
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label>Hero Description</label>
+                          <textarea
+                            rows="4"
+                            value={cmsData.hero_subtitle || ''}
+                            onChange={e => setCmsData({ ...cmsData, hero_subtitle: e.target.value })}
+                            placeholder="Sub-headline text"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="admin-v2-card theme-config-card" style={{ gridColumn: 'span 2' }}>
+                      <div className="card-header">
+                        <h3>Theme & Visuals</h3>
+                        <button className="text-btn red" onClick={handleResetTheme}>Reset Defaults</button>
                       </div>
 
-                      {/* Live preview swatch strip */}
-                      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', height: '40px', borderRadius: '12px', overflow: 'hidden', padding: '4px', background: 'rgba(0,0,0,0.2)' }}>
-                        {[
-                          cmsData.theme?.primary       || THEME_DEFAULTS.primary,
-                          cmsData.theme?.primaryLight  || THEME_DEFAULTS.primaryLight,
-                          cmsData.theme?.secondary     || THEME_DEFAULTS.secondary,
-                          cmsData.theme?.gold          || THEME_DEFAULTS.gold,
-                          cmsData.theme?.green         || THEME_DEFAULTS.green,
-                          cmsData.theme?.red           || THEME_DEFAULTS.red,
-                          cmsData.theme?.bg2           || THEME_DEFAULTS.bg2,
-                          cmsData.theme?.bg            || THEME_DEFAULTS.bg,
-                        ].map((color, i) => (
-                          <div key={i} style={{ flex: 1, background: color, borderRadius: '6px', transition: 'background 0.3s', boxShadow: 'inset 0 0 10px rgba(0,0,0,0.2)' }} />
-                        ))}
-                      </div>
-
-                      <div className="admin-grid">
-                        {[
-                          { label: 'Primary Brand',  key: 'primary' },
-                          { label: 'Light Accent',   key: 'primaryLight' },
-                          { label: 'Secondary',      key: 'secondary' },
-                          { label: 'Main BG',        key: 'bg' },
-                          { label: 'Surface/Card',   key: 'bg2' },
-                          { label: 'Base Text',      key: 'text' },
-                          { label: 'Muted Text',     key: 'muted' },
-                          { label: 'Gold/Coins',     key: 'gold' },
-                          { label: 'Success/Win',    key: 'green' },
-                          { label: 'Danger/Error',   key: 'red' },
-                        ].map(({ label, key }) => {
-                          const currentVal = cmsData.theme?.[key] || THEME_DEFAULTS[key];
-                          return (
-                            <div key={key} style={{ 
-                              display: 'flex', alignItems: 'center', gap: '12px',
-                              padding: '12px', borderRadius: '12px',
-                              background: 'rgba(255,255,255,0.02)',
-                              border: '1px solid rgba(255,255,255,0.05)'
-                            }}>
-                              <div style={{ position: 'relative', width: '40px', height: '40px' }}>
-                                <div style={{
-                                  width: '100%', height: '100%', borderRadius: '8px',
-                                  background: currentVal, border: '2px solid rgba(255,255,255,0.1)',
-                                  boxShadow: `0 4px 12px ${currentVal}44`, cursor: 'pointer'
-                                }}>
+                      <div className="card-body">
+                        <div className="theme-grid">
+                          {[
+                            { label: 'Primary Brand', key: 'primary' },
+                            { label: 'Light Accent', key: 'primaryLight' },
+                            { label: 'Secondary', key: 'secondary' },
+                            { label: 'Background', key: 'bg' },
+                            { label: 'Card Surface', key: 'bg2' },
+                            { label: 'Gold/Coins', key: 'gold' },
+                            { label: 'Success', key: 'green' },
+                            { label: 'Danger', key: 'red' },
+                          ].map(({ label, key }) => {
+                            const currentVal = cmsData.theme?.[key] || THEME_DEFAULTS[key];
+                            return (
+                              <div key={key} className="color-input-group">
+                                <div className="color-preview" style={{ background: currentVal }}>
                                   <input
                                     type="color"
                                     value={currentVal}
@@ -398,86 +520,87 @@ export default function AdminPage() {
                                       setCmsData({ ...cmsData, theme: newTheme });
                                       applyTheme(newTheme);
                                     }}
-                                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
                                   />
                                 </div>
+                                <div className="color-meta">
+                                  <span>{label}</span>
+                                  <code>{currentVal}</code>
+                                </div>
                               </div>
-                              <div style={{ flex: 1 }}>
-                                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--muted)', marginBottom: '2px' }}>{label}</div>
-                                <code style={{ fontSize: '0.8rem', color: currentVal, fontWeight: 800 }}>{currentVal.toUpperCase()}</code>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* --- Sticky Action Footer --- */}
-                    <div className="admin-sticky-footer">
-                      <div className="admin-footer-info">
-                        <ShieldIcon size={18} />
-                        <span>You have unsaved changes in the CMS configuration.</span>
-                      </div>
-                      <div style={{ display: 'flex', gap: '12px' }}>
-                        <button
-                          className="btn btn-primary"
-                          onClick={handleSaveSettings}
-                          disabled={loading}
-                          style={{ minWidth: '200px' }}
-                        >
-                          {loading ? 'Saving...' : saveSuccess ? '✓ Settings Saved' : 'Save Configuration'}
-                        </button>
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
                   </div>
-                )}
+                </div>
+              )}
 
-                {activeTab === 'users' && (
-                  <div>
-                    <h3 style={{ marginBottom: '20px' }}>Registered Players</h3>
-                    {!Array.isArray(users) || users.length === 0 ? (
-                      <div style={{ textAlign: 'center', padding: '40px', color: 'var(--muted)' }}>No users found or access denied.</div>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {/* Players Tab */}
+              {activeTab === 'users' && (
+                <div className="admin-players-view">
+                  <div className="section-header">
+                    <div>
+                      <h1>Player Database</h1>
+                      <p>Search and manage registered users</p>
+                    </div>
+                    <div className="header-search compact">
+                      <SearchIcon size={16} />
+                      <input type="text" placeholder="Filter by username..." />
+                    </div>
+                  </div>
+
+                  <div className="admin-v2-card table-card">
+                    <table className="admin-v2-table">
+                      <thead>
+                        <tr>
+                          <th>Player</th>
+                          <th>Platform ID</th>
+                          <th>Wealth</th>
+                          <th>Status</th>
+                          <th>Joined</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
                         {users.map(u => (
-                          <div key={u.id} className="player-row" style={{ padding: '16px', opacity: u.is_blocked ? 0.6 : 1, border: u.is_blocked ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid var(--border)' }}>
-                            <div style={{
-                              width: '40px', height: '40px', borderRadius: '50%', background: u.is_blocked ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255,255,255,0.1)',
-                              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem'
-                            }}>
-                              {u.avatar_url?.length <= 2 ? u.avatar_url : '👤'}
-                            </div>
-                            <div style={{ flex: 1 }}>
-                              <div style={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                {u.username}
-                                {u.is_blocked && <span style={{ fontSize: '0.6rem', background: '#ef4444', color: '#fff', padding: '2px 6px', borderRadius: '4px' }}>BLOCKED</span>}
+                          <tr key={u.id} className={u.is_blocked ? 'row-blocked' : ''}>
+                            <td>
+                              <div className="player-cell">
+                                <div className="avatar" style={{ background: u.is_blocked ? 'rgba(239, 68, 68, 0.1)' : 'rgba(99, 102, 241, 0.1)' }}>
+                                  {u.avatar_url?.length <= 2 ? u.avatar_url : '👤'}
+                                </div>
+                                <span className="username">{u.username}</span>
                               </div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>ID: {u.id}</div>
-                            </div>
-                            <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: '16px' }}>
-                              <div>
-                                <div style={{ fontWeight: 900, color: 'var(--gold)' }}>{u.coins} 💰</div>
-                                <div style={{ fontSize: '0.7rem', color: 'var(--muted)' }}>Joined {new Date(u.created_at).toLocaleDateString()}</div>
+                            </td>
+                            <td><code className="id-code">{u.id.substring(0, 8)}...</code></td>
+                            <td><span className="coins-pill">{u.coins.toLocaleString()} 💰</span></td>
+                            <td>
+                              <span className={`status-badge ${u.is_blocked ? 'blocked' : 'active'}`}>
+                                {u.is_blocked ? 'Blocked' : 'Active'}
+                              </span>
+                            </td>
+                            <td>{new Date(u.created_at).toLocaleDateString()}</td>
+                            <td>
+                              <div className="action-group">
+                                <button className={`action-btn ${u.is_blocked ? 'unblock' : 'block'}`} onClick={() => handleToggleBlock(u)}>
+                                  {u.is_blocked ? <ShieldIcon size={14} /> : <ShieldIcon size={14} />}
+                                </button>
+                                <button className="action-btn more"><MoreVerticalIcon size={14} /></button>
                               </div>
-                              <button 
-                                onClick={() => handleToggleBlock(u)}
-                                className={u.is_blocked ? "btn-outline btn-sm" : "btn-red btn-sm"}
-                                style={{ width: 'auto', minWidth: '100px' }}
-                              >
-                                {u.is_blocked ? 'Unblock' : 'Block User'}
-                              </button>
-                            </div>
-                          </div>
+                            </td>
+                          </tr>
                         ))}
-                      </div>
-                    )}
+                      </tbody>
+                    </table>
                   </div>
-                )}
-              </motion.div>
-            </AnimatePresence>
-          </main>
+                </div>
+              )}
+            </motion.div>
+          </AnimatePresence>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
+

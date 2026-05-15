@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../games/bluff/store/useGameStore';
 import { useCPStore } from '../games/courtpiece/store/useCPStore';
+import { useMCStore } from '../games/mendicoat/store/useMCStore';
 import AuthDialog from '../components/common/AuthDialog';
 import {
   GridIcon, EnergyIcon, LockIcon,
@@ -10,35 +11,39 @@ import {
   ChevronDownIcon, CrownIcon, LogOutIcon, SettingsIcon
 } from '../components/common/Icons';
 import AvatarDisplay from '../components/common/AvatarDisplay';
-import { REGISTERED_GAMES } from '../constants/registeredGames';
+import { REGISTERED_GAMES, isGameActive } from '../constants/registeredGames';
 
 export default function LandingPage() {
   const { setScreen, playerName, avatar, user, profile, signOut, siteSettings, isAdmin } = useGameStore();
   const { setCPScreen } = useCPStore();
+  const { setMCScreen } = useMCStore();
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [pendingScreen, setPendingScreen] = useState(null);
-  const [isPendingCP, setIsPendingCP] = useState(false);
+  const [pendingGameType, setPendingGameType] = useState('bluff');
 
-  const goToProtectedScreen = (screen, isCPScreen = false) => {
+  const goToProtectedScreen = (screen, gameType = 'bluff') => {
     if (!user) {
       setPendingScreen(screen);
-      setIsPendingCP(isCPScreen);
+      setPendingGameType(gameType);
       setIsAuthOpen(true);
       return;
     }
-    if (isCPScreen) setCPScreen(screen);
+    
+    if (gameType === 'courtpiece') setCPScreen(screen);
+    else if (gameType === 'mendicoat') setMCScreen(screen);
     else setScreen(screen);
   };
 
   useEffect(() => {
     if (!user || !pendingScreen) return;
-    if (isPendingCP) setCPScreen(pendingScreen);
-    else setScreen(pendingScreen);
     
+    if (pendingGameType === 'courtpiece') setCPScreen(pendingScreen);
+    else if (pendingGameType === 'mendicoat') setMCScreen(pendingScreen);
+    else setScreen(pendingScreen);
+
     setPendingScreen(null);
-    setIsPendingCP(false);
-  }, [pendingScreen, setScreen, setCPScreen, user, isPendingCP]);
+  }, [pendingScreen, setScreen, setCPScreen, setMCScreen, user, pendingGameType]);
 
   const metrics = [
     { value: '2.3K+', label: 'players online' },
@@ -65,12 +70,12 @@ export default function LandingPage() {
   ];
 
   const games = REGISTERED_GAMES.map(g => {
-    const isActive = siteSettings?.enabled_games ? siteSettings.enabled_games.includes(g.id) : (g.id === 'bluff');
+    const active = isGameActive(g.id, siteSettings?.enabled_games);
     return {
       ...g,
-      active: isActive,
-      status: isActive ? 'READY TO PLAY' : 'COMING SOON',
-      statusColor: isActive ? '#10b981' : '#f59e0b',
+      active: active,
+      status: active ? 'READY TO PLAY' : 'COMING SOON',
+      statusColor: active ? '#10b981' : '#f59e0b',
       avatars: ['S', 'P', 'G']
     };
   });
@@ -244,7 +249,7 @@ export default function LandingPage() {
         </div>
 
         <div className="lp-game-grid">
-          {games.filter(g => !siteSettings?.enabled_games || siteSettings.enabled_games.includes(g.id)).map((game, idx) => (
+          {games.map((game, idx) => (
             <motion.div
               key={game.id}
               className={`lp-game-card ${game.active ? 'active' : ''}`}
@@ -253,8 +258,9 @@ export default function LandingPage() {
               transition={{ delay: 0.2 + idx * 0.1 }}
               onClick={() => {
                 if (!game.active) return;
-                if (game.entryScreen === 'BLUFF_ENTRY') goToProtectedScreen('BLUFF_ENTRY');
-                else if (game.entryScreen === 'CP_ENTRY') goToProtectedScreen('CP_ENTRY', true);
+                if (game.entryScreen === 'BLUFF_ENTRY') goToProtectedScreen('BLUFF_ENTRY', 'bluff');
+                else if (game.entryScreen === 'CP_ENTRY') goToProtectedScreen('CP_ENTRY', 'courtpiece');
+                else if (game.entryScreen === 'MC_ENTRY') goToProtectedScreen('MC_ENTRY', 'mendicoat');
               }}
             >
               <div className="lp-game-media">

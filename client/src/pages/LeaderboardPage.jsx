@@ -54,7 +54,7 @@ export default function LeaderboardPage() {
           <motion.div
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', background: 'rgba(var(--primary-rgb,124,58,237), 0.1)', padding: '8px 16px', borderRadius: '100px', color: 'var(--primary-light)', fontSize: '0.8rem', fontWeight: 800, letterSpacing: '0.1em', marginBottom: '16px', background: 'var(--border-bright)' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', padding: '8px 16px', borderRadius: '100px', color: 'var(--primary-light)', fontSize: '0.8rem', fontWeight: 800, letterSpacing: '0.1em', marginBottom: '16px', background: 'var(--border-bright)' }}
           >
             <TrophyIcon size={16} /> GLOBAL RANKINGS
           </motion.div>

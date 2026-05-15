@@ -5,7 +5,11 @@ const { Server } = require("socket.io");
 const cors = require("cors");
 const { clerkMiddleware, getAuth } = require("@clerk/express");
 const { sql, ensureProfileSchema, ensureSettingsSchema, incrementRoomCounter, ensureHistorySchema } = require("./db");
-const { setupHandlers, getRoomForHttp, getActiveRoomsList, setupCPHandlers, getCPRoomForHttp, deleteRoom, deleteCPRoom } = require("./socket/handlers");
+const { 
+  setupHandlers, getRoomForHttp, getActiveRoomsList, 
+  setupCPHandlers, getCPRoomForHttp, deleteRoom, deleteCPRoom,
+  setupMendiCoatHandlers, getMCRoomForHttp, deleteMCRoom 
+} = require("./socket/handlers");
 const redis = require("./redisClient");
 const app = express();
 app.use(cors({ origin: "*" }));
@@ -218,6 +222,7 @@ app.delete("/api/admin/rooms/:id", adminOnly, async (req, res) => {
     // Try both Bluff and CP room deletions
     await deleteRoom(id);
     await deleteCPRoom(id);
+    await deleteMCRoom(id);
     io.to(id).emit("room_closed", { message: "This room was terminated by an administrator." });
     res.json({ success: true, message: "Room terminated" });
   } catch (err) {
@@ -305,6 +310,7 @@ io.on("connection", (socket) => {
   console.log(`[CONNECT] ${socket.id}`);
   setupHandlers(io, socket);
   setupCPHandlers(io, socket);
+  setupMendiCoatHandlers(io, socket);
 });
 
 const PORT = process.env.PORT || 4000;

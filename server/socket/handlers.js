@@ -11,6 +11,13 @@ const { createCPRoom, cpReducer } = require("../logic/courtpiece/gameState");
 const { validateCPAction } = require("../logic/courtpiece/validator");
 const { serializeCPState } = require("./cpSync");
 
+// ─── MendiCoat imports ──────────────────────────────────────────────────────────
+const { MC_EVENTS, MC_GAME_STATES } = require("../logic/mendicoat/constants");
+const { createMCRoom, mcReducer } = require("../logic/mendicoat/gameState");
+const { validateMCAction } = require("../logic/mendicoat/validator");
+const { serializeMCState } = require("./mcSync");
+const { getBotTrumpSuit: getMCBotTrumpSuit, getBotPlayCard: getMCBotPlayCard } = require("../logic/mendicoat/bot");
+
 const ROOM_TTL = 60 * 60 * 1; // 1 hour in seconds
 const ROOM_TTL_MS = ROOM_TTL * 1000;
 const EMPTY_ROOM_GRACE_MS = 5 * 60 * 1000;
@@ -727,10 +734,36 @@ function getActiveRoomsList() {
     }
   }
 
+  // MendiCoat rooms
+  for (const roomId of mcActiveRooms) {
+    const room = mcRoomCache.get(roomId);
+    if (room) {
+      list.push({
+        roomId,
+        game: 'mendicoat',
+        state: room.state,
+        players: room.players.map(p => ({ name: p.name, isConnected: p.isConnected })),
+        lastActivityAt: room.lastActivityAt,
+        expiresAt: room.expiresAt,
+      });
+    }
+  }
+
   return list;
 }
 
-module.exports = { setupHandlers, getRoomForHttp, getActiveRoomsList, setupCPHandlers, getCPRoomForHttp, deleteRoom, deleteCPRoom };
+module.exports = { 
+  setupHandlers, 
+  getRoomForHttp, 
+  getActiveRoomsList, 
+  setupCPHandlers, 
+  getCPRoomForHttp, 
+  setupMendiCoatHandlers,
+  getMCRoomForHttp,
+  deleteRoom, 
+  deleteCPRoom,
+  deleteMCRoom
+};
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  COURT PIECE HANDLERS
@@ -1273,5 +1306,409 @@ function setupCPHandlers(io, socket) {
       saveCPRoom(cpRoomId, room);
       emitCPState(io, cpRoomId, room);
     } catch (err) { console.error('[CP DISCONNECT error]', err); }
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  MENDICOAT HANDLERS
+//  Separate caches, separate Redis prefix (mcroom:).
+// ══════════════════════════════════════════════════════════════════════════════
+
+const mcRoomCache = new Map();
+const mcDirtyRooms = new Set();
+const mcActiveRooms = new Set();
+const mcSocketRoomMap = new Map();
+const MC_ROOM_TTL = 60 * 60 * 1;
+const MC_ROOM_TTL_MS = MC_ROOM_TTL * 1000;
+let mcTimerInterval = null;
+
+function startMCGlobalTimer(io) {
+  if (mcTimerInterval) return;
+  mcTimerInterval = setInterval(() => {
+    for (const roomId of mcActiveRooms) {
+      try {
+        let room = getMCRoomFromCache(roomId);
+        if (!room) { mcActiveRooms.delete(roomId); continue; }
+        const now = Date.now();
+        
+        if (room.emptySince && now - room.emptySince >= EMPTY_ROOM_GRACE_MS) {
+          deleteMCRoom(roomId).catch(e => {});
+          mcActiveRooms.delete(roomId);
+          continue;
+        }
+
+        if (room.expiresAt && now >= room.expiresAt) {
+          io.to(roomId).emit(MC_EVENTS.MC_ERROR, { message: "This table expired due to inactivity." });
+          io.to(roomId).emit("room_closed");
+          deleteMCRoom(roomId).catch(e => {});
+          mcActiveRooms.delete(roomId);
+          continue;
+        }
+
+        if (room.createdAt && now - room.createdAt >= 60 * 60 * 1000) {
+          io.to(roomId).emit(MC_EVENTS.MC_ERROR, { message: "This table has reached its maximum duration of 1 hour." });
+          io.to(roomId).emit("room_closed");
+          deleteMCRoom(roomId).catch(e => {});
+          mcActiveRooms.delete(roomId);
+          continue;
+        }
+      } catch (e) {
+        console.error("MC Timer error:", e);
+      }
+    }
+  }, 3000);
+}
+
+function getMCRoomFromCache(roomId) {
+  return mcRoomCache.get(roomId) || null;
+}
+
+async function getMCRoom(roomId) {
+  if (mcRoomCache.has(roomId)) return mcRoomCache.get(roomId);
+  try {
+    const data = await redis.get(`mcroom:${roomId}`);
+    if (data) {
+      const room = JSON.parse(data);
+      mcRoomCache.set(roomId, room);
+      return room;
+    }
+  } catch (e) {
+    console.error('[MC Cache miss Redis error]', e.message);
+  }
+  return null;
+}
+
+function saveMCRoom(roomId, room) {
+  room.lastActivityAt = Date.now();
+  room.expiresAt = room.lastActivityAt + MC_ROOM_TTL_MS;
+  mcRoomCache.set(roomId, room);
+  mcDirtyRooms.add(roomId);
+}
+
+async function deleteMCRoom(roomId) {
+  mcRoomCache.delete(roomId);
+  mcDirtyRooms.delete(roomId);
+  try { await redis.del(`mcroom:${roomId}`); } catch (e) { }
+}
+
+async function persistMCRoomImmediately(roomId, room) {
+  try {
+    await redis.set(`mcroom:${roomId}`, JSON.stringify(room), 'EX', MC_ROOM_TTL);
+  } catch (e) {
+    mcDirtyRooms.add(roomId);
+    console.error(`[MC Persist error] room ${roomId}:`, e.message);
+  }
+}
+
+setInterval(async () => {
+  if (mcDirtyRooms.size === 0) return;
+  const toFlush = [...mcDirtyRooms];
+  mcDirtyRooms.clear();
+  for (const roomId of toFlush) {
+    const room = mcRoomCache.get(roomId);
+    if (!room) continue;
+    try {
+      await redis.set(`mcroom:${roomId}`, JSON.stringify(room), 'EX', MC_ROOM_TTL);
+    } catch (e) {
+      mcDirtyRooms.add(roomId);
+    }
+  }
+}, 30_000);
+
+function emitMCState(io, roomId, room) {
+  if (!room) return;
+  const roomSockets = io.sockets.adapter.rooms.get(roomId);
+  if (!roomSockets) return;
+  for (const socketId of roomSockets) {
+    io.to(socketId).emit(MC_EVENTS.MC_GAME_STATE, serializeMCState(room, socketId));
+  }
+
+  // 1. Handle Trick Resolution Animation/Timer (Applies to all players - human or bot)
+  if (room.state === MC_GAME_STATES.TRICK_RESOLUTION && !room._trickTimeoutPending) {
+    console.log(`[MC DEBUG] Room ${roomId}: Trick complete. Starting resolution timer (2.5s).`);
+    room._trickTimeoutPending = true;
+    setTimeout(() => {
+      try {
+        let resRoom = getMCRoomFromCache(roomId);
+        if (!resRoom || resRoom.state !== MC_GAME_STATES.TRICK_RESOLUTION) return;
+        resRoom._trickTimeoutPending = false;
+        
+        console.log(`[MC DEBUG] Room ${roomId}: Advancing from Trick Resolution via MC_NEXT_TRICK.`);
+        resRoom = mcReducer(resRoom, { type: 'MC_NEXT_TRICK' });
+
+        // Handle Game Over persistence
+        if (resRoom.state === MC_GAME_STATES.GAME_OVER) {
+          console.log(`[MC DEBUG] Room ${roomId}: Game Over detected. Recording results.`);
+          const nid = resRoom.roomId;
+          const playersData = resRoom.players.map(p => ({
+            userId: p.userId,
+            name: p.name,
+            rank: resRoom.matchWinner === (resRoom.players.indexOf(p) % 2 === 0 ? 'A' : 'B') ? 1 : 2,
+            status: resRoom.matchWinner === (resRoom.players.indexOf(p) % 2 === 0 ? 'A' : 'B') ? 'Winner' : 'Loser'
+          }));
+          const winningTeamPlayers = resRoom.players.filter((p, idx) => (idx % 2 === 0 ? 'A' : 'B') === resRoom.matchWinner);
+          for (const wp of winningTeamPlayers) {
+            recordGameResult({
+              gameType: 'mendicoat',
+              roomId: nid,
+              players: playersData,
+              winnerId: wp.userId || wp.id
+            }).catch(err => console.error('[DB] MC recordGameResult error:', err));
+          }
+        }
+
+        saveMCRoom(roomId, resRoom);
+        emitMCState(io, roomId, resRoom);
+      } catch (e) { 
+        console.error('[MC DEBUG] Next Trick Error:', e); 
+        // Ensure flag is reset on error to allow retry if state is still resolution
+        let r = getMCRoomFromCache(roomId);
+        if (r) r._trickTimeoutPending = false;
+      }
+    }, 2500);
+    return; // Don't process bots while trick resolution animation is showing
+  }
+
+  // 2. Handle Bot Automation
+  if (room.state === MC_GAME_STATES.TRUMP_SELECTION && room.trumpSelecterId) {
+    const selector = room.players.find(p => p.id === room.trumpSelecterId);
+    if (selector && (selector.isBot || !selector.isConnected) && !room._botTimeoutPending) {
+      console.log(`[MC DEBUG] Room ${roomId}: Bot/Disconnected turn for Trump Selection (${selector.name}).`);
+      room._botTimeoutPending = true;
+      setTimeout(async () => {
+        try {
+          let r = getMCRoomFromCache(roomId);
+          if (!r || r.state !== MC_GAME_STATES.TRUMP_SELECTION) return;
+          r._botTimeoutPending = false;
+          const botHand = r.hands[r.trumpSelecterId] || [];
+          const bestSuit = getMCBotTrumpSuit(botHand);
+          console.log(`[MC DEBUG] Room ${roomId}: Bot ${selector.name} selecting trump ${bestSuit}.`);
+          r = mcReducer(r, { type: 'MC_SELECT_TRUMP', playerId: r.trumpSelecterId, payload: { suit: bestSuit } });
+          saveMCRoom(roomId, r);
+          emitMCState(io, roomId, r);
+        } catch(e) { console.error('[MC DEBUG] Bot Trump Error', e); }
+      }, 2000);
+    }
+  } else if (room.state === MC_GAME_STATES.PLAYING && room.currentTurn) {
+    const turnPlayer = room.players.find(p => p.id === room.currentTurn);
+    if (turnPlayer && (turnPlayer.isBot || !turnPlayer.isConnected) && !room._botTimeoutPending) {
+      console.log(`[MC DEBUG] Room ${roomId}: Bot/Disconnected turn to play (${turnPlayer.name}).`);
+      room._botTimeoutPending = true;
+      setTimeout(async () => {
+        try {
+          let r = getMCRoomFromCache(roomId);
+          if (!r || r.state !== MC_GAME_STATES.PLAYING) return;
+          r._botTimeoutPending = false;
+          const botHand = r.hands[r.currentTurn] || [];
+          const card = getMCBotPlayCard(botHand, r.currentTrick, r.trumpSuit, r.leadSuit);
+          console.log(`[MC DEBUG] Room ${roomId}: Bot ${turnPlayer.name} playing ${card}.`);
+          r = mcReducer(r, { type: 'MC_PLAY_CARD', playerId: r.currentTurn, payload: { card } });
+          saveMCRoom(roomId, r);
+          emitMCState(io, roomId, r);
+          // Note: If r.state became TRICK_RESOLUTION, the recursive call above will handle it.
+        } catch(e) { console.error('[MC DEBUG] Bot Play Error', e); }
+      }, 2000);
+    }
+  }
+}
+
+function getMCRoomForHttp(roomId) {
+  return mcRoomCache.get(roomId) || null;
+}
+
+function pickMCNewHost(room, departingId) {
+  const candidate = room.players.find(p => p.id !== departingId && p.isConnected);
+  return candidate ? candidate.id : null;
+}
+
+function setupMendiCoatHandlers(io, socket) {
+  startMCGlobalTimer(io);
+  const normalizeId = (id) => String(id || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+
+  socket.on(MC_EVENTS.MC_JOIN_ROOM, async ({ roomId, playerName, avatar, userId }) => {
+    try {
+      if (userId && sql) {
+        const [user] = await sql`SELECT is_blocked FROM profiles WHERE id = ${userId}`;
+        if (user?.is_blocked) {
+          socket.emit(MC_EVENTS.MC_ERROR, { message: "You are blocked by CardNexus please contact Admin Shivam Jayswal." });
+          return;
+        }
+      }
+      const rawId = normalizeId(roomId);
+      const trimmedName = String(playerName || '').trim().slice(0, 12);
+      const safeAvatar = String(avatar || 'P').slice(0, 2);
+      const isCreate = !rawId;
+      let nid = rawId;
+      if (isCreate) {
+        for (let i = 0; i < 20; i++) {
+          let code = '';
+          for (let j = 0; j < 6; j++) code += ROOM_CODE_CHARS[Math.floor(Math.random() * ROOM_CODE_CHARS.length)];
+          const exists = getMCRoomFromCache(code) || await getMCRoom(code);
+          if (!exists) { nid = code; await incrementRoomCounter(); break; }
+        }
+        if (!nid) { socket.emit(MC_EVENTS.MC_ERROR, { message: 'Failed to generate room code.' }); return; }
+      }
+      let room = await getMCRoom(nid);
+      if (room && room.expiresAt && Date.now() >= room.expiresAt) { await deleteMCRoom(nid); mcActiveRooms.delete(nid); room = null; }
+      if (!room && !isCreate) { socket.emit(MC_EVENTS.MC_ERROR, { message: 'Room not found.' }); return; }
+      if (!room) { room = createMCRoom(nid); room.hostId = socket.id; }
+
+      const existing = room.players.find(p => (userId && p.userId === userId) || p.name === trimmedName);
+      if (existing) {
+        const oldId = existing.id;
+        existing.id = socket.id;
+        existing.isConnected = true;
+        existing.avatar = safeAvatar || existing.avatar;
+        if (room.hostId === oldId) room.hostId = socket.id;
+        if (room.currentTurn === oldId) room.currentTurn = socket.id;
+        if (room.trumpSelecterId === oldId) room.trumpSelecterId = socket.id;
+        if (room.hands[oldId]) { room.hands[socket.id] = room.hands[oldId]; delete room.hands[oldId]; }
+        room.currentTrick = room.currentTrick.map(t => t.playerId === oldId ? { ...t, playerId: socket.id } : t);
+        mcSocketRoomMap.delete(oldId);
+        room.emptySince = null;
+      } else {
+        if (room.state === MC_GAME_STATES.WAITING) {
+          if (room.players.length >= 4) { socket.emit(MC_EVENTS.MC_ERROR, { message: 'Room is full.' }); return; }
+          room.players.push({ id: socket.id, name: trimmedName, avatar: safeAvatar, userId, isConnected: true, cardCount: 0 });
+          if (!room.hostId) room.hostId = socket.id;
+        } else {
+          socket.emit(MC_EVENTS.MC_ERROR, { message: 'Game already in progress.' });
+          return;
+        }
+      }
+      socket.join(nid);
+      mcSocketRoomMap.set(socket.id, nid);
+      mcActiveRooms.add(nid);
+      saveMCRoom(nid, room);
+      emitMCState(io, nid, room);
+    } catch (e) { console.error('MC JOIN error', e); }
+  });
+
+  socket.on(MC_EVENTS.MC_START_GAME, () => {
+    try {
+      const nid = mcSocketRoomMap.get(socket.id);
+      if (!nid) return;
+      let room = getMCRoomFromCache(nid);
+      if (!room || room.hostId !== socket.id) return;
+      if (room.players.length < 4) { socket.emit(MC_EVENTS.MC_ERROR, { message: 'Need 4 players to start.' }); return; }
+      room = mcReducer(room, { type: 'MC_START_GAME' });
+      saveMCRoom(nid, room);
+      emitMCState(io, nid, room);
+    } catch (e) { console.error('MC START error', e); }
+  });
+
+  socket.on(MC_EVENTS.MC_SELECT_TRUMP, (payload) => {
+    try {
+      const nid = mcSocketRoomMap.get(socket.id);
+      if (!nid) return;
+      let room = getMCRoomFromCache(nid);
+      const v = validateMCAction(room, socket.id, 'MC_SELECT_TRUMP', payload);
+      if (!v.valid) { socket.emit(MC_EVENTS.MC_ERROR, { message: v.message }); return; }
+      room = mcReducer(room, { type: 'MC_SELECT_TRUMP', playerId: socket.id, payload });
+      saveMCRoom(nid, room);
+      emitMCState(io, nid, room);
+    } catch (e) { console.error('MC TRUMP error', e); }
+  });
+
+  socket.on(MC_EVENTS.MC_PLAY_CARD, (payload) => {
+    try {
+      const nid = mcSocketRoomMap.get(socket.id);
+      if (!nid) return;
+      let room = getMCRoomFromCache(nid);
+      const v = validateMCAction(room, socket.id, 'MC_PLAY_CARD', payload);
+      if (!v.valid) { socket.emit(MC_EVENTS.MC_ERROR, { message: v.message }); return; }
+      room = mcReducer(room, { type: 'MC_PLAY_CARD', playerId: socket.id, payload });
+      saveMCRoom(nid, room);
+      emitMCState(io, nid, room);
+    } catch (e) { console.error('MC PLAY error', e); }
+  });
+
+  socket.on(MC_EVENTS.MC_REQUEST_REDEAL, () => {
+    try {
+      const nid = mcSocketRoomMap.get(socket.id);
+      if (!nid) return;
+      let room = getMCRoomFromCache(nid);
+      const v = validateMCAction(room, socket.id, 'MC_REQUEST_REDEAL');
+      if (!v.valid) { socket.emit(MC_EVENTS.MC_ERROR, { message: v.message }); return; }
+      room = mcReducer(room, { type: 'MC_REQUEST_REDEAL', playerId: socket.id });
+      saveMCRoom(nid, room);
+      emitMCState(io, nid, room);
+    } catch (e) { console.error('MC REDEAL error', e); }
+  });
+
+  socket.on(MC_EVENTS.MC_ADD_BOT, () => {
+    try {
+      const nid = mcSocketRoomMap.get(socket.id);
+      if (!nid) return;
+      let room = getMCRoomFromCache(nid);
+      if (!room || room.hostId !== socket.id || room.state !== MC_GAME_STATES.WAITING) return;
+      if (room.players.length >= 4) return;
+      const botNames = ['AlphaBot', 'BetaBot', 'GammaBot', 'DeltaBot'];
+      const botName = botNames[room.players.length] || `Bot_${Math.floor(Math.random()*1000)}`;
+      room.players.push({ id: `bot_${Date.now()}`, name: botName, avatar: 'B', isBot: true, isConnected: true, cardCount: 0 });
+      saveMCRoom(nid, room);
+      emitMCState(io, nid, room);
+    } catch (e) { console.error('MC BOT error', e); }
+  });
+
+  socket.on(MC_EVENTS.MC_CLOSE_GAME, () => {
+    try {
+      const nid = mcSocketRoomMap.get(socket.id);
+      if (!nid) return;
+      let room = getMCRoomFromCache(nid);
+      if (!room || room.hostId !== socket.id) return;
+      room = mcReducer(room, { type: 'MC_RESET_TO_LOBBY' });
+      saveMCRoom(nid, room);
+      emitMCState(io, nid, room);
+    } catch (e) { console.error('MC CLOSE_GAME error', e); }
+  });
+
+  socket.on(MC_EVENTS.MC_RESTART_GAME, () => {
+    try {
+      const nid = mcSocketRoomMap.get(socket.id);
+      if (!nid) return;
+      let room = getMCRoomFromCache(nid);
+      if (!room || room.hostId !== socket.id) return;
+      // Start a new round (keeps coat scores)
+      room = mcReducer(room, { type: 'MC_START_GAME' });
+      saveMCRoom(nid, room);
+      emitMCState(io, nid, room);
+    } catch (e) { console.error('MC RESTART_GAME error', e); }
+  });
+
+  socket.on(MC_EVENTS.MC_REORDER_PLAYERS, (payload) => {
+    try {
+      const nid = mcSocketRoomMap.get(socket.id);
+      if (!nid) return;
+      let room = getMCRoomFromCache(nid);
+      if (!room || room.hostId !== socket.id || room.state !== MC_GAME_STATES.WAITING) return;
+      room = mcReducer(room, { type: 'MC_REORDER_PLAYERS', payload });
+      saveMCRoom(nid, room);
+      emitMCState(io, nid, room);
+    } catch (e) { console.error('MC REORDER error', e); }
+  });
+
+  socket.on('disconnect', async () => {
+    try {
+      const mcRoomId = mcSocketRoomMap.get(socket.id);
+      mcSocketRoomMap.delete(socket.id);
+      if (!mcRoomId) return;
+      let room = getMCRoomFromCache(mcRoomId) || await getMCRoom(mcRoomId);
+      if (!room) return;
+      const player = room.players.find(p => p.id === socket.id);
+      if (player) player.isConnected = false;
+      const anyConnected = room.players.some(p => p.isConnected);
+      if (!anyConnected) { room.emptySince = Date.now(); saveMCRoom(mcRoomId, room); return; }
+      if (room.hostId === socket.id) {
+        const newHostId = pickMCNewHost(room, socket.id);
+        if (newHostId) {
+          room = mcReducer(room, { type: 'MC_TRANSFER_HOST', payload: { newHostId } });
+          const nh = room.players.find(p => p.id === newHostId);
+          io.to(mcRoomId).emit(MC_EVENTS.MC_HOST_TRANSFERRED, { newHostId, newHostName: nh?.name || 'Unknown' });
+        }
+      }
+      saveMCRoom(mcRoomId, room);
+      emitMCState(io, mcRoomId, room);
+    } catch (err) { console.error('MC DISCONNECT error', err); }
   });
 }

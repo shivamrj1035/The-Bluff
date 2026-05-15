@@ -13,12 +13,19 @@ import ClerkSync from './components/common/ClerkSync';
 import Preloader from './components/common/Preloader';
 import { useGameStore } from './games/bluff/store/useGameStore';
 import { useCPStore } from './games/courtpiece/store/useCPStore';
+import { useMCStore } from './games/mendicoat/store/useMCStore';
 
 // Court Piece pages — lazy loaded so they don't affect Bluff bundle
 const CourtPieceEntryPage = lazy(() => import('./games/courtpiece/pages/CourtPieceEntryPage'));
 const CPJoinPage = lazy(() => import('./games/courtpiece/pages/CPJoinPage'));
 const CPLobbyPage = lazy(() => import('./games/courtpiece/pages/CPLobbyPage'));
 const CPGameBoard = lazy(() => import('./games/courtpiece/pages/CPGameBoard'));
+
+// MendiCoat pages
+const MendiCoatEntryPage = lazy(() => import('./games/mendicoat/pages/MendiCoatEntryPage'));
+const MCJoinPage = lazy(() => import('./games/mendicoat/pages/MCJoinPage'));
+const MCLobbyPage = lazy(() => import('./games/mendicoat/pages/MCLobbyPage'));
+const MCGameBoard = lazy(() => import('./games/mendicoat/pages/MCGameBoard'));
 
 const Spinner = () => (
   <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', gap: '20px' }}>
@@ -52,12 +59,14 @@ export default function App() {
     fetchSettings();
   }, [fetchSettings]);
   const { cpStatus, cpGameState, cpScreen } = useCPStore();
+  const { mcStatus, mcGameState, mcScreen } = useMCStore();
 
   const params = new URLSearchParams(window.location.search);
   const roomParam = params.get('room');
   const gameParam = (params.get('game') || 'bluff').toLowerCase();
   const shouldOpenBluffJoin = Boolean(roomParam) && (gameParam === 'bluff');
   const shouldOpenCPJoin = Boolean(roomParam) && (gameParam === 'courtpiece');
+  const shouldOpenMCJoin = Boolean(roomParam) && (gameParam === 'mendicoat');
 
   // ── Court Piece is active (connected to a CP room) ──────────────────────
   if (cpStatus === 'CONNECTING' || cpStatus === 'RECONNECTING') {
@@ -108,6 +117,60 @@ export default function App() {
         <Suspense fallback={<Spinner />}>
           <Toaster /><ClerkSync />
           <CPJoinPage />
+        </Suspense>
+      );
+    }
+  }
+
+  // ── MendiCoat is active (connected to an MC room) ───────────────────────
+  if (mcStatus === 'CONNECTING' || mcStatus === 'RECONNECTING') {
+    return (
+      <Suspense fallback={<Spinner />}>
+        <Toaster /><ClerkSync />
+        <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', gap: 24 }}>
+          <div style={{ width: 40, height: 40, border: '3px solid var(--primary)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+          <p style={{ color: 'var(--text)', fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>
+            {mcStatus === 'RECONNECTING' ? 'Reconnecting...' : 'Connecting...'}
+          </p>
+          <style>{`@keyframes spin { to { transform:rotate(360deg); } }`}</style>
+        </div>
+      </Suspense>
+    );
+  }
+
+  if (mcStatus === 'CONNECTED') {
+    const isInMCGame = mcGameState && mcGameState.state !== 'WAITING';
+    return (
+      <Suspense fallback={<Spinner />}>
+        <Toaster /><ClerkSync />
+        {isInMCGame ? <MCGameBoard /> : <MCLobbyPage />}
+      </Suspense>
+    );
+  }
+
+  // ── MendiCoat entry/join (idle state, MC screens) ──────────────────────
+  if (mcStatus === 'IDLE' || mcStatus === 'ERROR') {
+    if (shouldOpenMCJoin) {
+      return (
+        <Suspense fallback={<Spinner />}>
+          <Toaster /><ClerkSync />
+          <MCJoinPage />
+        </Suspense>
+      );
+    }
+    if (mcScreen === 'MC_ENTRY') {
+      return (
+        <Suspense fallback={<Spinner />}>
+          <Toaster /><ClerkSync />
+          <MendiCoatEntryPage />
+        </Suspense>
+      );
+    }
+    if (mcScreen === 'MC_JOIN') {
+      return (
+        <Suspense fallback={<Spinner />}>
+          <Toaster /><ClerkSync />
+          <MCJoinPage />
         </Suspense>
       );
     }
