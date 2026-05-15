@@ -13,9 +13,9 @@ export default function CPLobbyPage() {
   const {
     cpGameState, cpRoomId, cpStatus, cpDisconnect, cpStartGame,
     cpKickPlayer, cpReorderPlayers, cpSendChat, cpChatMessages,
-    cpHostTransferredName, cpHostTransferredId, cpSocket,
+    cpHostTransferredName, cpHostTransferredId, cpSocket, cpAddBot
   } = useCPStore();
-  const { playerName, avatar } = useGameStore();
+  const { playerName, avatar, setScreen } = useGameStore();
 
   const [copied, setCopied] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
@@ -33,6 +33,12 @@ export default function CPLobbyPage() {
     if (cpHostTransferredId === myId) toast.success('👑 You are now the host!');
     else toast.info(`👑 ${cpHostTransferredName} is the new host`);
   }, [cpHostTransferredId, cpHostTransferredName, myId]);
+
+  // Error toast
+  const { cpError } = useCPStore();
+  useEffect(() => {
+    if (cpError) toast.error(cpError);
+  }, [cpError]);
 
   const copyInvite = () => {
     const url = `${window.location.origin}?game=courtpiece&room=${cpRoomId}`;
@@ -66,12 +72,20 @@ export default function CPLobbyPage() {
             Table <span style={{ color:'#fb923c', fontFamily:'monospace' }}>{cpRoomId}</span>
           </h2>
         </div>
-        <button
-          onClick={() => { cpDisconnect(); }}
-          style={{ background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.25)', color:'#f87171', padding:'8px 14px', borderRadius:12, fontWeight:700, fontSize:'0.8rem', cursor:'pointer' }}
-        >
-          Leave
-        </button>
+        <div style={{ display:'flex', gap:8 }}>
+          <button
+            onClick={() => { cpDisconnect(); setScreen('LEADERBOARD'); }}
+            style={{ background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', color:'#fff', padding:'8px 14px', borderRadius:12, fontWeight:700, fontSize:'0.8rem', cursor:'pointer' }}
+          >
+            🏆 Leaderboard
+          </button>
+          <button
+            onClick={() => { cpDisconnect(); }}
+            style={{ background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.25)', color:'#f87171', padding:'8px 14px', borderRadius:12, fontWeight:700, fontSize:'0.8rem', cursor:'pointer' }}
+          >
+            Leave
+          </button>
+        </div>
       </div>
 
       {/* Main card */}
@@ -185,6 +199,20 @@ export default function CPLobbyPage() {
           >
             {copied ? '✅ Link Copied!' : '🔗 Copy Invite Link'}
           </button>
+
+          {isHost && players.length < 4 && (
+            <motion.button
+              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+              onClick={cpAddBot}
+              style={{
+                padding:'11px', borderRadius:14, background:'rgba(59,130,246,0.1)',
+                border:'1px solid rgba(59,130,246,0.25)', color:'#60a5fa',
+                fontWeight:700, fontSize:'0.82rem', cursor:'pointer'
+              }}
+            >
+              🤖 Add Bot Player
+            </motion.button>
+          )}
 
           {isHost ? (
             <motion.button

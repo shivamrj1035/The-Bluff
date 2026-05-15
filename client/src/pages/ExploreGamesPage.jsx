@@ -54,7 +54,7 @@ export default function ExploreGamesPage() {
 
   // Mock games to fill the grid if needed (UX choice to show potential)
   const comingSoonGames = [
-    { id: 'joker', title: 'Joker Game', desc: 'Master the wild card!', players: '2-4 Players', time: '20-40 min', status: 'COMING SOON', image: '/tash_thumbnail.png', active: false, accent: '#f59e0b', category: 'Strategy' },
+    { id: 'joker', title: 'Joker Game', desc: 'Master the wild card!', players: '2-4 Players', time: '20-40 min', status: 'COMING SOON', image: '/joker_thumbnail.png', active: false, accent: '#f59e0b', category: 'Strategy' },
     { id: 'uno', title: 'UNO', desc: 'The classic card game!', players: '2-10 Players', time: '10-20 min', status: 'COMING SOON', isPopular: true, image: '/uno_thumbnail.png', active: false, accent: '#ef4444', category: 'Party' },
   ].filter(msg => !allGames.find(ag => ag.id === msg.id));
 
@@ -90,7 +90,7 @@ export default function ExploreGamesPage() {
             <UsersIcon size={20} />
             <span>Friends</span>
           </div>
-          <div className="nav-item">
+          <div className="nav-item" onClick={() => setScreen('LEADERBOARD')}>
             <TrophyIcon size={20} />
             <span>Leaderboard</span>
           </div>

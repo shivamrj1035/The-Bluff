@@ -22,7 +22,7 @@ export const useCPStore = create((set, get) => ({
   // Connection state
   cpStatus: 'IDLE',  // 'IDLE' | 'CONNECTING' | 'CONNECTED' | 'RECONNECTING' | 'ERROR'
   cpSocket: null,
-  cpPlayerId: null,
+  cpPlayerId: localStorage.getItem('cp_userId') || `u_${Math.floor(Math.random() * 1000000)}`,
   cpRoomId: localStorage.getItem('cp_roomId') || '',
   cpError: null,
 
@@ -41,6 +41,9 @@ export const useCPStore = create((set, get) => ({
     const s = getCPSocket();
     const pName = playerName || get().cpPlayerName || '';
     const av    = avatar    || get().cpAvatar     || 'P';
+    const uId   = get().cpPlayerId;
+    
+    if (uId) localStorage.setItem('cp_userId', uId);
 
     s.off('cp_game_state');
     s.off('cp_error');
@@ -51,13 +54,14 @@ export const useCPStore = create((set, get) => ({
     s.off('disconnect');
     s.off('reconnect');
     s.off('connect');
+    s.off('room_closed');
 
     set({ cpStatus: 'CONNECTING', cpRoomId: roomId, cpError: null, cpSocket: s });
 
     s.on('connect', () => {
-      set({ cpPlayerId: s.id, cpStatus: 'CONNECTED', cpError: null });
+      set({ cpStatus: 'CONNECTED', cpError: null });
       if (roomId) localStorage.setItem('cp_roomId', roomId);
-      s.emit('cp_join_room', { roomId, playerName: pName, avatar: av });
+      s.emit('cp_join_room', { roomId, playerName: pName, avatar: av, userId: uId });
     });
 
     s.on('cp_game_state', (state) => {
@@ -106,19 +110,30 @@ export const useCPStore = create((set, get) => ({
       }, 5500);
     });
 
+    s.on('room_closed', ({ message }) => {
+      s.disconnect();
+      localStorage.removeItem('cp_roomId');
+      set({ 
+        cpStatus: 'ERROR', 
+        cpError: message || 'This room was terminated by an administrator.', 
+        cpGameState: null,
+        cpRoomId: ''
+      });
+    });
+
     s.on('disconnect', () => set({ cpStatus: 'RECONNECTING' }));
 
     s.on('reconnect', () => {
       set({ cpStatus: 'CONNECTED', cpError: null });
-      const { cpRoomId: rId } = get();
-      s.emit('cp_join_room', { roomId: rId, playerName: pName, avatar: av });
+      const { cpRoomId: rId, cpPlayerId: pId } = get();
+      s.emit('cp_join_room', { roomId: rId, playerName: pName, avatar: av, userId: pId });
     });
 
     if (!s.connected) {
       s.connect();
     } else {
-      set({ cpPlayerId: s.id, cpStatus: 'CONNECTED' });
-      s.emit('cp_join_room', { roomId, playerName: pName, avatar: av });
+      set({ cpStatus: 'CONNECTED' });
+      s.emit('cp_join_room', { roomId, playerName: pName, avatar: av, userId: uId });
     }
   },
 
@@ -151,6 +166,14 @@ export const useCPStore = create((set, get) => ({
     s?.emit('cp_reorder_players', { roomId: cpRoomId, orderedIds });
   },
 
+  // Chat messages
+  cpChatMessages: [],
+
+  cpAddBot: () => {
+    const { cpSocket: s, cpRoomId } = get();
+    s?.emit('cp_add_bot', { roomId: cpRoomId });
+  },
+
   cpCloseGame: () => {
     const { cpSocket: s, cpRoomId } = get();
     s?.emit('cp_close_game', { roomId: cpRoomId });
@@ -171,9 +194,6 @@ export const useCPStore = create((set, get) => ({
     localStorage.removeItem('cp_roomId');
     const s = getCPSocket();
     s?.disconnect();
-    set({ cpStatus: 'IDLE', cpGameState: null, cpPlayerId: null, cpRoomId: '', cpSelectedCard: null });
+    set({ cpStatus: 'IDLE', cpGameState: null, cpRoomId: '', cpSelectedCard: null });
   },
-
-  // Chat messages
-  cpChatMessages: [],
 }));

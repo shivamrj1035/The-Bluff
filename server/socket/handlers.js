@@ -3,6 +3,7 @@ const { createRoom, reducer } = require("../logic/gameState");
 const { validateAction } = require("../logic/validator");
 const { serializeState } = require("./sync");
 const redis = require("../redisClient");
+const { incrementRoomCounter, sql, recordGameResult } = require("../db");
 
 // ─── Court Piece imports ───────────────────────────────────────────────────────
 const { CP_EVENTS, CP_GAME_STATES } = require("../logic/courtpiece/constants");
@@ -10,7 +11,7 @@ const { createCPRoom, cpReducer } = require("../logic/courtpiece/gameState");
 const { validateCPAction } = require("../logic/courtpiece/validator");
 const { serializeCPState } = require("./cpSync");
 
-const ROOM_TTL = 60 * 60 * 4; // 4 hours in seconds
+const ROOM_TTL = 60 * 60 * 1; // 1 hour in seconds
 const ROOM_TTL_MS = ROOM_TTL * 1000;
 const EMPTY_ROOM_GRACE_MS = 5 * 60 * 1000;
 const ROOM_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -151,6 +152,18 @@ function startGlobalTimer(io) {
           continue;
         }
 
+        // Hard 1-hour limit from creation
+        if (room.createdAt && now - room.createdAt >= 60 * 60 * 1000) {
+          io.to(roomId).emit(EVENTS.ERROR, { message: "This table has reached its maximum duration of 1 hour." });
+          io.to(roomId).emit("room_closed");
+          deleteRoom(roomId).catch((err) => {
+            console.error(`[ROOM DELETE error] ${roomId}:`, err.message);
+          });
+          activeRooms.delete(roomId);
+          console.log(`[ROOM EXPIRED] ${roomId} — reached 1hr limit`);
+          continue;
+        }
+
         const isPicking = room.state === GAME_STATES.BLUFF_PICKING;
         const isResolution = room.state === GAME_STATES.ROUND_RESOLUTION;
         const isPlayerTurn = room.state === GAME_STATES.PLAYER_TURN;
@@ -172,6 +185,24 @@ function startGlobalTimer(io) {
                 playerId: room.bluffPickerId,
               });
             } else if (isResolution) {
+              if (room._gameEnded) {
+                const players = room.players.map(p => {
+                  const rank = room.ranking.find(r => r.id === p.id);
+                  return {
+                    userId: p.id,
+                    name: p.name,
+                    rank: rank ? rank.rankPos : room.players.length,
+                    status: rank ? 'Finished' : 'Left'
+                  };
+                });
+                const winner = room.ranking.find(r => r.rankPos === 1);
+                recordGameResult({
+                  gameType: 'bluff',
+                  roomId,
+                  players,
+                  winnerId: winner?.id
+                }).catch(err => console.error('[DB] recordGameResult error:', err));
+              }
               room = reducer(room, { type: "PROCEED_NEXT_TURN" });
             } else if (isPlayerTurn && room.currentTurn) {
               if (room.pile && room.pile.length > 0) {
@@ -231,8 +262,16 @@ function setupHandlers(io, socket) {
   startGlobalTimer(io);
 
   // --- JOIN ROOM ---
-  socket.on(EVENTS.JOIN_ROOM, async ({ roomId, playerName, avatar }) => {
+  socket.on(EVENTS.JOIN_ROOM, async ({ roomId, playerName, avatar, userId }) => {
     try {
+      // 0. Block Check
+      if (userId && sql) {
+        const [user] = await sql`SELECT is_blocked FROM profiles WHERE id = ${userId}`;
+        if (user?.is_blocked) {
+          socket.emit(EVENTS.ERROR, { message: "You are blocked by CardNexus please contact Admin Shivam Jayswal." });
+          return;
+        }
+      }
       const normalizedRoomId = normalizeRoomId(roomId);
       const trimmedName = String(playerName || "").trim().slice(0, 12);
       const safeAvatar = String(avatar || "P").trim().slice(0, 20); // avatar IDs can be up to 20 chars (e.g. 'crazy1', 'rocket', 'ninja')
@@ -241,6 +280,7 @@ function setupHandlers(io, socket) {
       let effectiveRoomId = normalizedRoomId;
       if (isCreateRequest) {
         effectiveRoomId = await generateUniqueRoomId();
+        await incrementRoomCounter();
       }
 
       let room = await getRoom(effectiveRoomId);
@@ -484,6 +524,26 @@ function setupHandlers(io, socket) {
       }
 
       room = reducer(room, { type: "PASS_TURN", playerId: socket.id });
+
+      if (room.state === GAME_STATES.ENDED) {
+        const players = room.players.map(p => {
+          const rank = room.ranking.find(r => r.id === p.id);
+          return {
+            userId: p.id,
+            name: p.name,
+            rank: rank ? rank.rankPos : room.players.length,
+            status: rank ? 'Finished' : 'Left'
+          };
+        });
+        const winner = room.ranking.find(r => r.rankPos === 1);
+        recordGameResult({
+          gameType: 'bluff',
+          roomId,
+          players,
+          winnerId: winner?.id
+        }).catch(err => console.error('[DB] PASS_TURN recordGameResult error:', err));
+      }
+
       saveRoom(roomId, room);
       emitState(io, roomId, room);
     } catch (err) {
@@ -636,11 +696,14 @@ function getRoomForHttp(roomId) {
 
 function getActiveRoomsList() {
   const list = [];
+  
+  // Bluff rooms
   for (const roomId of activeRooms) {
     const room = roomCache.get(roomId);
     if (room) {
       list.push({
         roomId,
+        game: 'bluff',
         state: room.state,
         players: room.players.map(p => ({ name: p.name, isConnected: p.isConnected })),
         lastActivityAt: room.lastActivityAt,
@@ -648,10 +711,26 @@ function getActiveRoomsList() {
       });
     }
   }
+
+  // Court Piece rooms
+  for (const roomId of cpActiveRooms) {
+    const room = cpRoomCache.get(roomId);
+    if (room) {
+      list.push({
+        roomId,
+        game: 'courtpiece',
+        state: room.state,
+        players: room.players.map(p => ({ name: p.name, isConnected: p.isConnected })),
+        lastActivityAt: room.lastActivityAt,
+        expiresAt: room.expiresAt,
+      });
+    }
+  }
+
   return list;
 }
 
-module.exports = { setupHandlers, getRoomForHttp, getActiveRoomsList, setupCPHandlers, getCPRoomForHttp };
+module.exports = { setupHandlers, getRoomForHttp, getActiveRoomsList, setupCPHandlers, getCPRoomForHttp, deleteRoom, deleteCPRoom };
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  COURT PIECE HANDLERS
@@ -662,8 +741,49 @@ const cpRoomCache = new Map();
 const cpDirtyRooms = new Set();
 const cpActiveRooms = new Set();
 const cpSocketRoomMap = new Map();
-const CP_ROOM_TTL = 60 * 60 * 4;
+const CP_ROOM_TTL = 60 * 60 * 1;
 const CP_ROOM_TTL_MS = CP_ROOM_TTL * 1000;
+let cpTimerInterval = null;
+
+function startCPGlobalTimer(io) {
+  if (cpTimerInterval) return;
+  cpTimerInterval = setInterval(() => {
+    for (const roomId of cpActiveRooms) {
+      try {
+        let room = getCPRoomFromCache(roomId);
+        if (!room) { cpActiveRooms.delete(roomId); continue; }
+        const now = Date.now();
+        
+        // Empty room cleanup
+        if (room.emptySince && now - room.emptySince >= EMPTY_ROOM_GRACE_MS) {
+          deleteCPRoom(roomId).catch(e => {});
+          cpActiveRooms.delete(roomId);
+          continue;
+        }
+
+        // Inactivity cleanup
+        if (room.expiresAt && now >= room.expiresAt) {
+          io.to(roomId).emit(CP_EVENTS.CP_ERROR, { message: "This table expired due to inactivity." });
+          io.to(roomId).emit("room_closed");
+          deleteCPRoom(roomId).catch(e => {});
+          cpActiveRooms.delete(roomId);
+          continue;
+        }
+
+        // Hard 1-hour limit
+        if (room.createdAt && now - room.createdAt >= 60 * 60 * 1000) {
+          io.to(roomId).emit(CP_EVENTS.CP_ERROR, { message: "This table has reached its maximum duration of 1 hour." });
+          io.to(roomId).emit("room_closed");
+          deleteCPRoom(roomId).catch(e => {});
+          cpActiveRooms.delete(roomId);
+          continue;
+        }
+      } catch (e) {
+        console.error("CP Timer error:", e);
+      }
+    }
+  }, 3000);
+}
 
 function getCPRoomFromCache(roomId) {
   return cpRoomCache.get(roomId) || null;
@@ -721,12 +841,75 @@ setInterval(async () => {
   }
 }, 30_000);
 
+const { getBotTrumpSuit, getBotPlayCard } = require('../logic/courtpiece/bot');
+
 function emitCPState(io, roomId, room) {
   if (!room) return;
   const roomSockets = io.sockets.adapter.rooms.get(roomId);
   if (!roomSockets) return;
   for (const socketId of roomSockets) {
     io.to(socketId).emit(CP_EVENTS.CP_GAME_STATE, serializeCPState(room, socketId));
+  }
+
+  // Handle Bot Turns automatically (also handles disconnected players)
+  if (room.state === CP_GAME_STATES.TRUMP_SELECTION && room.trumpSelecterId) {
+    const selector = room.players.find(p => p.id === room.trumpSelecterId);
+    // Bot takes over if player is a bot OR disconnected human
+    if (selector && (selector.isBot || !selector.isConnected) && !room._botTimeoutPending) {
+      room._botTimeoutPending = true;
+      setTimeout(async () => {
+        try {
+          let currentRoom = getCPRoomFromCache(roomId);
+          if (!currentRoom || currentRoom.state !== CP_GAME_STATES.TRUMP_SELECTION) return;
+          
+          currentRoom._botTimeoutPending = false;
+          const botHand = currentRoom.hands[currentRoom.trumpSelecterId] || [];
+          const bestSuit = getBotTrumpSuit(botHand);
+          
+          currentRoom = cpReducer(currentRoom, { 
+            type: 'CP_SELECT_TRUMP', 
+            playerId: currentRoom.trumpSelecterId, 
+            payload: { suit: bestSuit } 
+          });
+          saveCPRoom(roomId, currentRoom);
+          emitCPState(io, roomId, currentRoom);
+        } catch(e) { console.error('Bot Trump Selection Error', e); }
+      }, 2000); // 2s delay for disconnected takeover
+    }
+  } else if (room.state === CP_GAME_STATES.PLAYING && room.currentTurn) {
+    const turnPlayer = room.players.find(p => p.id === room.currentTurn);
+    // Bot takes over if player is a bot OR disconnected human
+    if (turnPlayer && (turnPlayer.isBot || !turnPlayer.isConnected) && !room._botTimeoutPending) {
+      room._botTimeoutPending = true;
+      setTimeout(async () => {
+        try {
+          let currentRoom = getCPRoomFromCache(roomId);
+          if (!currentRoom || currentRoom.state !== CP_GAME_STATES.PLAYING) return;
+          
+          currentRoom._botTimeoutPending = false;
+          const botHand = currentRoom.hands[currentRoom.currentTurn] || [];
+          const cardToPlay = getBotPlayCard(botHand, currentRoom.currentTrick, currentRoom.trumpSuit, currentRoom.leadSuit);
+          
+          currentRoom = cpReducer(currentRoom, { 
+            type: 'CP_PLAY_CARD', 
+            playerId: currentRoom.currentTurn, 
+            payload: { card: cardToPlay } 
+          });
+          saveCPRoom(roomId, currentRoom);
+          emitCPState(io, roomId, currentRoom);
+          
+          if (currentRoom.state === CP_GAME_STATES.TRICK_RESOLUTION) {
+             setTimeout(() => {
+                let r = getCPRoomFromCache(roomId);
+                if (!r || r.state !== CP_GAME_STATES.TRICK_RESOLUTION) return;
+                r = cpReducer(r, { type: 'CP_NEXT_TRICK' });
+                saveCPRoom(roomId, r);
+                emitCPState(io, roomId, r);
+             }, 2500);
+          }
+        } catch(e) { console.error('Bot Play Card Error', e); }
+      }, 2000); // 2s delay for disconnected takeover
+    }
   }
 }
 
@@ -740,10 +923,23 @@ function pickCPNewHost(room, departingId) {
 }
 
 function setupCPHandlers(io, socket) {
+  startCPGlobalTimer(io);
+
+  const normalizeId = (id) => String(id || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+
   // ── CP_JOIN_ROOM ────────────────────────────────────────────────────────
-  socket.on(CP_EVENTS.CP_JOIN_ROOM, async ({ roomId, playerName, avatar }) => {
+  socket.on(CP_EVENTS.CP_JOIN_ROOM, async ({ roomId, playerName, avatar, userId }) => {
     try {
-      const rawId = String(roomId || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+      // 0. Block Check
+      if (userId && sql) {
+        const [user] = await sql`SELECT is_blocked FROM profiles WHERE id = ${userId}`;
+        if (user?.is_blocked) {
+          socket.emit(CP_EVENTS.CP_ERROR, { message: "You are blocked by CardNexus please contact Admin Shivam Jayswal." });
+          return;
+        }
+      }
+
+      const rawId = normalizeId(roomId);
       const trimmedName = String(playerName || '').trim().slice(0, 12);
       const safeAvatar = String(avatar || 'P').slice(0, 2);
       const isCreate = !rawId;
@@ -755,7 +951,11 @@ function setupCPHandlers(io, socket) {
           let code = '';
           for (let j = 0; j < 6; j++) code += ROOM_CODE_CHARS[Math.floor(Math.random() * ROOM_CODE_CHARS.length)];
           const exists = getCPRoomFromCache(code) || await getCPRoom(code);
-          if (!exists) { effectiveRoomId = code; break; }
+          if (!exists) { 
+            effectiveRoomId = code; 
+            await incrementRoomCounter();
+            break; 
+          }
         }
         if (!effectiveRoomId) { socket.emit(CP_EVENTS.CP_ERROR, { message: 'Could not create room.' }); return; }
       }
@@ -778,8 +978,8 @@ function setupCPHandlers(io, socket) {
         room.hostId = socket.id;
       }
 
-      // Reconnect by name
-      const existing = room.players.find(p => p.name === trimmedName);
+      // Reconnect by userId or name
+      const existing = room.players.find(p => (userId && p.userId === userId) || p.name === trimmedName);
       if (existing) {
         const oldId = existing.id;
         existing.id = socket.id;
@@ -800,7 +1000,14 @@ function setupCPHandlers(io, socket) {
         if (room.state === CP_GAME_STATES.WAITING) {
           if (!trimmedName) { socket.emit(CP_EVENTS.CP_ERROR, { message: 'Enter your player name.' }); return; }
           if (room.players.length >= 4) { socket.emit(CP_EVENTS.CP_ERROR, { message: 'Table is full (4 players max).' }); return; }
-          room.players.push({ id: socket.id, name: trimmedName, avatar: safeAvatar || 'P', isConnected: true, cardCount: 0 });
+          room.players.push({ 
+            id: socket.id, 
+            userId, // Store userId for robust reconnection
+            name: trimmedName, 
+            avatar: safeAvatar || 'P', 
+            isConnected: true, 
+            cardCount: 0 
+          });
           room.emptySince = null;
         } else {
           console.log(`[CP SPECTATOR] ${trimmedName} joined ${effectiveRoomId}`);
@@ -837,74 +1044,136 @@ function setupCPHandlers(io, socket) {
     }
   });
 
+  // ── CP_ADD_BOT ──────────────────────────────────────────────────────────
+  socket.on(CP_EVENTS.CP_ADD_BOT, async ({ roomId }) => {
+    try {
+      const nid = normalizeId(roomId);
+      let room = await getCPRoom(nid);
+      if (!room || room.hostId !== socket.id) return;
+      if (room.state !== CP_GAME_STATES.WAITING) {
+        socket.emit(CP_EVENTS.CP_ERROR, { message: 'Can only add bots in the lobby.' });
+        return;
+      }
+      if (room.players.length >= 4) {
+        socket.emit(CP_EVENTS.CP_ERROR, { message: 'Table is full (4 players max).' });
+        return;
+      }
+
+      const botNum = room.players.filter(p => p.isBot).length + 1;
+      const botId = `bot_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+      
+      room.players.push({ 
+        id: botId, 
+        name: `Robo ${botNum}`, 
+        avatar: 'B', // Bot avatar
+        isConnected: true, 
+        isBot: true,
+        cardCount: 0 
+      });
+      room.emptySince = null;
+
+      saveCPRoom(nid, room);
+      await persistCPRoomImmediately(nid, room);
+      emitCPState(io, nid, room);
+    } catch (err) {
+      console.error('[CP ADD_BOT error]', err);
+    }
+  });
+
   // ── CP_START_GAME ───────────────────────────────────────────────────────
   socket.on(CP_EVENTS.CP_START_GAME, async ({ roomId }) => {
     try {
-      let room = await getCPRoom(roomId);
+      const nid = normalizeId(roomId);
+      let room = await getCPRoom(nid);
       if (!room || room.hostId !== socket.id) return;
       if (room.players.filter(p => p.isConnected).length !== 4) {
         socket.emit(CP_EVENTS.CP_ERROR, { message: 'Need exactly 4 players to start.' });
         return;
       }
       room = cpReducer(room, { type: 'CP_START_GAME', playerId: socket.id });
-      saveCPRoom(roomId, room);
-      io.to(roomId).emit(CP_EVENTS.CP_GAME_STARTED);
-      emitCPState(io, roomId, room);
+      saveCPRoom(nid, room);
+      io.to(nid).emit(CP_EVENTS.CP_GAME_STARTED);
+      emitCPState(io, nid, room);
       // Transition to trump selection after 3s reveal animation
       setTimeout(() => {
-        let r = getCPRoomFromCache(roomId);
+        let r = getCPRoomFromCache(nid);
         if (!r || r.state !== CP_GAME_STATES.TRUMP_REVEAL) return;
         r = cpReducer(r, { type: 'CP_BEGIN_TRUMP_SELECTION' });
-        saveCPRoom(roomId, r);
-        emitCPState(io, roomId, r);
+        saveCPRoom(nid, r);
+        emitCPState(io, nid, r);
       }, 3500);
     } catch (err) { console.error('[CP START_GAME error]', err); }
   });
 
-  // ── CP_SELECT_TRUMP ─────────────────────────────────────────────────────
   socket.on(CP_EVENTS.CP_SELECT_TRUMP, async ({ roomId, suit }) => {
     try {
-      let room = await getCPRoom(roomId);
+      const nid = normalizeId(roomId);
+      let room = await getCPRoom(nid);
       if (!room) return;
       const validation = validateCPAction(room, socket.id, 'CP_SELECT_TRUMP', { suit });
       if (!validation.valid) { socket.emit(CP_EVENTS.CP_ERROR, { message: validation.message }); return; }
       room = cpReducer(room, { type: 'CP_SELECT_TRUMP', playerId: socket.id, payload: { suit } });
-      saveCPRoom(roomId, room);
-      emitCPState(io, roomId, room);
+      saveCPRoom(nid, room);
+      emitCPState(io, nid, room);
     } catch (err) { console.error('[CP SELECT_TRUMP error]', err); }
   });
 
   // ── CP_REQUEST_REDEAL ───────────────────────────────────────────────────
   socket.on(CP_EVENTS.CP_REQUEST_REDEAL, async ({ roomId }) => {
     try {
-      let room = await getCPRoom(roomId);
+      const nid = normalizeId(roomId);
+      let room = await getCPRoom(nid);
       if (!room) return;
       const validation = validateCPAction(room, socket.id, 'CP_REQUEST_REDEAL', {});
       if (!validation.valid) { socket.emit(CP_EVENTS.CP_ERROR, { message: validation.message }); return; }
       room = cpReducer(room, { type: 'CP_REQUEST_REDEAL', playerId: socket.id });
-      saveCPRoom(roomId, room);
-      emitCPState(io, roomId, room);
+      saveCPRoom(nid, room);
+      emitCPState(io, nid, room);
     } catch (err) { console.error('[CP REQUEST_REDEAL error]', err); }
   });
 
   // ── CP_PLAY_CARD ────────────────────────────────────────────────────────
   socket.on(CP_EVENTS.CP_PLAY_CARD, async ({ roomId, card }) => {
     try {
-      let room = await getCPRoom(roomId);
+      const nid = normalizeId(roomId);
+      let room = await getCPRoom(nid);
       if (!room) return;
       const validation = validateCPAction(room, socket.id, 'CP_PLAY_CARD', { card });
       if (!validation.valid) { socket.emit(CP_EVENTS.CP_ERROR, { message: validation.message }); return; }
       room = cpReducer(room, { type: 'CP_PLAY_CARD', playerId: socket.id, payload: { card } });
-      saveCPRoom(roomId, room);
-      emitCPState(io, roomId, room);
+      saveCPRoom(nid, room);
+      emitCPState(io, nid, room);
       // Auto-resolve trick after animation delay
       if (room.state === CP_GAME_STATES.TRICK_RESOLUTION) {
         setTimeout(() => {
-          let r = getCPRoomFromCache(roomId);
+          let r = getCPRoomFromCache(nid);
           if (!r || r.state !== CP_GAME_STATES.TRICK_RESOLUTION) return;
           r = cpReducer(r, { type: 'CP_NEXT_TRICK' });
-          saveCPRoom(roomId, r);
-          emitCPState(io, roomId, r);
+          
+          if (r.matchWinner) {
+            const playersData = r.players.map((p, idx) => {
+              const team = idx % 2 === 0 ? 'A' : 'B';
+              return {
+                userId: p.id,
+                name: p.name,
+                team,
+                rank: r.matchWinner === team ? 1 : 2,
+                status: r.matchWinner === team ? 'Winner' : 'Loser'
+              };
+            });
+            const winningTeamPlayers = r.players.filter((p, idx) => (idx % 2 === 0 ? 'A' : 'B') === r.matchWinner);
+            for (const wp of winningTeamPlayers) {
+              recordGameResult({
+                gameType: 'courtpiece',
+                roomId: nid,
+                players: playersData,
+                winnerId: wp.id
+              }).catch(err => console.error('[DB] CP recordGameResult error:', err));
+            }
+          }
+
+          saveCPRoom(nid, r);
+          emitCPState(io, nid, r);
         }, 2500);
       }
     } catch (err) { console.error('[CP PLAY_CARD error]', err); }
@@ -913,66 +1182,71 @@ function setupCPHandlers(io, socket) {
   // ── CP_KICK_PLAYER ──────────────────────────────────────────────────────
   socket.on(CP_EVENTS.CP_KICK_PLAYER, async ({ roomId, targetId }) => {
     try {
-      let room = await getCPRoom(roomId);
+      const nid = normalizeId(roomId);
+      let room = await getCPRoom(nid);
       if (!room || room.hostId !== socket.id || targetId === socket.id) return;
       room = cpReducer(room, { type: 'CP_KICK_PLAYER', payload: { targetId } });
-      saveCPRoom(roomId, room);
+      saveCPRoom(nid, room);
       io.to(targetId).emit(CP_EVENTS.CP_KICKED);
-      emitCPState(io, roomId, room);
+      emitCPState(io, nid, room);
     } catch (err) { console.error('[CP KICK_PLAYER error]', err); }
   });
 
   // ── CHAT MESSAGE ────────────────────────────────────────────────────────
   socket.on(CP_EVENTS.CHAT_MESSAGE, ({ roomId, message }) => {
     try {
-      const room = getCPRoomFromCache(roomId);
+      const nid = normalizeId(roomId);
+      const room = getCPRoomFromCache(nid);
       if (!room) return;
       const player = room.players.find(p => p.id === socket.id);
       if (!player) return;
       const text = String(message || '').trim().slice(0, 120);
       if (!text) return;
-      io.to(roomId).emit(CP_EVENTS.CHAT_BROADCAST, {
+      io.to(nid).emit(CP_EVENTS.CHAT_BROADCAST, {
         senderId: socket.id,
         senderName: player.name,
         message: text,
         ts: Date.now(),
       });
-      console.log(`[CP CHAT] ${player.name} in ${roomId}: "${text}"`);
+      console.log(`[CP CHAT] ${player.name} in ${nid}: "${text}"`);
     } catch (err) { console.error('[CP CHAT_MESSAGE error]', err); }
   });
 
   // ── CP_CLOSE_GAME ───────────────────────────────────────────────────────
   socket.on(CP_EVENTS.CP_CLOSE_GAME, async ({ roomId }) => {
     try {
-      let room = await getCPRoom(roomId);
+      const nid = normalizeId(roomId);
+      let room = await getCPRoom(nid);
       if (!room || room.hostId !== socket.id) return;
       room = cpReducer(room, { type: 'CP_RESET_TO_LOBBY' });
-      saveCPRoom(roomId, room);
-      emitCPState(io, roomId, room);
+      saveCPRoom(nid, room);
+      emitCPState(io, nid, room);
     } catch (err) { console.error('[CP CLOSE_GAME error]', err); }
   });
 
   // ── CP_RESTART_GAME ─────────────────────────────────────────────────────
   socket.on(CP_EVENTS.CP_RESTART_GAME, async ({ roomId }) => {
     try {
-      let room = await getCPRoom(roomId);
+      const nid = normalizeId(roomId);
+      let room = await getCPRoom(nid);
       if (!room || room.hostId !== socket.id) return;
       // Full match reset (coats too)
       room = cpReducer(room, { type: 'CP_RESET_TO_LOBBY' });
       room.teams = { A: { tricks: 0, coats: 0 }, B: { tricks: 0, coats: 0 } };
-      saveCPRoom(roomId, room);
-      emitCPState(io, roomId, room);
+      saveCPRoom(nid, room);
+      emitCPState(io, nid, room);
     } catch (err) { console.error('[CP RESTART_GAME error]', err); }
   });
 
   // ── CP_REORDER_PLAYERS ──────────────────────────────────────────────────
   socket.on(CP_EVENTS.CP_REORDER_PLAYERS, async ({ roomId, orderedIds }) => {
     try {
-      let room = await getCPRoom(roomId);
+      const nid = normalizeId(roomId);
+      let room = await getCPRoom(nid);
       if (!room || room.hostId !== socket.id || room.state !== CP_GAME_STATES.WAITING) return;
       room = cpReducer(room, { type: 'CP_REORDER_PLAYERS', payload: { orderedIds } });
-      saveCPRoom(roomId, room);
-      emitCPState(io, roomId, room);
+      saveCPRoom(nid, room);
+      emitCPState(io, nid, room);
     } catch (err) { console.error('[CP REORDER_PLAYERS error]', err); }
   });
 

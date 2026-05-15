@@ -126,7 +126,7 @@ function createCPRoom(roomId) {
     timerDuration: 30,
     createdAt: Date.now(),
     lastActivityAt: Date.now(),
-    expiresAt: Date.now() + 60 * 60 * 4 * 1000,
+    expiresAt: Date.now() + 60 * 60 * 1000,
     emptySince: null,
   };
 }

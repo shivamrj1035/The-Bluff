@@ -215,7 +215,7 @@ export default function LobbyPage() {
           <span style={{ fontSize: '0.8rem', color: '#6b7280', fontWeight: 700 }}>Game Lobby</span>
           <div className="lh-actions">
             <button className="lh-btn">❓ How to Play</button>
-            <button className="lh-btn">🏆 Leaderboard</button>
+            <button className="lh-btn" onClick={() => { disconnect(); setScreen('LEADERBOARD'); }}>🏆 Leaderboard</button>
             <div className="lh-user">
               <AvatarDisplay avatarId={avatar} playerName={playerName || 'Player'} size={28} animated={false} />
               <div className="lh-info">

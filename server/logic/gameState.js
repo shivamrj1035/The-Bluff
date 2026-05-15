@@ -26,7 +26,7 @@ function createRoom(roomId) {
     turnStartTime: null,
     createdAt: Date.now(),
     lastActivityAt: Date.now(),
-    expiresAt: Date.now() + (60 * 60 * 4 * 1000),
+    expiresAt: Date.now() + (60 * 60 * 1000),
     emptySince: null,
   };
 }

@@ -64,7 +64,6 @@ export default function LandingPage() {
       active: isActive,
       status: isActive ? 'READY TO PLAY' : 'COMING SOON',
       statusColor: isActive ? '#10b981' : '#f59e0b',
-      icon: g.id === 'bluff' ? <SpadeIcon size={48} color="#a78bfa" /> : <CrownIcon size={48} color="#f59e0b" />,
       avatars: ['S', 'P', 'G']
     };
   });
@@ -87,7 +86,7 @@ export default function LandingPage() {
         <nav className="lp-nav">
           <div className="lp-nav-item active">Home</div>
           <div className="lp-nav-item" onClick={() => setScreen('EXPLORE')}>Games</div>
-          <div className="lp-nav-item">Leaderboard</div>
+          <div className="lp-nav-item" onClick={() => setScreen('LEADERBOARD')}>Leaderboard</div>
           <div className="lp-nav-item">About Us</div>
         </nav>
 
@@ -165,10 +164,10 @@ export default function LandingPage() {
             {siteSettings?.hero_subtitle || 'A tighter landing experience for card players who want instant access, live tables and a cleaner multiplayer hub.'}
           </p>
           <div className="lp-hero-btns">
-            <button className="lp-btn-primary" onClick={() => goToProtectedScreen('BLUFF_ENTRY')}>
+            {/* <button className="lp-btn-primary" onClick={() => goToProtectedScreen('BLUFF_ENTRY')}>
               <PlayIcon size={20} />
               Play Bluff Now
-            </button>
+            </button> */}
             <button className="lp-btn-outline" onClick={() => setScreen('EXPLORE')}>
               <GridIcon size={20} />
               Explore Games
@@ -198,7 +197,7 @@ export default function LandingPage() {
               </div>
               <div className="lp-panel-pill">
                 <UsersIcon size={16} />
-                developed by Shivam
+                Crafted by Shivam, Prachi
               </div>
             </div>
 
@@ -253,42 +252,42 @@ export default function LandingPage() {
                 else if (game.entryScreen === 'CP_ENTRY') goToProtectedScreen('CP_ENTRY', true);
               }}
             >
-              <div className="lp-game-badge" style={{ color: game.statusColor }}>
-                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: game.statusColor }} />
-                {game.status}
-              </div>
-
-              <div className="lp-game-icon-container">
-                {game.icon}
-              </div>
-
-              <h4>{game.title}</h4>
-              <p>{game.desc}</p>
-
-              <div style={{ flex: 1 }} />
-
-              <div className="lp-card-footer">
-                <div style={{ display: 'flex', gap: '4px' }}>
-                  {game.avatars?.map((a, i) => (
-                    <div key={i} style={{
-                      width: '24px', height: '24px', borderRadius: '50%',
-                      background: i === 0 ? '#f97316' : i === 1 ? '#10b981' : '#64748b',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '0.65rem', fontWeight: 800, border: '1.5px solid #01080b'
-                    }}>
-                      {a}
-                    </div>
-                  ))}
+              <div className="lp-game-media">
+                <img src={game.image} alt={game.title} className="lp-game-thumbnail" />
+                <div className="lp-card-overlay" />
+                <div className="lp-game-badge" style={{ color: game.statusColor }}>
+                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: game.statusColor }} />
+                  {game.status}
                 </div>
-                {game.active ? (
-                  <div style={{ color: 'var(--primary-light)', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    Play Now <ArrowRightIcon size={16} />
+              </div>
+
+              <div className="lp-card-body">
+                <h4>{game.title}</h4>
+                <p>{game.desc}</p>
+
+                <div className="lp-card-footer">
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    {game.avatars?.map((a, i) => (
+                      <div key={i} style={{
+                        width: '24px', height: '24px', borderRadius: '50%',
+                        background: i === 0 ? '#f97316' : i === 1 ? '#10b981' : '#64748b',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '0.65rem', fontWeight: 800, border: '1.5px solid #01080b'
+                      }}>
+                        {a}
+                      </div>
+                    ))}
                   </div>
-                ) : (
-                  <div style={{ color: '#475569', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 800 }}>
-                    Coming Soon <LockIcon size={16} />
-                  </div>
-                )}
+                  {game.active ? (
+                    <div style={{ color: 'var(--primary-light)', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      Play Now <ArrowRightIcon size={16} />
+                    </div>
+                  ) : (
+                    <div style={{ color: '#475569', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 800 }}>
+                      Coming Soon <LockIcon size={16} />
+                    </div>
+                  )}
+                </div>
               </div>
             </motion.div>
           ))}
@@ -315,7 +314,7 @@ export default function LandingPage() {
             <p>Our games are 100% fair and secure</p>
           </div>
         </div>
-        <div className="lp-feature">
+        <div className="lp-feature" onClick={() => setScreen('LEADERBOARD')} style={{ cursor: 'pointer' }}>
           <div className="lp-feature-icon"><TrophyIcon size={24} /></div>
           <div className="lp-feature-text">
             <h5>Leaderboards</h5>
@@ -332,7 +331,7 @@ export default function LandingPage() {
       </motion.div>
 
       <footer className="lp-footer">
-        © 2026 THE BLUFF Multiplayer Platform. All rights reserved.
+        © 2026 Card Nexus Multiplayer Platform. All rights reserved.
       </footer>
     </div>
   );

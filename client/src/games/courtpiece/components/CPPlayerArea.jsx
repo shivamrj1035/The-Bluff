@@ -32,100 +32,111 @@ export default function CPPlayerArea({
 }) {
   if (!player) return null;
 
-  const isVertical = position === 'top' || position === 'bottom';
   const teamColor = team === 'A' ? '#f59e0b' : '#a78bfa';
 
   return (
     <div
       style={{
         display: 'flex',
-        flexDirection: isVertical ? 'column' : 'row',
+        flexDirection: 'column',
         alignItems: 'center',
-        gap: 8,
+        gap: 6,
         position: 'relative',
+        zIndex: 5,
+        opacity: player.isConnected ? 1 : 0.7,
+        filter: player.isConnected ? 'none' : 'grayscale(0.5)',
       }}
     >
       {/* Chat bubble */}
       {chatMessage && (
-        <div style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', zIndex: 30, pointerEvents: 'none', marginBottom: 8 }}>
+        <div style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', zIndex: 30, pointerEvents: 'none', marginBottom: 12 }}>
           <ChatBubble message={chatMessage} isMe={isMe} />
         </div>
       )}
 
-      {/* Avatar + info */}
-      <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-        {/* Turn indicator ring */}
+      {/* Avatar Container */}
+      <div style={{ position: 'relative', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {/* Active Turn Glow */}
         {isCurrentTurn && (
           <motion.div
-            animate={{ scale: [1, 1.15, 1], opacity: [0.6, 1, 0.6] }}
-            transition={{ repeat: Infinity, duration: 1.2 }}
+            animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0.8, 0.5] }}
+            transition={{ repeat: Infinity, duration: 2 }}
             style={{
               position: 'absolute',
-              inset: -5,
+              inset: -6,
               borderRadius: '50%',
-              border: `2.5px solid ${teamColor}`,
-              pointerEvents: 'none',
+              background: `radial-gradient(circle, ${teamColor}66 0%, transparent 70%)`,
+              border: `2px solid ${teamColor}`,
+              boxShadow: `0 0 15px ${teamColor}44`,
+              zIndex: -1,
             }}
           />
         )}
+        
         <AvatarDisplay
           avatarId={player.avatar}
           playerName={player.name}
-          size={isMe ? 44 : 36}
+          size={40}
           animated={isCurrentTurn}
         />
-
-        {/* Name + team badge */}
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'center' }}>
-            {isHost && <span title="Host" style={{ fontSize: '0.65rem' }}>👑</span>}
-            <span style={{
-              fontSize: '0.72rem',
-              fontWeight: 700,
-              color: player.isConnected ? '#e2e8f0' : '#4b5563',
-              maxWidth: 80,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}>
-              {isMe ? `${player.name} (You)` : player.name}
-            </span>
+        
+        {/* Host Crown */}
+        {isHost && (
+          <div style={{ position: 'absolute', top: -10, right: -10, fontSize: '1rem', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}>
+            👑
           </div>
-          <div style={{
-            fontSize: '0.6rem',
-            fontWeight: 800,
-            letterSpacing: '0.1em',
-            color: teamColor,
-            textTransform: 'uppercase',
-          }}>
-            Team {team} · {player.cardCount ?? 0} cards
-          </div>
-          {!player.isConnected && (
-            <div style={{ fontSize: '0.58rem', color: '#ef4444', fontWeight: 700 }}>OFFLINE</div>
-          )}
-        </div>
+        )}
       </div>
 
-      {/* Played card in trick */}
-      {playedCard && (
-        <motion.div
-          initial={{ scale: 0.5, opacity: 0, y: position === 'top' ? -20 : position === 'bottom' ? 20 : 0 }}
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-        >
-          <CPCard cardId={playedCard} trumpSuit={trumpSuit} size="sm" />
-        </motion.div>
-      )}
+      {/* Player Info Badge */}
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center',
+        background: 'rgba(15,10,25,0.7)',
+        backdropFilter: 'blur(8px)',
+        border: `1px solid ${isCurrentTurn ? teamColor : 'rgba(255,255,255,0.1)'}`,
+        borderRadius: 20,
+        padding: '4px 12px',
+        minWidth: 100,
+        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+      }}>
+        <span style={{
+          fontSize: '0.75rem',
+          fontWeight: 700,
+          color: player.isConnected ? '#fff' : '#64748b',
+          maxWidth: 90,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          lineHeight: 1.2,
+        }}>
+          {isMe ? 'You (Glow)' : player.name}
+        </span>
+        <span style={{
+          fontSize: '0.55rem',
+          fontWeight: 800,
+          letterSpacing: '0.05em',
+          color: teamColor,
+          textTransform: 'uppercase',
+          lineHeight: 1,
+        }}>
+          TEAM {team} • {player.cardCount ?? 0} CARDS
+        </span>
+      </div>
 
-      {/* Playing indicator (face-down card back) */}
-      {isCurrentTurn && !playedCard && !isMe && (
-        <motion.div
-          animate={{ y: [0, -6, 0] }}
-          transition={{ repeat: Infinity, duration: 1.4 }}
-        >
-          <CPCard cardId="X" size="sm" />
-        </motion.div>
+      {/* AI Takeover / Offline Status */}
+      {!player.isConnected && (
+        <div style={{ 
+          background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', 
+          fontSize: '0.55rem', fontWeight: 900, padding: '2px 8px', 
+          borderRadius: 6, border: '1px solid rgba(239, 68, 68, 0.3)',
+          letterSpacing: '0.05em', marginTop: 2
+        }}>
+          AI TAKEOVER
+        </div>
       )}
     </div>
   );
 }
+

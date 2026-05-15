@@ -69,6 +69,39 @@ export default function AdminPage() {
     await updateSettings(cmsData);
     setLoading(false);
   };
+  
+  const handleTerminateRoom = async (roomId) => {
+    if (!window.confirm(`Are you sure you want to terminate room ${roomId}? This will kick all players.`)) return;
+    const token = await getAuthToken();
+    try {
+      const res = await fetch(`${apiBase}/api/admin/rooms/${roomId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setRooms(prev => prev.filter(r => r.roomId !== roomId));
+      }
+    } catch (err) {
+      console.error('Room termination error:', err);
+    }
+  };
+
+  const handleToggleBlock = async (user) => {
+    const action = user.is_blocked ? 'unblock' : 'block';
+    if (!window.confirm(`Are you sure you want to ${action} user ${user.username}?`)) return;
+    const token = await getAuthToken();
+    try {
+      const res = await fetch(`${apiBase}/api/admin/users/${user.id}/${action}`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setUsers(prev => prev.map(u => u.id === user.id ? { ...u, is_blocked: !user.is_blocked } : u));
+      }
+    } catch (err) {
+      console.error('User block toggle error:', err);
+    }
+  };
 
   const handleToggleGame = (gameId) => {
     const enabled = cmsData.enabled_games || [];
@@ -149,6 +182,10 @@ export default function AdminPage() {
                       <span style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>TOTAL USERS</span>
                       <div style={{ fontSize: '2.5rem', fontWeight: 900, marginTop: '10px' }}>{stats?.registeredUsers || 0}</div>
                     </div>
+                    <div className="lp-metric-card" style={{ padding: '30px' }}>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>TOTAL ROOMS</span>
+                      <div style={{ fontSize: '2.5rem', fontWeight: 900, marginTop: '10px', color: 'var(--primary)' }}>{stats?.totalRoomsCreated || 0}</div>
+                    </div>
                   </div>
                 )}
 
@@ -174,7 +211,11 @@ export default function AdminPage() {
                               <td style={{ padding: '12px' }}><span className="lp-panel-pill" style={{ fontSize: '0.7rem' }}>{room.state}</span></td>
                               <td style={{ padding: '12px' }}>{room.players.length} online</td>
                               <td style={{ padding: '12px' }}>
-                                <button className="btn-red btn-sm" style={{ width: 'auto' }}>
+                                <button 
+                                  className="btn-red btn-sm" 
+                                  style={{ width: 'auto' }}
+                                  onClick={() => handleTerminateRoom(room.roomId)}
+                                >
                                   <TrashIcon size={14} /> Close
                                 </button>
                               </td>
@@ -278,27 +319,39 @@ export default function AdminPage() {
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                         {users.map(u => (
-                        <div key={u.id} className="player-row" style={{ padding: '16px' }}>
-                          <div style={{
-                            width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem'
-                          }}>
-                            {u.avatar_url?.length <= 2 ? u.avatar_url : '👤'}
+                          <div key={u.id} className="player-row" style={{ padding: '16px', opacity: u.is_blocked ? 0.6 : 1, border: u.is_blocked ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid var(--border)' }}>
+                            <div style={{
+                              width: '40px', height: '40px', borderRadius: '50%', background: u.is_blocked ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255,255,255,0.1)',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem'
+                            }}>
+                              {u.avatar_url?.length <= 2 ? u.avatar_url : '👤'}
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                {u.username}
+                                {u.is_blocked && <span style={{ fontSize: '0.6rem', background: '#ef4444', color: '#fff', padding: '2px 6px', borderRadius: '4px' }}>BLOCKED</span>}
+                              </div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>ID: {u.id}</div>
+                            </div>
+                            <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                              <div>
+                                <div style={{ fontWeight: 900, color: 'var(--gold)' }}>{u.coins} 💰</div>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--muted)' }}>Joined {new Date(u.created_at).toLocaleDateString()}</div>
+                              </div>
+                              <button 
+                                onClick={() => handleToggleBlock(u)}
+                                className={u.is_blocked ? "btn-outline btn-sm" : "btn-red btn-sm"}
+                                style={{ width: 'auto', minWidth: '100px' }}
+                              >
+                                {u.is_blocked ? 'Unblock' : 'Block User'}
+                              </button>
+                            </div>
                           </div>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: 800 }}>{u.username}</div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>ID: {u.id}</div>
-                          </div>
-                          <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontWeight: 900, color: 'var(--gold)' }}>{u.coins} 💰</div>
-                            <div style={{ fontSize: '0.7rem', color: 'var(--muted)' }}>Joined {new Date(u.created_at).toLocaleDateString()}</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </motion.div>
             </AnimatePresence>
           </main>

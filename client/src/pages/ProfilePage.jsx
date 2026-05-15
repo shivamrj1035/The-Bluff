@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useGameStore } from '../games/bluff/store/useGameStore';
 import { LogOutIcon } from '../components/common/Icons';
@@ -6,10 +6,30 @@ import { AVATAR_OPTIONS } from '../constants/avatars';
 import AvatarDisplay from '../components/common/AvatarDisplay';
 
 export default function ProfilePage() {
-  const { playerName, avatar, setIdentity, setScreen, user, signOut } = useGameStore();
+  const { playerName, avatar, setIdentity, setScreen, user, signOut, apiBase, getAuthToken } = useGameStore();
   const [name, setName] = useState(playerName || '');
-  // selectedAvatar stores the avatar ID string (e.g., 'crazy1') or 'P' for letter
   const [selectedAvatar, setSelectedAvatar] = useState(avatar || 'P');
+  const [history, setHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      if (!user) return;
+      setLoadingHistory(true);
+      try {
+        const token = await getAuthToken();
+        const res = await fetch(`${apiBase}/api/profile/history`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) setHistory(await res.json());
+      } catch (err) {
+        console.error('History fetch error:', err);
+      } finally {
+        setLoadingHistory(false);
+      }
+    };
+    fetchHistory();
+  }, [user, apiBase, getAuthToken]);
 
   const handleSave = async () => {
     const finalName = name.trim() || 'Player';
@@ -313,6 +333,74 @@ export default function ProfilePage() {
                 <LogOutIcon size={16} /> Sign Out
               </span>
             </motion.button>
+          )}
+        </div>
+
+        {/* Match History */}
+        <div style={{ marginTop: '40px' }}>
+          <label style={{
+            display: 'block',
+            fontSize: '0.65rem',
+            fontWeight: 900,
+            color: 'var(--primary)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            marginBottom: '16px',
+          }}>
+            Recent Match History
+          </label>
+          
+          {loadingHistory ? (
+            <div style={{ textAlign: 'center', padding: '20px', color: 'var(--muted)', fontSize: '0.8rem' }}>Loading matches...</div>
+          ) : history.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '30px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', color: 'var(--muted)', fontSize: '0.8rem' }}>
+              No games played yet.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {history.map((game) => {
+                const myInfo = game.players.find(p => p.userId === user.id);
+                const isWinner = game.winner_id === user.id;
+                
+                return (
+                  <div key={game.id} style={{
+                    padding: '12px 16px',
+                    background: 'rgba(255,255,255,0.03)',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(255,255,255,0.05)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                        <span style={{ fontWeight: 900, fontSize: '0.8rem', color: isWinner ? 'var(--gold)' : '#fff' }}>
+                          {game.game_type.toUpperCase()}
+                        </span>
+                        <span style={{ fontSize: '0.6rem', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px', color: 'var(--muted)' }}>
+                          {new Date(game.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--muted)' }}>
+                        With: {game.players.filter(p => p.userId !== user.id).map(p => p.name).join(', ')}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ 
+                        fontWeight: 900, 
+                        fontSize: '0.8rem', 
+                        color: isWinner ? 'var(--gold)' : myInfo?.status === 'Left' ? '#ef4444' : '#fff' 
+                      }}>
+                        {isWinner ? 'WINNER' : myInfo?.status?.toUpperCase() || 'FINISHED'}
+                      </div>
+                      <div style={{ fontSize: '0.65rem', color: 'var(--muted)' }}>
+                        Rank: {myInfo?.rank || '-'}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       </motion.div>

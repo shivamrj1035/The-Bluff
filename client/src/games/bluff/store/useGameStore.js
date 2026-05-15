@@ -268,7 +268,12 @@ export const useGameStore = create((set, get) => ({
         localStorage.setItem('bluff_roomId', roomId);
       }
       localStorage.setItem('hub_name', playerName);
-      s.emit('join_room', { roomId, playerName, avatar: get().avatar });
+      s.emit('join_room', { 
+        roomId, 
+        playerName, 
+        avatar: get().avatar,
+        userId: get().user?.id 
+      });
     });
 
     s.on('game_state', (state) => {
