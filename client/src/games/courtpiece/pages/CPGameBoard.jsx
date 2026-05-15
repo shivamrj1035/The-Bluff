@@ -167,15 +167,15 @@ export default function CPGameBoard() {
                   {players.filter((_, i) => i % 2 === (t === 'A' ? 0 : 1)).map(p => p.id === myId ? 'You' : p.name).join(' & ')}
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '1.2rem', fontWeight: 900 }}>{gs.teams?.[t]?.tricks || 0}/5</span>
+                  <span style={{ fontSize: '1.2rem', fontWeight: 900 }}>{gs.teams?.[t]?.tricks || 0}</span>
                   <span style={{ fontSize: '1.2rem', fontWeight: 900 }}>{players.filter((_, i) => i % 2 === (t === 'A' ? 0 : 1)).reduce((acc, p) => acc + (p.cardCount || 0), 0)}</span>
                 </div>
               </div>
             ))}
           </div>
 
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', pt: 12, textAlign: 'center', fontSize: '0.65rem', fontWeight: 800, color: '#64748b' }}>
-            FIRST TO 5 TRICKS WINS
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: 12, textAlign: 'center', fontSize: '0.65rem', fontWeight: 800, color: '#64748b' }}>
+            MOST TRICKS WINS
           </div>
         </div>
 
