@@ -29,11 +29,13 @@ export default function MCCard({
   faceDown = false,
   style = {},
 }) {
-  const dims = size === 'sm'
-    ? { w: 52, h: 76, rank: '0.75rem', suit: '1.1rem', center: '1.5rem' }
-    : size === 'lg'
-      ? { w: 90, h: 130, rank: '1.2rem', suit: '1.9rem', center: '2.5rem' }
-      : { w: 68, h: 98, rank: '0.9rem', suit: '1.4rem', center: '2rem' };
+  const dims = size === 'xs'
+    ? { w: 42, h: 62, rank: '0.62rem', suit: '0.9rem', center: '1.2rem' }
+    : size === 'sm'
+      ? { w: 52, h: 76, rank: '0.75rem', suit: '1.1rem', center: '1.5rem' }
+      : size === 'lg'
+        ? { w: 90, h: 130, rank: '1.2rem', suit: '1.9rem', center: '2.5rem' }
+        : { w: 68, h: 98, rank: '0.9rem', suit: '1.4rem', center: '2rem' };
 
   const isBack = faceDown || !cardId || cardId === 'X';
   const [suit, rank] = isBack ? ['S', 'A'] : cardId.split('_');
