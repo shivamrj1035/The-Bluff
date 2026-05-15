@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 
-const SUIT_COLOR = { H: '#f43f5e', D: '#fb923c', C: '#a78bfa', S: '#e2e8f0' };
+const SUIT_COLOR = { H: '#ef4444', D: '#ef4444', C: '#000000', S: '#000000' };
 const SUIT_SYMBOL = { H: '♥', D: '♦', C: '♣', S: '♠' };
 const RANK_DISPLAY = {
   '2':'2','3':'3','4':'4','5':'5','6':'6','7':'7','8':'8','9':'9',
@@ -107,8 +107,8 @@ export default function CPCard({
       </div>
 
       {/* Center suit symbol */}
-      <div style={{ textAlign: 'center' }}>
-        <span style={{ fontSize: dims.suit, color: disabled ? '#444' : color, filter: isTrump ? 'drop-shadow(0 0 4px currentColor)' : 'none' }}>
+      <div style={{ textAlign: 'center', display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
+        <span style={{ fontSize: `calc(${dims.suit} * 1.6)`, color: disabled ? '#444' : color, filter: `drop-shadow(0 2px 6px ${color}66)` }}>
           {symbol}
         </span>
       </div>
