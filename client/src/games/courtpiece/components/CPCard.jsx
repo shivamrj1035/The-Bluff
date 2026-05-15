@@ -30,32 +30,13 @@ export default function CPCard({
   style = {},
 }) {
   const dims = size === 'sm'
-    ? { w: 52, h: 76, rank: '0.75rem', suit: '1.1rem' }
+    ? { w: 52, h: 76, rank: '0.75rem', suit: '1.1rem', center: '1.5rem' }
     : size === 'lg'
-      ? { w: 90, h: 130, rank: '1.2rem', suit: '1.9rem' }
-      : { w: 68, h: 98, rank: '0.9rem', suit: '1.4rem' };
+      ? { w: 90, h: 130, rank: '1.2rem', suit: '1.9rem', center: '2.5rem' }
+      : { w: 68, h: 98, rank: '0.9rem', suit: '1.4rem', center: '2rem' };
 
-  if (!cardId || cardId === 'X' || faceDown) {
-    return (
-      <motion.div
-        whileHover={onClick ? { y: -4 } : {}}
-        onClick={onClick}
-        style={{
-          width: dims.w, height: dims.h,
-          borderRadius: 10,
-          background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)',
-          border: '1.5px solid rgba(167,139,250,0.25)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          cursor: onClick ? 'pointer' : 'default',
-          ...style,
-        }}
-      >
-        <span style={{ fontSize: dims.suit, opacity: 0.3 }}>🂠</span>
-      </motion.div>
-    );
-  }
-
-  const [suit, rank] = cardId.split('_');
+  const isBack = faceDown || !cardId || cardId === 'X';
+  const [suit, rank] = isBack ? ['S', 'A'] : cardId.split('_');
   const color = SUIT_COLOR[suit] || '#fff';
   const symbol = SUIT_SYMBOL[suit] || suit;
   const isTrump = suit === trumpSuit;
