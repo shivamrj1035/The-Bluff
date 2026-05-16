@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMCStore } from '../store/useMCStore';
 import MCCard from '../components/MCCard';
@@ -47,7 +47,30 @@ export default function MCGameBoard() {
 
   const myId = gs.myId;
   const myTeam = gs.myTeam;
-  const hand = gs.hands?.[myId] || [];
+  const hand = useMemo(() => {
+    const rawHand = gs.hands?.[myId] || [];
+    const suitOrder = { 'S': 0, 'H': 1, 'C': 2, 'D': 3 };
+    const rankOrder = {
+      'A': 14, 'K': 13, 'Q': 12, 'J': 11, '10': 10,
+      '9': 9, '8': 8, '7': 7, '6': 6, '5': 5, '4': 4, '3': 3, '2': 2
+    };
+
+    return [...rawHand].sort((a, b) => {
+      const [sA, rA] = a.split('_');
+      const [sB, rB] = b.split('_');
+
+      // Sort by suit first
+      const valA = sA === gs.trumpSuit ? -1 : (suitOrder[sA] ?? 99);
+      const valB = sB === gs.trumpSuit ? -1 : (suitOrder[sB] ?? 99);
+
+      if (valA !== valB) return valA - valB;
+
+      // Then sort by rank descending
+      const rankA = rankOrder[rA] || 0;
+      const rankB = rankOrder[rB] || 0;
+      return rankB - rankA;
+    });
+  }, [gs.hands, myId, gs.trumpSuit]);
   const isHost = Boolean(myId && gs.hostId === myId);
   const players = gs.players || [];
 
