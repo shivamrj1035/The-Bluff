@@ -47,7 +47,7 @@ export const REGISTERED_GAMES = [
     desc: 'Capture 10s (Mendis) to win! 2v2 Team Battle.',
     players: '4 Players',
     time: '20-40 min',
-    image: '/court_piece_thumbnail.png', // Placeholder
+    image: '/mendi_coat_thumbnail.png',
     accent: '#10b981',
     isNew: true,
     isPopular: false,
