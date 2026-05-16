@@ -448,9 +448,9 @@ export default function MCGameBoard() {
       </div>
       
       {/* Floating Chat Bubble */}
-      <div style={{ position: 'fixed', bottom: isMobile ? 24 : 32, right: isMobile ? 24 : 32, zIndex: 1000 }}>
+      {/* <div style={{ position: 'fixed', bottom: isMobile ? 24 : 32, right: isMobile ? 24 : 32, zIndex: 1000 }}>
         <ChatInput mode="compact" onSend={mcSendChat} />
-      </div>
+      </div> */}
 
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
