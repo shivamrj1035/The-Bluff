@@ -227,6 +227,10 @@ function mcReducer(state, action) {
         const newTrickCount = state.trickCount + 1;
         console.log(`[MC REDUCER] Trick complete. Winner: ${trickWinnerId}. Mendis in trick: ${mendisInTrick}. Total Mendis - A: ${newTeams.A.mendis}, B: ${newTeams.B.mendis}`);
 
+        const isEarlyWinA = newTeams.A.mendis >= 3 || (newTeams.A.mendis === 2 && newTeams.B.mendis === 2 && newTeams.A.tricks >= 8);
+        const isEarlyWinB = newTeams.B.mendis >= 3 || (newTeams.A.mendis === 2 && newTeams.B.mendis === 2 && newTeams.B.tricks >= 8);
+        const _isRoundOver = newTrickCount === 13 || isEarlyWinA || isEarlyWinB;
+
         return {
           ...state,
           state: MC_GAME_STATES.TRICK_RESOLUTION,
@@ -237,7 +241,7 @@ function mcReducer(state, action) {
           trickCount: newTrickCount,
           leadSuit: newLeadSuit,
           _trickWinnerId: trickWinnerId,
-          _isRoundOver: newTrickCount === 13,
+          _isRoundOver,
           turnStartTime: Date.now(),
         };
       }
