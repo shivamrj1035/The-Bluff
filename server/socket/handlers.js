@@ -921,7 +921,7 @@ function emitCPState(io, roomId, room) {
           
           currentRoom._botTimeoutPending = false;
           const botHand = currentRoom.hands[currentRoom.currentTurn] || [];
-          const cardToPlay = getBotPlayCard(botHand, currentRoom.currentTrick, currentRoom.trumpSuit, currentRoom.leadSuit);
+          const cardToPlay = getBotPlayCard(botHand, currentRoom.currentTrick, currentRoom.trumpSuit, currentRoom.leadSuit, currentRoom.currentTurn, currentRoom.players);
           
           currentRoom = cpReducer(currentRoom, { 
             type: 'CP_PLAY_CARD', 
@@ -1500,7 +1500,7 @@ function emitMCState(io, roomId, room) {
           if (!r || r.state !== MC_GAME_STATES.PLAYING) return;
           r._botTimeoutPending = false;
           const botHand = r.hands[r.currentTurn] || [];
-          const card = getMCBotPlayCard(botHand, r.currentTrick, r.trumpSuit, r.leadSuit);
+          const card = getMCBotPlayCard(botHand, r.currentTrick, r.trumpSuit, r.leadSuit, r.currentTurn, r.players);
           console.log(`[MC DEBUG] Room ${roomId}: Bot ${turnPlayer.name} playing ${card}.`);
           r = mcReducer(r, { type: 'MC_PLAY_CARD', playerId: r.currentTurn, payload: { card } });
           saveMCRoom(roomId, r);

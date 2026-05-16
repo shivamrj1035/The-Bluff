@@ -79,7 +79,7 @@ export default function MCGameBoard() {
 
   // ── Responsive values ────────────────────────────────────────────────
   const headerH = isMobile ? 48 : 60;
-  const handAreaH = isMobile ? 120 : 180;
+  const handAreaH = isMobile ? 200 : 180;
   // Push top/bottom players fully outside the table oval
   const playerOff = isMobile ? -80 : -75;
   const sideOff = isMobile ? -45 : -75;
@@ -97,16 +97,16 @@ export default function MCGameBoard() {
     const t = team;
     const color = TEAM_COLORS[t];
     const data = gs.teams?.[t] || {};
-    
+
     return (
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        style={{ 
-          background: 'rgba(15,10,25,0.7)', 
-          backdropFilter: 'blur(12px)', 
-          borderRadius: 14, 
-          padding: '6px 12px', 
+        style={{
+          background: 'rgba(15,10,25,0.7)',
+          backdropFilter: 'blur(12px)',
+          borderRadius: 14,
+          padding: '6px 12px',
           border: `1px solid ${color}44`,
           display: 'flex',
           flexDirection: 'column',
@@ -140,13 +140,13 @@ export default function MCGameBoard() {
   };
 
   const GameStatusBadge = () => (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
-      style={{ 
-        display: 'flex', 
-        flexDirection: 'column', 
-        alignItems: 'center', 
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
         gap: 0,
         background: 'rgba(15,10,25,0.4)',
         padding: '4px 12px',
@@ -382,15 +382,16 @@ export default function MCGameBoard() {
       </AnimatePresence>
 
       {/* ── HAND AREA ── */}
-      <div style={{ height: handAreaH, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: isMobile ? '0 6px 8px' : '0 24px 20px', zIndex: 100, gap: isMobile ? 6 : 15, flexShrink: 0 }}>
+      <div style={{ height: handAreaH, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: isMobile ? '0 6px 1px' : '0 24px 20px', zIndex: 100, gap: isMobile ? 6 : 15, flexShrink: 0 }}>
         {/* Fan layout — negative marginRight overlaps cards to always fit without scroll on desktop; horizontal scroll on mobile */}
-        <div 
-          style={{ 
-            display: 'flex', 
-            alignItems: 'flex-end', 
-            justifyContent: isMobile ? 'flex-start' : 'center', 
-            width: '100%', 
-            paddingBottom: 4,
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'flex-end',
+            justifyContent: isMobile ? 'flex-start' : 'center',
+            width: '100%',
+            paddingTop: 50,
+            paddingBottom: 25,
             overflowX: isMobile ? 'auto' : 'visible',
             paddingLeft: isMobile ? 12 : 0,
             paddingRight: isMobile ? 12 : 0,
@@ -406,11 +407,11 @@ export default function MCGameBoard() {
               <motion.div
                 key={card}
                 initial={{ y: 20, opacity: 0 }}
-                animate={{ y: mcSelectedCard === card ? -10 : 0, opacity: 1 }}
+                animate={{ y: mcSelectedCard === card ? -5 : 0, opacity: 1 }}
                 transition={{ delay: idx * 0.03 }}
-                style={{ 
-                  marginRight: isLast ? 0 : overlapGap, 
-                  zIndex: mcSelectedCard === card ? 50 : idx, 
+                style={{
+                  marginRight: isLast ? 0 : overlapGap,
+                  zIndex: mcSelectedCard === card ? 50 : idx,
                   position: 'relative',
                   flexShrink: 0
                 }}
@@ -421,7 +422,7 @@ export default function MCGameBoard() {
           })}
         </div>
 
-        <div style={{ width: 'min(100%, 600px)', display: 'flex', gap: 12, alignItems: 'center' }}>
+        <div style={{ width: 'min(100%, 600px)', display: 'flex', gap: 12 }}>
           <div style={{ flex: 1 }}>
             <ChatInput roomId={mcRoomId} socket={mcSocket} mode="compact" />
           </div>

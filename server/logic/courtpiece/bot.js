@@ -44,15 +44,76 @@ function getBotTrumpSuit(hand) {
  * 2. If out of lead suit, play a trump card if it can win.
  *    - Otherwise, play lowest card from other suits.
  */
-function getBotPlayCard(hand, currentTrick, trumpSuit, leadSuit) {
+/**
+ * Determine which card the bot should play.
+ * Logic:
+ * 1. Must follow lead suit if it has any.
+ *    - If partner is already winning, play lowest lead card to save high cards.
+ *    - Otherwise, try to win the trick if possible (play lowest winning card). 
+ *    - If cannot win, play lowest lead suit card.
+ * 2. If out of lead suit, play a trump card if it can win.
+ *    - If partner is winning, play lowest card from other suits.
+ *    - If opponent is winning, try to trump with lowest winning trump.
+ * 3. Leading:
+ *    - Lead highest card to win.
+ */
+function getBotPlayCard(hand, currentTrick, trumpSuit, leadSuit, myPlayerId, players) {
+  // Determine partner
+  let partnerId = null;
+  if (players && myPlayerId) {
+    const myIdx = players.findIndex(p => p.id === myPlayerId);
+    if (myIdx !== -1) {
+      const partnerIdx = (myIdx + 2) % 4;
+      partnerId = players[partnerIdx]?.id;
+    }
+  }
+
+  // Determine current winner
+  let currentWinnerId = null;
+  let isPartnerWinning = false;
+
+  if (currentTrick.length > 0) {
+    const leadCard = currentTrick[0].card;
+    const lSuit = getCardSuit(leadCard);
+    let bestCard = leadCard;
+    currentWinnerId = currentTrick[0].playerId;
+
+    for (let i = 1; i < currentTrick.length; i++) {
+      const candidate = currentTrick[i].card;
+      const cSuit = getCardSuit(candidate);
+      const bSuit = getCardSuit(bestCard);
+
+      const cIsTrump = cSuit === trumpSuit;
+      const bIsTrump = bSuit === trumpSuit;
+
+      if (cIsTrump && !bIsTrump) {
+        bestCard = candidate;
+        currentWinnerId = currentTrick[i].playerId;
+      } else if (cIsTrump && bIsTrump) {
+        if (compareCards(candidate, bestCard) > 0) {
+          bestCard = candidate;
+          currentWinnerId = currentTrick[i].playerId;
+        }
+      } else if (!cIsTrump && !bIsTrump) {
+        if (cSuit === lSuit && bSuit !== lSuit) {
+          bestCard = candidate;
+          currentWinnerId = currentTrick[i].playerId;
+        } else if (cSuit === lSuit && bSuit === lSuit) {
+          if (compareCards(candidate, bestCard) > 0) {
+            bestCard = candidate;
+            currentWinnerId = currentTrick[i].playerId;
+          }
+        }
+      }
+    }
+    isPartnerWinning = partnerId && currentWinnerId === partnerId;
+  }
+
   if (!leadSuit) {
-    // We are leading the trick. 
-    // Simple logic: lead with highest card we have.
+    // Leading: play highest
     let bestLead = hand[0];
     for (const card of hand) {
-      if (compareCards(card, bestLead) > 0) {
-        bestLead = card;
-      }
+      if (compareCards(card, bestLead) > 0) bestLead = card;
     }
     return bestLead;
   }
@@ -60,84 +121,43 @@ function getBotPlayCard(hand, currentTrick, trumpSuit, leadSuit) {
   const leadCards = hand.filter(c => getCardSuit(c) === leadSuit);
   
   if (leadCards.length > 0) {
-    // Must follow suit
-    // Find the current winning card in the trick
-    const winningCard = determineCurrentWinner(currentTrick, trumpSuit);
-    const winningSuit = getCardSuit(winningCard);
-    
-    // Can we beat the winning card?
-    // Only if the winning card is of the lead suit (meaning no one trumped it yet)
-    let bestCardToPlay = leadCards[0];
-    let canBeat = false;
-    
-    if (winningSuit === leadSuit) {
-      for (const card of leadCards) {
-        if (compareCards(card, winningCard) > 0) {
-          if (!canBeat || compareCards(card, bestCardToPlay) > 0) {
-            bestCardToPlay = card;
-            canBeat = true;
-          }
-        }
-      }
+    const sortedLead = [...leadCards].sort((a, b) => compareCards(a, b));
+    const lowestLead = sortedLead[0];
+    const highestLead = sortedLead[sortedLead.length - 1];
+
+    if (isPartnerWinning) {
+      // Don't beat partner
+      return lowestLead;
     }
-    
-    if (canBeat) {
-      return bestCardToPlay; // Play highest to win
-    } else {
-      // Play lowest to lose
-      let lowestCard = leadCards[0];
-      for (const card of leadCards) {
-        if (compareCards(card, lowestCard) < 0) {
-          lowestCard = card;
-        }
-      }
-      return lowestCard;
+
+    const winnerCard = currentTrick.find(t => t.playerId === currentWinnerId)?.card;
+    const winnerSuit = getCardSuit(winnerCard);
+
+    if (winnerSuit === leadSuit) {
+      const winningLeads = leadCards.filter(c => compareCards(c, winnerCard) > 0).sort((a, b) => compareCards(a, b));
+      if (winningLeads.length > 0) return winningLeads[0]; // Lowest winning card
     }
+
+    return lowestLead;
   }
 
-  // We don't have the lead suit. Can we trump it?
+  // Out of suit
   const trumpCards = hand.filter(c => getCardSuit(c) === trumpSuit);
+  if (isPartnerWinning) return [...hand].sort((a, b) => compareCards(a, b))[0];
+
   if (trumpCards.length > 0) {
-    const winningCard = determineCurrentWinner(currentTrick, trumpSuit);
-    const winningSuit = getCardSuit(winningCard);
-    
-    if (winningSuit !== trumpSuit) {
-      // No one played trump yet. Play our lowest trump to win.
-      let lowestTrump = trumpCards[0];
-      for (const card of trumpCards) {
-        if (compareCards(card, lowestTrump) < 0) {
-          lowestTrump = card;
-        }
-      }
-      return lowestTrump;
+    const winnerCard = currentTrick.find(t => t.playerId === currentWinnerId)?.card;
+    const winnerSuit = getCardSuit(winnerCard);
+
+    if (winnerSuit !== trumpSuit) {
+      return [...trumpCards].sort((a, b) => compareCards(a, b))[0]; // Lowest trump to win
     } else {
-      // Someone already played trump. Can we beat it?
-      let canBeat = false;
-      let lowestWinningTrump = null;
-      
-      for (const card of trumpCards) {
-        if (compareCards(card, winningCard) > 0) {
-          if (!canBeat || compareCards(card, lowestWinningTrump) < 0) {
-            lowestWinningTrump = card;
-            canBeat = true;
-          }
-        }
-      }
-      
-      if (canBeat) {
-        return lowestWinningTrump;
-      }
+      const winningTrumps = trumpCards.filter(c => compareCards(c, winnerCard) > 0).sort((a, b) => compareCards(a, b));
+      if (winningTrumps.length > 0) return winningTrumps[0];
     }
   }
 
-  // Can't follow suit, can't trump to win. Play absolute lowest card.
-  let lowestCard = hand[0];
-  for (const card of hand) {
-    if (compareCards(card, lowestCard) < 0) {
-      lowestCard = card;
-    }
-  }
-  return lowestCard;
+  return [...hand].sort((a, b) => compareCards(a, b))[0];
 }
 
 /** Helper to determine who is currently winning the trick */
