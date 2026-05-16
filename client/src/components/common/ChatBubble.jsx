@@ -9,18 +9,19 @@ import { AnimatePresence, motion } from 'framer-motion';
  *   isMe      — true = render on right side (bottom HUD), false = render on opponent card
  *   position  — 'top' | 'bottom' (where the bubble tail points)
  */
-export default function ChatBubble({ messages, isMe, position = 'bottom' }) {
-  // Only show the most recently active message for this player
-  const latest = messages?.[messages.length - 1];
-  if (!latest) return null;
+export default function ChatBubble({ messages, message, isMe, position = 'bottom' }) {
+  // Support both array of messages and a single message string
+  const latestMessage = message || (messages?.[messages.length - 1]?.message);
+  const msgId = message ? 'direct-msg' : messages?.[messages.length - 1]?.id;
+  
+  if (!latestMessage) return null;
 
   const isTailUp = position === 'top'; // tail points up → bubble is below the avatar
 
   return (
     <div style={{
       position: 'absolute',
-      // For opponent cards: bubble above the card. For me: above the HUD avatar
-      [isTailUp ? 'top' : 'bottom']: isTailUp ? '-52px' : '108%',
+      [isTailUp ? 'top' : 'bottom']: isTailUp ? '-52px' : '100%',
       left: '50%',
       transform: 'translateX(-50%)',
       zIndex: 200,
@@ -30,51 +31,53 @@ export default function ChatBubble({ messages, isMe, position = 'bottom' }) {
     }}>
       <AnimatePresence mode="wait">
         <motion.div
-          key={latest.id}
+          key={msgId || latestMessage}
           initial={{ opacity: 0, y: isTailUp ? 6 : -6, scale: 0.85 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: isTailUp ? -6 : 6, scale: 0.85 }}
           transition={{ type: 'spring', stiffness: 400, damping: 28 }}
           style={{
             background: isMe
-              ? 'linear-gradient(135deg, rgba(8,145,178,0.95), rgba(14,116,144,0.95))'
-              : 'rgba(15,15,28,0.97)',
-            border: isMe ? '1.5px solid rgba(103,232,249,0.6)' : '1.5px solid rgba(255,255,255,0.12)',
-            borderRadius: '14px',
-            padding: '7px 12px',
-            backdropFilter: 'blur(12px)',
+              ? 'linear-gradient(135deg, rgba(245,158,11,0.95), rgba(217,119,6,0.95))'
+              : 'rgba(15,10,25,0.98)',
+            border: isMe ? '1.5px solid rgba(245,158,11,0.6)' : '1.5px solid rgba(255,255,255,0.15)',
+            borderRadius: '10px',
+            padding: '1.5px 8px', // Requested 1.5px padding
+            backdropFilter: 'blur(16px)',
             boxShadow: isMe
-              ? '0 4px 24px rgba(8,145,178,0.4), 0 0 0 1px rgba(103,232,249,0.15)'
-              : '0 4px 20px rgba(0,0,0,0.5)',
+              ? '0 4px 20px rgba(245,158,11,0.3)'
+              : '0 4px 20px rgba(0,0,0,0.6)',
             position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
           }}
         >
           {/* Message text */}
           <p style={{
             margin: 0,
-            fontSize: '0.75rem',
-            fontWeight: 700,
-            color: isMe ? '#fff' : '#e2e8f0',
-            lineHeight: 1.45,
+            fontSize: '0.7rem',
+            fontWeight: 800,
+            color: '#fff',
+            lineHeight: 1.2,
             wordBreak: 'break-word',
             whiteSpace: 'pre-wrap',
+            textAlign: 'center'
           }}>
-            {latest.message}
+            {latestMessage}
           </p>
 
           {/* Tail pointer */}
           <div style={{
             position: 'absolute',
-            [isTailUp ? 'top' : 'bottom']: isTailUp ? '100%' : '100%',
+            top: '100%',
             left: '50%',
             transform: 'translateX(-50%)',
             width: 0,
             height: 0,
-            borderLeft: '7px solid transparent',
-            borderRight: '7px solid transparent',
-            [isTailUp
-              ? 'borderBottom'
-              : 'borderTop']: `8px solid ${isMe ? 'rgba(8,145,178,0.95)' : 'rgba(15,15,28,0.97)'}`,
+            borderLeft: '5px solid transparent',
+            borderRight: '5px solid transparent',
+            borderTop: `5px solid ${isMe ? 'rgba(245,158,11,0.95)' : 'rgba(15,10,25,0.98)'}`,
           }} />
         </motion.div>
       </AnimatePresence>

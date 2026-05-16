@@ -6,18 +6,25 @@ import { useGameStore } from '../../games/bluff/store/useGameStore';
  * Renders as a small icon button that expands to an input on press/click.
  * Works in both LobbyPage and GameBoard.
  */
-export default function ChatInput({ compact = false }) {
-  const { sendChat } = useGameStore();
-  const [open, setOpen] = useState(!compact);
+export default function ChatInput({ compact = false, onSend, mode }) {
+  const bluffStore = useGameStore();
+  const isCompact = compact || mode === 'compact';
+  const [open, setOpen] = useState(!isCompact);
   const [msg, setMsg] = useState('');
   const inputRef = useRef(null);
 
   const send = () => {
     const text = msg.trim();
     if (!text) return;
-    sendChat(text);
+    
+    if (onSend) {
+      onSend(text);
+    } else {
+      bluffStore.sendChat(text);
+    }
+
     setMsg('');
-    if (compact) setOpen(false);
+    if (isCompact) setOpen(false);
   };
 
   const handleKey = (e) => {
@@ -36,7 +43,7 @@ export default function ChatInput({ compact = false }) {
     if (!open) setTimeout(() => inputRef.current?.focus(), 60);
   };
 
-  if (compact) {
+  if (isCompact) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, position: 'relative' }}>
         {/* Expand/collapse chat button */}
@@ -44,24 +51,33 @@ export default function ChatInput({ compact = false }) {
           onClick={toggle}
           title="Chat"
           style={{
-            width: 36, height: 36, borderRadius: '50%', border: 'none',
-            background: open ? 'rgba(8,145,178,0.25)' : 'rgba(255,255,255,0.06)',
-            color: open ? 'var(--primary-light)' : '#6b7280',
-            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '1.1rem', transition: 'all 0.2s', flexShrink: 0,
-            boxShadow: open ? '0 0 0 1px rgba(8,145,178,0.4)' : 'none',
+            width: isCompact ? 48 : 36, 
+            height: isCompact ? 48 : 36, 
+            borderRadius: '50%', 
+            border: 'none',
+            background: open ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, #f59e0b, #d97706)',
+            color: '#fff',
+            cursor: 'pointer', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            fontSize: isCompact ? '1.4rem' : '1.1rem', 
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', 
+            flexShrink: 0,
+            boxShadow: open ? 'none' : '0 8px 24px rgba(217, 119, 6, 0.4)',
+            transform: open ? 'rotate(90deg)' : 'none',
           }}
         >
-          💬
+          {open ? '✕' : '💬'}
         </button>
 
         {open && (
           <div style={{
             position: 'absolute', bottom: '110%', right: 0,
             display: 'flex', alignItems: 'center', gap: 6,
-            background: 'rgba(10,10,20,0.95)', border: '1px solid rgba(8,145,178,0.35)',
-            borderRadius: 14, padding: '6px 8px', backdropFilter: 'blur(16px)',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.6)', width: 240, zIndex: 300,
+            background: 'rgba(15,10,25,0.98)', border: '1px solid rgba(245,158,11,0.4)',
+            borderRadius: 14, padding: '8px 12px', backdropFilter: 'blur(20px)',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.7)', width: 280, zIndex: 300,
           }}>
             <input
               ref={inputRef}
@@ -81,7 +97,7 @@ export default function ChatInput({ compact = false }) {
               onClick={send}
               disabled={!msg.trim()}
               style={{
-                background: msg.trim() ? 'rgba(8,145,178,0.8)' : 'rgba(255,255,255,0.05)',
+                background: msg.trim() ? 'rgba(245,158,11,0.9)' : 'rgba(255,255,255,0.05)',
                 border: 'none', borderRadius: 8, color: '#fff', cursor: msg.trim() ? 'pointer' : 'default',
                 padding: '4px 10px', fontSize: '0.75rem', fontWeight: 900,
                 transition: 'all 0.15s',

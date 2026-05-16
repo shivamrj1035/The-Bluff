@@ -27,7 +27,7 @@ export default function MCGameBoard() {
   const {
     mcGameState: gs, mcRoomId, mcSelectedCard, mcSetSelectedCard,
     mcPlayCard, mcSelectTrump, mcRestartGame,
-    mcChatMessages, mcSocket, mcDisconnect,
+    mcChatMessages, mcSocket, mcDisconnect, mcSendChat,
   } = useMCStore();
 
   const { w } = useWindowSize();
@@ -445,11 +445,11 @@ export default function MCGameBoard() {
           })}
         </div>
 
-        <div style={{ width: 'min(100%, 600px)', display: 'flex', gap: 12 }}>
-          <div style={{ flex: 1 }}>
-            <ChatInput roomId={mcRoomId} socket={mcSocket} mode="compact" />
-          </div>
-        </div>
+      </div>
+      
+      {/* Floating Chat Bubble */}
+      <div style={{ position: 'fixed', bottom: isMobile ? 24 : 32, right: isMobile ? 24 : 32, zIndex: 1000 }}>
+        <ChatInput mode="compact" onSend={mcSendChat} />
       </div>
 
       <style>{`

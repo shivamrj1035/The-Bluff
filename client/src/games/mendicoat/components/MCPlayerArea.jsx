@@ -50,7 +50,7 @@ export default function MCPlayerArea({
     >
       {/* Chat bubble */}
       {chatMessage && (
-        <div style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', zIndex: 30, pointerEvents: 'none', marginBottom: 12 }}>
+        <div style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', zIndex: 30, pointerEvents: 'none', marginBottom: 1.5 }}>
           <ChatBubble message={chatMessage} isMe={isMe} />
         </div>
       )}
