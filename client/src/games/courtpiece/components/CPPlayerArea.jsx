@@ -29,6 +29,7 @@ export default function CPPlayerArea({
   position = 'top',
   chatMessage = null,
   isHost = false,
+  compact = false,
 }) {
   if (!player) return null;
 
@@ -49,13 +50,13 @@ export default function CPPlayerArea({
     >
       {/* Chat bubble */}
       {chatMessage && (
-        <div style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', zIndex: 30, pointerEvents: 'none', marginBottom: 12 }}>
+        <div style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', zIndex: 30, pointerEvents: 'none', marginBottom: 1.5 }}>
           <ChatBubble message={chatMessage} isMe={isMe} />
         </div>
       )}
 
       {/* Avatar Container */}
-      <div style={{ position: 'relative', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ position: 'relative', width: compact ? 32 : 44, height: compact ? 32 : 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {/* Active Turn Glow */}
         {isCurrentTurn && (
           <motion.div
@@ -63,7 +64,7 @@ export default function CPPlayerArea({
             transition={{ repeat: Infinity, duration: 2 }}
             style={{
               position: 'absolute',
-              inset: -6,
+              inset: compact ? -4 : -6,
               borderRadius: '50%',
               background: `radial-gradient(circle, ${teamColor}66 0%, transparent 70%)`,
               border: `2px solid ${teamColor}`,
@@ -76,13 +77,13 @@ export default function CPPlayerArea({
         <AvatarDisplay
           avatarId={player.avatar}
           playerName={player.name}
-          size={40}
+          size={compact ? 28 : 40}
           animated={isCurrentTurn}
         />
         
         {/* Host Crown */}
         {isHost && (
-          <div style={{ position: 'absolute', top: -10, right: -10, fontSize: '1rem', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}>
+          <div style={{ position: 'absolute', top: compact ? -8 : -10, right: compact ? -8 : -10, fontSize: compact ? '0.7rem' : '1rem', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}>
             👑
           </div>
         )}
@@ -96,32 +97,32 @@ export default function CPPlayerArea({
         background: 'rgba(15,10,25,0.7)',
         backdropFilter: 'blur(8px)',
         border: `1px solid ${isCurrentTurn ? teamColor : 'rgba(255,255,255,0.1)'}`,
-        borderRadius: 20,
-        padding: '4px 12px',
-        minWidth: 100,
+        borderRadius: compact ? 14 : 20,
+        padding: compact ? '3px 8px' : '4px 12px',
+        minWidth: compact ? 70 : 100,
         boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
       }}>
         <span style={{
-          fontSize: '0.75rem',
+          fontSize: compact ? '0.65rem' : '0.75rem',
           fontWeight: 700,
           color: player.isConnected ? '#fff' : '#64748b',
-          maxWidth: 90,
+          maxWidth: compact ? 65 : 90,
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
           lineHeight: 1.2,
         }}>
-          {isMe ? 'You (Glow)' : player.name}
+          {isMe ? 'You' : player.name}
         </span>
         <span style={{
-          fontSize: '0.55rem',
+          fontSize: compact ? '0.5rem' : '0.55rem',
           fontWeight: 800,
           letterSpacing: '0.05em',
           color: teamColor,
           textTransform: 'uppercase',
           lineHeight: 1,
         }}>
-          TEAM {team} • {player.cardCount ?? 0} CARDS
+          {team} • {player.cardCount ?? 0}
         </span>
       </div>
 
