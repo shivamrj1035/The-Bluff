@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from '../../../components/common/Toast';
@@ -14,6 +13,16 @@ import AvatarDisplay from '../../../components/common/AvatarDisplay';
 
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
 
+function useWindowSize() {
+  const [size, setSize] = useState({ w: window.innerWidth, h: window.innerHeight });
+  useEffect(() => {
+    const handler = () => setSize({ w: window.innerWidth, h: window.innerHeight });
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+  return size;
+}
+
 const GET_SEATS = (isPortrait, numOpponents) => {
   if (!isPortrait) {
     return [
@@ -27,52 +36,55 @@ const GET_SEATS = (isPortrait, numOpponents) => {
     ];
   }
 
-  // Symmetrical portrait layouts based on opponent count to prevent empty sides and clutter
+  // Symmetrical portrait layouts relative to the table container bounds
+  const playerOff = -80; // top offset
+  const sideOff = -45;   // side offset
+
   if (numOpponents === 1) {
     return [
-      { top: '6%', left: '50%', transform: 'translateX(-50%) scale(0.85)' }
+      { top: playerOff, left: '50%', transform: 'translateX(-50%) scale(0.9)' }
     ];
   }
   if (numOpponents === 2) {
     return [
-      { top: '14%', left: '8%', transform: 'translateY(-50%) scale(0.8)' },
-      { top: '14%', right: '8%', transform: 'translateY(-50%) scale(0.8)' }
+      { top: '50%', left: sideOff, transform: 'translateY(-50%) scale(0.9)' },
+      { top: '50%', right: sideOff, transform: 'translateY(-50%) scale(0.9)' }
     ];
   }
   if (numOpponents === 3) {
-    // Left side, top-center, right side (Symmetric 4-player game matching screenshot)
+    // 3 opponents (4-player standard): Left, Top, Right. Matches second image perfectly!
     return [
-      { top: '26%', left: '3%', transform: 'translateY(-50%) scale(0.8)' },
-      { top: '6%', left: '50%', transform: 'translateX(-50%) scale(0.8)' },
-      { top: '26%', right: '3%', transform: 'translateY(-50%) scale(0.8)' }
+      { top: '50%', left: sideOff, transform: 'translateY(-50%) scale(0.9)' },
+      { top: playerOff, left: '50%', transform: 'translateX(-50%) scale(0.9)' },
+      { top: '50%', right: sideOff, transform: 'translateY(-50%) scale(0.9)' }
     ];
   }
   if (numOpponents === 4) {
     return [
-      { top: '14%', left: '3%', transform: 'translateY(-50%) scale(0.75)' },
-      { top: '34%', left: '3%', transform: 'translateY(-50%) scale(0.75)' },
-      { top: '14%', right: '3%', transform: 'translateY(-50%) scale(0.75)' },
-      { top: '34%', right: '3%', transform: 'translateY(-50%) scale(0.75)' }
+      { top: '25%', left: sideOff, transform: 'translateY(-50%) scale(0.85)' },
+      { top: '75%', left: sideOff, transform: 'translateY(-50%) scale(0.85)' },
+      { top: '25%', right: sideOff, transform: 'translateY(-50%) scale(0.85)' },
+      { top: '75%', right: sideOff, transform: 'translateY(-50%) scale(0.85)' }
     ];
   }
   if (numOpponents === 5) {
     return [
-      { top: '6%', left: '50%', transform: 'translateX(-50%) scale(0.75)' },
-      { top: '14%', left: '3%', transform: 'translateY(-50%) scale(0.75)' },
-      { top: '34%', left: '3%', transform: 'translateY(-50%) scale(0.75)' },
-      { top: '14%', right: '3%', transform: 'translateY(-50%) scale(0.75)' },
-      { top: '34%', right: '3%', transform: 'translateY(-50%) scale(0.75)' }
+      { top: '25%', left: sideOff, transform: 'translateY(-50%) scale(0.8)' },
+      { top: '75%', left: sideOff, transform: 'translateY(-50%) scale(0.8)' },
+      { top: playerOff, left: '50%', transform: 'translateX(-50%) scale(0.8)' },
+      { top: '25%', right: sideOff, transform: 'translateY(-50%) scale(0.8)' },
+      { top: '75%', right: sideOff, transform: 'translateY(-50%) scale(0.8)' }
     ];
   }
-  // Standard 6 to 7 opponents layout
+  // 6 or more
   return [
-    { top: '6%', left: '50%', transform: 'translateX(-50%) scale(0.7)' },
-    { top: '12%', right: '3%', transform: 'translateY(-50%) scale(0.7)' },
-    { top: '24%', right: '3%', transform: 'translateY(-50%) scale(0.7)' },
-    { top: '36%', right: '3%', transform: 'translateY(-50%) scale(0.7)' },
-    { top: '12%', left: '3%', transform: 'translateY(-50%) scale(0.7)' },
-    { top: '24%', left: '3%', transform: 'translateY(-50%) scale(0.7)' },
-    { top: '36%', left: '3%', transform: 'translateY(-50%) scale(0.7)' }
+    { top: playerOff, left: '50%', transform: 'translateX(-50%) scale(0.75)' },
+    { top: '20%', left: sideOff, transform: 'translateY(-50%) scale(0.75)' },
+    { top: '50%', left: sideOff, transform: 'translateY(-50%) scale(0.75)' },
+    { top: '80%', left: sideOff, transform: 'translateY(-50%) scale(0.75)' },
+    { top: '20%', right: sideOff, transform: 'translateY(-50%) scale(0.75)' },
+    { top: '50%', right: sideOff, transform: 'translateY(-50%) scale(0.75)' },
+    { top: '80%', right: sideOff, transform: 'translateY(-50%) scale(0.75)' }
   ];
 };
 
@@ -83,63 +95,53 @@ export default function GameBoard() {
     passTurn, kickPlayer, restartGame, closeGame, disconnect, chatMessages,
   } = useGameStore();
 
-  // Helper: get active chat messages for a specific player
   const getMsgs = (pid) => chatMessages.filter(m => m.senderId === pid);
 
-
-  // ── ALL STATE AND REFS MUST COME BEFORE ANY CONDITIONAL RETURNS ──
   const [dealDone, setDealDone] = useState(gameState?.state !== 'DEALING');
   const [declaredRank, setDeclaredRank] = useState('A');
   const [timeLeft, setTimeLeft] = useState(60);
-  const [isPortrait, setIsPortrait] = useState(window.innerHeight > window.innerWidth);
+
+  const { w } = useWindowSize();
+  const isPortrait = w < 640 || window.innerHeight > window.innerWidth;
+
   const [showMobileHand, setShowMobileHand] = useState(false);
   const [activeAnimation, setActiveAnimation] = useState(null);
   const [floatingAction, setFloatingAction] = useState(null);
 
-  // FIX Bug 8: Track last animated move key to prevent re-triggering on every state sync
   const lastAnimatedMoveKey = useRef(null);
-  // FIX Bug 6: Track last bluffResult we showed toast for
   const lastBluffResultKey = useRef(null);
-
-  useEffect(() => {
-    const handleResize = () => setIsPortrait(window.innerHeight > window.innerWidth);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   const seatedPlayers = useMemo(() => {
     if (!gameState?.players || !playerId) return [];
     const players = gameState.players;
     const myIndex = players.findIndex(p => p.id === playerId);
     if (myIndex === -1) return players.filter(p => p.id !== playerId);
-    // Rotate so current player (me) is at bottom, others go clockwise
     const rotated = [...players.slice(myIndex), ...players.slice(0, myIndex)];
     return rotated.filter(p => p.id !== playerId);
   }, [gameState?.players, playerId]);
 
   const SEATS = useMemo(() => GET_SEATS(isPortrait, seatedPlayers.length), [isPortrait, seatedPlayers.length]);
 
-  // FIX Bug 8: Use stable move key to prevent animation re-firing on every state update
   useEffect(() => {
     if (!gameState?.lastMove) return;
     const { playerId: moverId, count, type, playerName } = gameState.lastMove;
-    // Build a stable key for this move
     const moveKey = `${moverId}:${type}:${count}:${playerName}`;
     if (moveKey === lastAnimatedMoveKey.current) return;
     lastAnimatedMoveKey.current = moveKey;
 
     const isMe = moverId === playerId;
     const seatIdx = seatedPlayers.findIndex(p => p.id === moverId);
-    // Only animate if it's me OR a player we can see in a seat
     if (!isMe && seatIdx === -1) return;
 
+    const playerOff = -80;
     const fromPos = isMe
-      ? (isPortrait ? { top: '46%', left: '50%', transform: 'translateX(-50%) scale(0.8)' } : { bottom: '120px', left: '50%', transform: 'translateX(-50%)' })
+      ? (isPortrait ? { bottom: playerOff, left: '50%', transform: 'translateX(-50%) scale(0.8)' } : { bottom: '120px', left: '50%', transform: 'translateX(-50%)' })
       : SEATS[seatIdx % SEATS.length];
-    const toPos = { top: isPortrait ? '45%' : '44%', left: '50%', transform: 'translate(-50%, -50%)' };
+    const toPos = isPortrait 
+      ? { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }
+      : { top: '44%', left: '50%', transform: 'translate(-50%, -50%)' };
 
     if (type === 'PASS') {
-      // PASS: only text animation, no card movement
       setFloatingAction({
         from: fromPos,
         to: toPos,
@@ -147,7 +149,6 @@ export default function GameBoard() {
         type: 'PASS',
       });
     } else {
-      // PLAY: card movement + text label
       setActiveAnimation({ from: fromPos, to: toPos, count: count || 1 });
       setFloatingAction({
         from: fromPos,
@@ -158,7 +159,6 @@ export default function GameBoard() {
     }
   }, [gameState?.lastMove, playerId, seatedPlayers, SEATS, isPortrait]);
 
-  // FIX Bug 6: Drive bluff result toasts from gameState.bluffResult, not a separate socket event
   useEffect(() => {
     if (!gameState?.bluffResult) return;
     const br = gameState.bluffResult;
@@ -173,16 +173,18 @@ export default function GameBoard() {
       toast.success(`✅ HONEST MOVE! ${br.targetName}'s card was ${br.pickedCard?.replace('_', ' of ')}. ${br.pickerName} takes ${br.pileCount} cards!`, { duration: 5000 });
     }
 
-    // Animation: cards fly from table to loser's seat
     const loserId = br.loserId;
     const isMe = loserId === playerId;
     const seatIdx = seatedPlayers.findIndex(p => p.id === loserId);
     if (isMe || seatIdx !== -1) {
+      const playerOff = -80;
       const toPos = isMe
-        ? (isPortrait ? { top: '46%', left: '50%', transform: 'translateX(-50%) scale(0.8)' } : { bottom: '120px', left: '50%', transform: 'translateX(-50%)' })
+        ? (isPortrait ? { bottom: playerOff, left: '50%', transform: 'translateX(-50%) scale(0.8)' } : { bottom: '120px', left: '50%', transform: 'translateX(-50%)' })
         : SEATS[seatIdx % SEATS.length];
       setActiveAnimation({
-        from: { top: isPortrait ? '45%' : '44%', left: '50%', transform: 'translate(-50%, -50%)' },
+        from: isPortrait 
+          ? { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }
+          : { top: '44%', left: '50%', transform: 'translate(-50%, -50%)' },
         to: toPos,
         count: Math.min(br.pileCount, 5),
       });
@@ -206,8 +208,6 @@ export default function GameBoard() {
     return () => clearInterval(interval);
   }, [gameState?.turnStartTime, gameState?.state]);
 
-  // ── DERIVED STATE — safe after all hooks ──
-  // FIX Bug 5: Early return MUST come after all hook calls
   if (!gameState) return null;
 
   const {
@@ -216,7 +216,6 @@ export default function GameBoard() {
     roomId: serverRoomId, isSpectator,
   } = gameState;
 
-  // FIX Bug 10: Safe memo-dependency with nullish coalescing
   const myHand = (() => {
     const rawHand = hands?.[playerId] ?? [];
     return [...rawHand].sort((a, b) => {
@@ -240,7 +239,6 @@ export default function GameBoard() {
   const handlePlay = () => {
     if (selectedCards.length === 0) return toast.error('Select cards to play');
     playCards(declaredRank);
-    setShowMobileHand(false);
   };
 
   const getRankPos = (pId) => {
@@ -248,15 +246,16 @@ export default function GameBoard() {
     return r ? r.rankPos : null;
   };
 
-  // FIX Bug 7: Only show PASS button when pile has cards (not first move of round)
   const canPass = isMyTurn && !isPickingPhase && !isEnded && pile.length > 0 && roundRank;
-  // BLUFF button: only if pile has cards and there's a previous player to target
   const canCallBluff = isMyTurn && !isPickingPhase && !isEnded && pile.length > 0;
+
+  const playerOff = -80;
 
   return (
     <div style={{
       height: '100vh', width: '100vw', overflow: 'hidden', position: 'relative',
       background: isPortrait ? '#0a0515' : 'var(--bg)',
+      display: 'flex', flexDirection: 'column', fontFamily: "'Inter', sans-serif"
     }}>
 
       {/* ── Mobile Background Glow Overlay ── */}
@@ -268,74 +267,36 @@ export default function GameBoard() {
         }} />
       )}
 
-      {/* ── Card Movement Animation ── */}
-      <MoveAnimation
-        fromPos={activeAnimation?.from}
-        toPos={activeAnimation?.to}
-        count={activeAnimation?.count}
-        onComplete={() => setActiveAnimation(null)}
-      />
-
       {/* ── Deal Animation ── */}
       {!dealDone && state === 'DEALING' && (
         <DealAnimation players={players} onComplete={() => setDealDone(true)} />
       )}
 
-      {/* ── Header ── */}
+      {/* ── TOP HEADER ── */}
       <div style={{
-        position: 'absolute', top: 0, left: 0, right: 0, zIndex: 30,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: isPortrait ? '4px 8px' : '8px 12px',
-        paddingTop: 'env(safe-area-inset-top, 4px)',
+        height: isPortrait ? 48 : 60, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        padding: isPortrait ? '0 12px' : '0 24px', zIndex: 100, borderBottom: '1px solid rgba(255,255,255,0.05)',
+        position: 'absolute', top: 0, left: 0, right: 0
       }}>
-        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
-          {!isPortrait && (
-            <div className="panel-sm" style={{ padding: '6px 12px' }}>
-              <span style={{ fontWeight: 900, color: 'var(--primary-light)', fontSize: '0.7rem' }}>THE BLUFF</span>
-            </div>
-          )}
-
-          {/* Room ID Pill */}
-          <div className="panel-sm" style={{
-            padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '4px',
-            background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)',
-          }}>
-            <span style={{ color: '#9ca3af', fontWeight: 700, fontSize: '0.55rem' }}>ROOM:</span>
-            <span style={{ fontWeight: 900, color: '#fff', fontSize: isPortrait ? '0.6rem' : '0.7rem', letterSpacing: '0.05em' }}>{serverRoomId}</span>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                navigator.clipboard.writeText(`${window.location.origin}?room=${serverRoomId}`);
-                toast.success('Invite link copied!');
-              }}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--secondary)', padding: '1px', display: 'flex', alignItems: 'center' }}
-            >
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-              </svg>
-            </button>
-          </div>
-
-          {isSpectator && (
-            <div className="panel-sm" style={{ padding: '4px 8px', background: '#f59e0b', border: 'none' }}>
-              <span style={{ color: '#000', fontWeight: 900, fontSize: '0.55rem', textTransform: 'uppercase' }}>Spectating</span>
-            </div>
-          )}
-
-          {roundRank && (
-            <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="panel-sm"
-              style={{ padding: '4px 10px', border: '1.5px solid #f59e0b', background: 'rgba(245,158,11,0.1)' }}>
-              <span style={{ fontSize: '0.5rem', color: '#f59e0b', fontWeight: 900, textTransform: 'uppercase' }}>RANK: </span>
-              <span style={{ fontSize: '0.9rem', fontWeight: 900, color: '#fff' }}>{roundRank}</span>
-            </motion.div>
-          )}
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <span style={{ fontSize: '0.65rem', fontWeight: 900, color: '#f59e0b', letterSpacing: '0.15em' }}>THE BLUFF</span>
+          <span style={{ fontSize: isPortrait ? '0.7rem' : '0.85rem', fontWeight: 700, color: '#94a3b8' }}>
+            Room <span style={{ color: '#fff', opacity: 0.9 }}>{serverRoomId}</span>
+          </span>
         </div>
 
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {roundRank && (
+            <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+              style={{ padding: '4px 10px', borderRadius: 8, border: '1.5px solid #f59e0b', background: 'rgba(245,158,11,0.1)' }}>
+              <span style={{ fontSize: '0.5rem', color: '#f59e0b', fontWeight: 900, textTransform: 'uppercase' }}>RANK: </span>
+              <span style={{ fontSize: '0.85rem', fontWeight: 900, color: '#fff' }}>{roundRank}</span>
+            </motion.div>
+          )}
+
           {currentPlayer && !isEnded && !isPickingPhase && !isResolution && (
-            <div className="panel-sm" style={{
-              padding: '4px 10px', display: 'flex', alignItems: 'center', gap: '6px',
+            <div style={{
+              padding: '4px 10px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: '6px',
               border: isMyTurn ? '1.5px solid var(--secondary)' : '1px solid rgba(255,255,255,0.1)',
               background: isMyTurn ? 'rgba(8,145,178,0.15)' : 'rgba(0,0,0,0.2)',
             }}>
@@ -356,188 +317,156 @@ export default function GameBoard() {
               </span>
             </div>
           )}
+
           <button className="btn btn-red btn-sm" onClick={disconnect} style={{ width: 'auto', padding: '6px 10px', fontSize: '0.7rem' }}>EXIT</button>
         </div>
       </div>
 
-      {/* ── Felt Table ── */}
-      <div style={{
-        position: 'absolute', top: isPortrait ? '26%' : '42%', left: '50%',
-        transform: 'translate(-50%, -50%)',
-        width: isPortrait ? '85vw' : '75vw',
-        height: isPortrait ? 'auto' : '38vh',
-        aspectRatio: isPortrait ? '3/2' : 'auto',
-        maxWidth: '900px', maxHeight: '420px', zIndex: 5,
+      {/* ── MAIN PLAY AREA CONTAINER ── */}
+      <div style={{ 
+        flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', 
+        padding: isPortrait ? '10px 16px' : '20px 60px 20px 240px', minHeight: 0
       }}>
-        <div className="felt-table" style={{
-          width: '100%', height: '100%',
-          borderRadius: isPortrait ? '120px' : '50%',
-          background: isPortrait ? 'linear-gradient(180deg, #2b1255 0%, #160a2a 100%)' : 'radial-gradient(ellipse at center, var(--felt-light) 0%, var(--felt-mid) 40%, var(--felt) 70%, #010b13 100%)',
-          border: isPortrait ? '5px solid #1c0e35' : '4px solid #005f73',
-          display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', alignItems: 'center',
-          padding: isPortrait ? '0 12px' : '0 30px',
-          boxShadow: 'inset 0 0 60px rgba(0,0,0,0.8), 0 30px 100px rgba(0,0,0,0.6)',
-          position: 'relative',
-        }}>
-          {/* Inner Dashed Line */}
-          <div style={{
-            position: 'absolute', inset: isPortrait ? 6 : 12,
-            borderRadius: isPortrait ? '114px' : '50%',
-            border: '1px dashed rgba(255,255,255,0.1)',
-            pointerEvents: 'none',
-          }} />
 
-          {/* Left: Last Move Info — FIX Bug 7: Don't show for PASS moves */}
-          <div style={{ textAlign: 'center', display: 'flex', justifyContent: 'center', zIndex: 10 }}>
-            {/* FIX: Only show PLAY info — FloatingAction handles PASS display */}
-            {lastMove && lastMove.type !== 'PASS' && (
-              <div className="panel-sm" style={{
-                padding: isPortrait ? '2px 5px' : '4px 8px',
-                background: 'rgba(0,0,0,0.65)',
-                border: '1px solid rgba(103,232,249,0.4)',
-                borderRadius: '8px', display: 'inline-block',
-              }}>
-                <p style={{ margin: 0, fontSize: isPortrait ? '0.45rem' : '0.55rem', fontWeight: 900, color: 'var(--primary-light)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                  {lastMove.playerName}
-                </p>
-                <p style={{ margin: '1px 0 0', fontSize: isPortrait ? '0.65rem' : '0.8rem', fontWeight: 900, color: '#fff' }}>
-                  {lastMove.count} CARDS
-                </p>
-                <p style={{ margin: 0, fontSize: isPortrait ? '0.45rem' : '0.6rem', fontWeight: 800, color: '#f59e0b', textTransform: 'uppercase' }}>
-                  OF {lastMove.declaredRank}
-                </p>
-              </div>
-            )}
+        {/* ── Felt Table Container ── */}
+        <div style={{
+          width: isPortrait ? '85vw' : '75vw',
+          aspectRatio: isPortrait ? '3/2' : '2.2/1',
+          maxWidth: '900px', maxHeight: '420px', zIndex: 5,
+          position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          {/* Table Surface Shape */}
+          <div className="felt-table" style={{
+            position: 'absolute', inset: 0,
+            borderRadius: isPortrait ? '120px' : '200px',
+            background: isPortrait ? 'linear-gradient(180deg, #2b1255 0%, #160a2a 100%)' : 'radial-gradient(ellipse at center, var(--felt-light) 0%, var(--felt-mid) 40%, var(--felt) 70%, #010b13 100%)',
+            border: isPortrait ? '5px solid #1c0e35' : '8px solid #005f73',
+            boxShadow: 'inset 0 0 60px rgba(0,0,0,0.8), 0 30px 100px rgba(0,0,0,0.6)',
+            zIndex: 1,
+          }}>
+            {/* Inner Border Line */}
+            <div style={{
+              position: 'absolute', inset: isPortrait ? 8 : 15,
+              borderRadius: isPortrait ? '112px' : '185px',
+              border: '1px dashed rgba(255,255,255,0.1)',
+              pointerEvents: 'none',
+            }} />
           </div>
 
-          {/* Center: Main Pile */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', zIndex: 10 }}>
-            <div style={{ position: 'relative', width: isPortrait ? '45px' : '65px', height: isPortrait ? '62px' : '95px' }}>
-              {totalPileCards > 0 ? (
-                [...Array(Math.min(6, totalPileCards))].map((_, i) => (
-                  <div key={i} style={{
-                    position: 'absolute', inset: 0, borderRadius: '6px',
-                    background: 'linear-gradient(135deg, #0e3a46, #06202a)',
-                    border: '1px solid rgba(103,232,249,0.3)', zIndex: i,
-                    transform: `translate(${(i - 3) * 1.2}px, ${(i - 3) * 1}px) rotate(${(i - 3) * 2.5}deg)`,
-                    boxShadow: '0 3px 10px rgba(0,0,0,0.5)',
-                  }} />
-                ))
-              ) : (
-                <div style={{ position: 'absolute', inset: 0, borderRadius: '6px', border: '1.5px dashed rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <span style={{ color: 'rgba(255,255,255,0.1)', fontSize: '0.5rem', fontWeight: 900 }}>EMPTY</span>
+          {/* Grid of central deck, pile, and details */}
+          <div style={{
+            display: 'grid', gridTemplateColumns: '1fr 1.2fr 1fr', alignItems: 'center',
+            width: '100%', padding: isPortrait ? '0 12px' : '0 30px', zIndex: 5,
+          }}>
+            {/* Left: Last Play details */}
+            <div style={{ textAlign: 'center', display: 'flex', justifyContent: 'center', zIndex: 10 }}>
+              {lastMove && lastMove.type !== 'PASS' && (
+                <div className="panel-sm" style={{
+                  padding: isPortrait ? '2px 5px' : '4px 8px',
+                  background: 'rgba(0,0,0,0.65)',
+                  border: '1px solid rgba(103,232,249,0.4)',
+                  borderRadius: '8px', display: 'inline-block',
+                }}>
+                  <p style={{ margin: 0, fontSize: isPortrait ? '0.45rem' : '0.55rem', fontWeight: 900, color: 'var(--primary-light)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                    {lastMove.playerName}
+                  </p>
+                  <p style={{ margin: '1px 0 0', fontSize: isPortrait ? '0.65rem' : '0.8rem', fontWeight: 900, color: '#fff' }}>
+                    {lastMove.count} CARDS
+                  </p>
+                  <p style={{ margin: 0, fontSize: isPortrait ? '0.45rem' : '0.6rem', fontWeight: 800, color: '#f59e0b', textTransform: 'uppercase' }}>
+                    OF {lastMove.declaredRank}
+                  </p>
                 </div>
               )}
             </div>
-            <div style={{ textAlign: 'center' }}>
-              <p style={{ fontSize: '0.5rem', fontWeight: 900, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>PILE</p>
-              <p style={{ fontSize: isPortrait ? '1.2rem' : '1.8rem', fontWeight: 900, color: '#fff', lineHeight: 1, margin: 0 }}>{totalPileCards}</p>
+
+            {/* Center: Main Pile cards */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', zIndex: 10 }}>
+              <div style={{ position: 'relative', width: isPortrait ? '45px' : '65px', height: isPortrait ? '62px' : '95px' }}>
+                {totalPileCards > 0 ? (
+                  [...Array(Math.min(6, totalPileCards))].map((_, i) => (
+                    <div key={i} style={{
+                      position: 'absolute', inset: 0, borderRadius: '6px',
+                      background: 'linear-gradient(135deg, #0e3a46, #06202a)',
+                      border: '1px solid rgba(103,232,249,0.3)', zIndex: i,
+                      transform: `translate(${(i - 3) * 1.2}px, ${(i - 3) * 1}px) rotate(${(i - 3) * 2.5}deg)`,
+                      boxShadow: '0 3px 10px rgba(0,0,0,0.5)',
+                    }} />
+                  ))
+                ) : (
+                  <div style={{ position: 'absolute', inset: 0, borderRadius: '6px', border: '1.5px dashed rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ color: 'rgba(255,255,255,0.1)', fontSize: '0.5rem', fontWeight: 900 }}>EMPTY</span>
+                  </div>
+                )}
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <p style={{ fontSize: '0.5rem', fontWeight: 900, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>PILE</p>
+                <p style={{ fontSize: isPortrait ? '1.2rem' : '1.8rem', fontWeight: 900, color: '#fff', lineHeight: 1, margin: 0 }}>{totalPileCards}</p>
+              </div>
+            </div>
+
+            {/* Right: Side Pile/Discard pile */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, opacity: sidePile.length > 0 ? 0.9 : 0.25, zIndex: 10 }}>
+              <div style={{ position: 'relative', width: isPortrait ? '30px' : '42px', height: isPortrait ? '30px' : '56px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid rgba(255,255,255,0.2)', borderRadius: 6, transform: 'rotate(10deg)', background: 'rgba(255,255,255,0.03)' }}>
+                <TrashIcon size={isPortrait ? 12 : 20} color="#fff" />
+              </div>
+              <p style={{ fontSize: '0.5rem', fontWeight: 900, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0, textAlign: 'center' }}>
+                SIDE<br />{sidePile.length}
+              </p>
             </div>
           </div>
 
-          {/* Right: Side Pile */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, opacity: sidePile.length > 0 ? 0.9 : 0.25, zIndex: 10 }}>
-            <div style={{ position: 'relative', width: isPortrait ? '30px' : '42px', height: isPortrait ? '30px' : '56px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid rgba(255,255,255,0.2)', borderRadius: 6, transform: 'rotate(10deg)', background: 'rgba(255,255,255,0.03)' }}>
-              <TrashIcon size={isPortrait ? 12 : 20} color="#fff" />
-            </div>
-            <p style={{ fontSize: '0.5rem', fontWeight: 900, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0, textAlign: 'center' }}>
-              SIDE<br />{sidePile.length}
-            </p>
-          </div>
-        </div>
-      </div>
+          {/* ── Table-based Opponents Map on Mobile view ── */}
+          {isPortrait && seatedPlayers.map((player, i) => {
+            const pos = SEATS[i % SEATS.length];
+            const isActive = currentTurn === player.id;
+            const hc = player.cardCount;
+            const winRank = getRankPos(player.id);
+            const playerWinner = !!winRank;
 
-      {/* ── Opponents (Seated Clockwise) ── */}
-      {seatedPlayers.map((player, i) => {
-        const pos = SEATS[i % SEATS.length];
-        const isActive = currentTurn === player.id;
-        const hc = player.cardCount;
-        const winRank = getRankPos(player.id);
-        const playerWinner = !!winRank;
-
-        return (
-          <motion.div
-            key={player.id}
-            initial={false}
-            animate={{ scale: isActive ? (isPortrait ? 0.85 : 1.05) : (isPortrait ? 0.7 : 0.85) }}
-            style={{
-              position: 'absolute', display: 'flex', flexDirection: 'column',
-              alignItems: 'center', gap: '4px', zIndex: isActive ? 20 : 10,
-              ...pos,
-            }}
-          >
-            {isPortrait ? (
-              // ── Portrait Style (Stacked Avatar & Info Badge) ──
-              <>
-                {/* Avatar Container */}
+            return (
+              <motion.div
+                key={player.id}
+                initial={false}
+                animate={{ scale: isActive ? 0.85 : 0.7 }}
+                style={{
+                  position: 'absolute', display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', gap: '4px', zIndex: isActive ? 20 : 10,
+                  ...pos,
+                }}
+              >
+                {/* Avatar Display */}
                 <div style={{ position: 'relative', width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {/* Active Turn Glow */}
                   {isActive && (
                     <motion.div
                       animate={{ scale: [1, 1.15, 1], opacity: [0.5, 0.8, 0.5] }}
                       transition={{ repeat: Infinity, duration: 2 }}
                       style={{
-                        position: 'absolute',
-                        inset: -4,
-                        borderRadius: '50%',
+                        position: 'absolute', inset: -4, borderRadius: '50%',
                         background: 'radial-gradient(circle, var(--primary) 66%, transparent 70%)',
                         border: '2px solid var(--primary-light)',
-                        boxShadow: '0 0 15px var(--shadow-p)',
-                        zIndex: -1,
+                        boxShadow: '0 0 15px var(--shadow-p)', zIndex: -1,
                       }}
                     />
                   )}
-                  
-                  <AvatarDisplay
-                    avatarId={player.avatar}
-                    playerName={player.name}
-                    size={34}
-                    animated={isActive}
-                  />
-                  
-                  {/* Host Crown */}
+                  <AvatarDisplay avatarId={player.avatar} playerName={player.name} size={34} animated={isActive} />
                   {player.id === hostId && (
-                    <div style={{ position: 'absolute', top: -8, right: -8, fontSize: '0.75rem', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}>
-                      👑
-                    </div>
+                    <div style={{ position: 'absolute', top: -8, right: -8, fontSize: '0.75rem', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}>👑</div>
                   )}
                 </div>
 
-                {/* Player Info Badge */}
+                {/* Player details tag */}
                 <div style={{ 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  alignItems: 'center',
-                  background: 'rgba(10,5,20,0.8)',
-                  backdropFilter: 'blur(8px)',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  background: 'rgba(10,5,20,0.8)', backdropFilter: 'blur(8px)',
                   border: `1.5px solid ${isActive ? 'var(--primary-light)' : 'rgba(255,255,255,0.08)'}`,
-                  borderRadius: 14,
-                  padding: '4px 10px',
-                  minWidth: 78,
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
-                  position: 'relative',
-                  overflow: 'hidden',
+                  borderRadius: 14, padding: '4px 10px', minWidth: 78, boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+                  position: 'relative', overflow: 'hidden',
                 }}>
-                  <span style={{
-                    fontSize: '0.62rem',
-                    fontWeight: 900,
-                    color: '#fff',
-                    maxWidth: 70,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    lineHeight: 1.2,
-                  }}>
+                  <span style={{ fontSize: '0.62rem', fontWeight: 900, color: '#fff', maxWidth: 70, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.2 }}>
                     {player.name.toUpperCase()}
                   </span>
-                  <span style={{
-                    fontSize: '0.52rem',
-                    fontWeight: 800,
-                    letterSpacing: '0.05em',
-                    color: hc === 0 ? '#f59e0b' : 'var(--muted)',
-                    textTransform: 'uppercase',
-                    lineHeight: 1.1,
-                  }}>
+                  <span style={{ fontSize: '0.52rem', fontWeight: 800, letterSpacing: '0.05em', color: hc === 0 ? '#f59e0b' : 'var(--muted)', textTransform: 'uppercase', lineHeight: 1.1 }}>
                     {hc === 0 ? 'WINNER' : `${hc} CARDS`}
                   </span>
 
@@ -555,8 +484,7 @@ export default function GameBoard() {
                         position: 'absolute', inset: 0,
                         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                         background: 'rgba(0,0,0,0.85)', borderRadius: 'inherit',
-                        border: '1.5px solid #f59e0b',
-                        backdropFilter: 'blur(4px)',
+                        border: '1.5px solid #f59e0b', backdropFilter: 'blur(4px)',
                       }}
                     >
                       <TrophyIcon size={14} />
@@ -564,75 +492,203 @@ export default function GameBoard() {
                     </motion.div>
                   )}
                 </div>
-              </>
-            ) : (
-              // ── Original Landscape Row Style ──
-              <div className={`panel-sm${isActive ? ' active-pulse' : ''}`} style={{
-                padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '6px', minWidth: '90px',
-                border: isActive ? '2.5px solid var(--secondary)' : '1.5px solid rgba(255,255,255,0.08)',
-                background: isActive ? 'rgba(8,145,178,0.3)' : 'rgba(255,255,255,0.04)',
-                boxShadow: isActive ? '0 0 25px rgba(8,145,178,0.4)' : 'none',
-                position: 'relative', overflow: 'hidden',
-              }}>
-                <AvatarDisplay avatarId={player.avatar} playerName={player.name} size={28} animated={true} />
-                <div style={{ textAlign: 'left', flex: 1 }}>
-                  <p style={{ fontSize: '0.65rem', fontWeight: 900, color: '#fff', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '65px' }}>
-                    {player.name.toUpperCase()}
-                  </p>
-                  {!playerWinner && (
-                    <p style={{
-                      fontSize: '0.55rem',
-                      color: hc === 0 ? '#f59e0b' : '#6b7280',
-                      fontWeight: 800, margin: 0,
-                      animation: hc === 0 ? 'pulse 1s infinite' : 'none'
-                    }}>
-                      {hc === 0 ? 'WINNER PENDING...' : `${hc} CARDS`}
-                    </p>
+
+                {/* Floating chat messages bubbles */}
+                <div style={{ position: 'absolute', top: '-50px', left: '50%', transform: 'translateX(-50%)', width: '100%', pointerEvents: 'none' }}>
+                  <ChatBubble messages={getMsgs(player.id)} isMe={false} position="top" />
+                </div>
+
+                {/* Opponent mini card fan backs */}
+                {!playerWinner && hc > 0 && (
+                  <div style={{ position: 'relative', height: '28px', width: '100%', display: 'flex', justifyContent: 'center', marginTop: 1 }}>
+                    {[...Array(Math.min(hc, 5))].map((_, ci) => (
+                      <div key={ci} className="face-down-card" style={{
+                        width: '20px', height: '30px', left: '50%', marginLeft: '-10px',
+                        transform: `translateX(${(ci - 2) * 8}px) rotate(${(ci - 2) * 4}deg)`, zIndex: ci,
+                      }} />
+                    ))}
+                    {hc > 5 && (
+                      <div style={{ position: 'absolute', right: '-10px', top: 0, fontSize: '.5rem', fontWeight: 900, color: '#9ca3af' }}>+{hc - 5}</div>
+                    )}
+                  </div>
+                )}
+              </motion.div>
+            );
+          })}
+
+          {/* ── Table-based Active Player Circle ("You") ── */}
+          {isPortrait && !isSpectator && (
+            <div style={{ position: 'absolute', bottom: playerOff, left: '50%', transform: 'translateX(-50%)', zIndex: 10 }}>
+              <motion.div
+                initial={false}
+                animate={{ scale: isMyTurn ? 0.95 : 0.8 }}
+                style={{
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', gap: '4px',
+                }}
+              >
+                {/* Active Glow */}
+                <div style={{ position: 'relative', width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {isMyTurn && (
+                    <motion.div
+                      animate={{ scale: [1, 1.15, 1], opacity: [0.5, 0.8, 0.5] }}
+                      transition={{ repeat: Infinity, duration: 2 }}
+                      style={{
+                        position: 'absolute', inset: -4, borderRadius: '50%',
+                        background: 'radial-gradient(circle, var(--primary) 66%, transparent 70%)',
+                        border: '2px solid var(--primary-light)',
+                        boxShadow: '0 0 15px var(--shadow-p)', zIndex: -1,
+                      }}
+                    />
                   )}
-                  {playerWinner && (
-                    <p style={{ fontSize: '0.55rem', color: '#f59e0b', fontWeight: 900, margin: 0 }}>FINISHED #{winRank}</p>
+                  <AvatarDisplay avatarId={myInfo?.avatar} playerName={myInfo?.name || 'You'} size={34} animated={isMyTurn} />
+                  {playerId === hostId && (
+                    <div style={{ position: 'absolute', top: -8, right: -8, fontSize: '0.75rem', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}>👑</div>
                   )}
                 </div>
-                {isHost && !playerWinner && (
-                  <button
-                    onClick={() => kickPlayer(player.id)}
-                    style={{ position: 'absolute', top: -6, right: -6, background: '#ef4444', color: '#fff', width: 18, height: 18, borderRadius: '50%', fontSize: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, border: '2px solid #000', cursor: 'pointer', zIndex: 10 }}
-                  >✕</button>
+
+                <div style={{ 
+                  display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  background: 'rgba(10,5,20,0.8)', backdropFilter: 'blur(8px)',
+                  border: `1.5px solid ${isMyTurn ? 'var(--primary-light)' : 'rgba(255,255,255,0.08)'}`,
+                  borderRadius: 14, padding: '4px 10px', minWidth: 78, boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+                  position: 'relative', overflow: 'hidden',
+                }}>
+                  <span style={{ fontSize: '0.62rem', fontWeight: 900, color: '#fff', maxWidth: 70, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.2 }}>
+                    YOU
+                  </span>
+                  <span style={{ fontSize: '0.52rem', fontWeight: 800, letterSpacing: '0.05em', color: 'var(--muted)', textTransform: 'uppercase', lineHeight: 1.1 }}>
+                    {myHand.length} CARDS
+                  </span>
+
+                  {getRankPos(playerId) && (
+                    <motion.div
+                      initial={{ scale: 0 }} animate={{ scale: 1 }}
+                      style={{
+                        position: 'absolute', inset: 0,
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                        background: 'rgba(0,0,0,0.85)', borderRadius: 'inherit',
+                        border: '1.5px solid #f59e0b', backdropFilter: 'blur(4px)',
+                      }}
+                    >
+                      <TrophyIcon size={14} />
+                      <span style={{ fontSize: '0.55rem', fontWeight: 900, color: '#f59e0b' }}>#{getRankPos(playerId)}</span>
+                    </motion.div>
+                  )}
+                </div>
+
+                {/* My Chat bubble */}
+                <div style={{ position: 'absolute', top: '-50px', left: '50%', transform: 'translateX(-50%)', width: '100%', pointerEvents: 'none' }}>
+                  <ChatBubble messages={getMsgs(playerId)} isMe={true} position="top" />
+                </div>
+              </motion.div>
+            </div>
+          )}
+
+          {/* ── Card Movement & Floating text animations inside table container on portrait ── */}
+          {isPortrait && (
+            <>
+              <MoveAnimation
+                fromPos={activeAnimation?.from}
+                toPos={activeAnimation?.to}
+                count={activeAnimation?.count}
+                onComplete={() => setActiveAnimation(null)}
+              />
+              <FloatingAction
+                fromPos={floatingAction?.from}
+                toPos={floatingAction?.to}
+                text={floatingAction?.text}
+                type={floatingAction?.type}
+                onComplete={() => setFloatingAction(null)}
+              />
+            </>
+          )}
+
+        </div>
+      </div>
+
+      {/* ── Table-based Opponents Map on Desktop view (Direct children, original layout) ── */}
+      {!isPortrait && seatedPlayers.map((player, i) => {
+        const pos = SEATS[i % SEATS.length];
+        const isActive = currentTurn === player.id;
+        const hc = player.cardCount;
+        const winRank = getRankPos(player.id);
+        const playerWinner = !!winRank;
+
+        return (
+          <motion.div
+            key={player.id}
+            initial={false}
+            animate={{ scale: isActive ? 1.05 : 0.85 }}
+            style={{
+              position: 'absolute', display: 'flex', flexDirection: 'column',
+              alignItems: 'center', gap: '4px', zIndex: isActive ? 20 : 10,
+              ...pos,
+            }}
+          >
+            <div className={`panel-sm${isActive ? ' active-pulse' : ''}`} style={{
+              padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '6px', minWidth: '90px',
+              border: isActive ? '2.5px solid var(--secondary)' : '1.5px solid rgba(255,255,255,0.08)',
+              background: isActive ? 'rgba(8,145,178,0.3)' : 'rgba(255,255,255,0.04)',
+              boxShadow: isActive ? '0 0 25px rgba(8,145,178,0.4)' : 'none',
+              position: 'relative', overflow: 'hidden',
+            }}>
+              <AvatarDisplay avatarId={player.avatar} playerName={player.name} size={28} animated={true} />
+              <div style={{ textAlign: 'left', flex: 1 }}>
+                <p style={{ fontSize: '0.65rem', fontWeight: 900, color: '#fff', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '65px' }}>
+                  {player.name.toUpperCase()}
+                </p>
+                {!playerWinner && (
+                  <p style={{
+                    fontSize: '0.55rem',
+                    color: hc === 0 ? '#f59e0b' : '#6b7280',
+                    fontWeight: 800, margin: 0,
+                    animation: hc === 0 ? 'pulse 1s infinite' : 'none'
+                  }}>
+                    {hc === 0 ? 'WINNER PENDING...' : `${hc} CARDS`}
+                  </p>
                 )}
                 {playerWinner && (
-                  <motion.div
-                    initial={{ scale: 0 }} animate={{ scale: 1 }}
-                    style={{
-                      position: 'absolute', inset: 0,
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                      background: 'rgba(0,0,0,0.75)', borderRadius: 'inherit',
-                      border: '2px solid #f59e0b',
-                      backdropFilter: 'blur(4px)',
-                    }}
-                  >
-                    <TrophyIcon size={22} />
-                    <span style={{ fontSize: '0.7rem', fontWeight: 900, color: '#f59e0b' }}>#{winRank}</span>
-                  </motion.div>
+                  <p style={{ fontSize: '0.55rem', color: '#f59e0b', fontWeight: 900, margin: 0 }}>FINISHED #{winRank}</p>
                 )}
               </div>
-            )}
+              {isHost && !playerWinner && (
+                <button
+                  onClick={() => kickPlayer(player.id)}
+                  style={{ position: 'absolute', top: -6, right: -6, background: '#ef4444', color: '#fff', width: 18, height: 18, borderRadius: '50%', fontSize: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, border: '2px solid #000', cursor: 'pointer', zIndex: 10 }}
+                >✕</button>
+              )}
+              {playerWinner && (
+                <motion.div
+                  initial={{ scale: 0 }} animate={{ scale: 1 }}
+                  style={{
+                    position: 'absolute', inset: 0,
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    background: 'rgba(0,0,0,0.75)', borderRadius: 'inherit',
+                    border: '2px solid #f59e0b',
+                    backdropFilter: 'blur(4px)',
+                  }}
+                >
+                  <TrophyIcon size={22} />
+                  <span style={{ fontSize: '0.7rem', fontWeight: 900, color: '#f59e0b' }}>#{winRank}</span>
+                </motion.div>
+              )}
+            </div>
 
-            {/* Chat bubble — floats above this opponent's player card */}
-            <div style={{ position: 'absolute', top: isPortrait ? '-50px' : '-58px', left: '50%', transform: 'translateX(-50%)', width: '100%', pointerEvents: 'none' }}>
+            <div style={{ position: 'absolute', top: '-58px', left: '50%', transform: 'translateX(-50%)', width: '100%', pointerEvents: 'none' }}>
               <ChatBubble messages={getMsgs(player.id)} isMe={false} position="top" />
             </div>
 
-            {/* Mini face-down cards */}
             {!playerWinner && hc > 0 && (
-              <div style={{ position: 'relative', height: isPortrait ? '28px' : '32px', width: '100%', display: 'flex', justifyContent: 'center', marginTop: 1 }}>
+              <div style={{ position: 'relative', height: '32px', width: '100%', display: 'flex', justifyContent: 'center', marginTop: 1 }}>
                 {[...Array(Math.min(hc, 5))].map((_, ci) => (
                   <div key={ci} className="face-down-card" style={{
-                    width: isPortrait ? '20px' : '22px', height: isPortrait ? '30px' : '34px', left: '50%', marginLeft: isPortrait ? '-10px' : '-11px',
+                    width: '22px', height: '34px', left: '50%', marginLeft: '-11px',
                     transform: `translateX(${(ci - 2) * 8}px) rotate(${(ci - 2) * 4}deg)`, zIndex: ci,
                   }} />
                 ))}
                 {hc > 5 && (
-                  <div style={{ position: 'absolute', right: isPortrait ? '-10px' : '-12px', top: 0, fontSize: isPortrait ? '.5rem' : '.55rem', fontWeight: 900, color: '#9ca3af' }}>+{hc - 5}</div>
+                  <div style={{ position: 'absolute', right: '-12px', top: 0, fontSize: '.55rem', fontWeight: 900, color: '#9ca3af' }}>+{hc - 5}</div>
                 )}
               </div>
             )}
@@ -640,222 +696,209 @@ export default function GameBoard() {
         );
       })}
 
-      {/* ── Table-based Active Player Circle ("You") ── */}
-      {isPortrait && !isSpectator && (
-        <motion.div
-          initial={false}
-          animate={{ scale: isMyTurn ? 0.95 : 0.8 }}
-          style={{
-            position: 'absolute',
-            top: '46%', left: '50%',
-            transform: 'translateX(-50%)',
-            display: 'flex', flexDirection: 'column',
-            alignItems: 'center', gap: '4px', zIndex: 10,
-          }}
-        >
-          {/* Avatar Container */}
-          <div style={{ position: 'relative', width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {/* Active Turn Glow */}
-            {isMyTurn && (
-              <motion.div
-                animate={{ scale: [1, 1.15, 1], opacity: [0.5, 0.8, 0.5] }}
-                transition={{ repeat: Infinity, duration: 2 }}
-                style={{
-                  position: 'absolute',
-                  inset: -4,
-                  borderRadius: '50%',
-                  background: 'radial-gradient(circle, var(--primary) 66%, transparent 70%)',
-                  border: '2px solid var(--primary-light)',
-                  boxShadow: '0 0 15px var(--shadow-p)',
-                  zIndex: -1,
-                }}
-              />
-            )}
-            
-            <AvatarDisplay
-              avatarId={myInfo?.avatar}
-              playerName={myInfo?.name || 'You'}
-              size={34}
-              animated={isMyTurn}
-            />
-            
-            {/* Host Crown */}
-            {playerId === hostId && (
-              <div style={{ position: 'absolute', top: -8, right: -8, fontSize: '0.75rem', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}>
-                👑
-              </div>
-            )}
-          </div>
-
-          {/* Player Info Badge */}
-          <div style={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            alignItems: 'center',
-            background: 'rgba(10,5,20,0.8)',
-            backdropFilter: 'blur(8px)',
-            border: `1.5px solid ${isMyTurn ? 'var(--primary-light)' : 'rgba(255,255,255,0.08)'}`,
-            borderRadius: 14,
-            padding: '4px 10px',
-            minWidth: 78,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
-            position: 'relative',
-            overflow: 'hidden',
-          }}>
-            <span style={{
-              fontSize: '0.62rem',
-              fontWeight: 900,
-              color: '#fff',
-              maxWidth: 70,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              lineHeight: 1.2,
-            }}>
-              YOU
-            </span>
-            <span style={{
-              fontSize: '0.52rem',
-              fontWeight: 800,
-              letterSpacing: '0.05em',
-              color: 'var(--muted)',
-              textTransform: 'uppercase',
-              lineHeight: 1.1,
-            }}>
-              {myHand.length} CARDS
-            </span>
-
-            {/* Trophy Overlay if I won */}
-            {getRankPos(playerId) && (
-              <motion.div
-                initial={{ scale: 0 }} animate={{ scale: 1 }}
-                style={{
-                  position: 'absolute', inset: 0,
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                  background: 'rgba(0,0,0,0.85)', borderRadius: 'inherit',
-                  border: '1.5px solid #f59e0b',
-                  backdropFilter: 'blur(4px)',
-                }}
-              >
-                <TrophyIcon size={14} />
-                <span style={{ fontSize: '0.55rem', fontWeight: 900, color: '#f59e0b' }}>#{getRankPos(playerId)}</span>
-              </motion.div>
-            )}
-          </div>
-
-          {/* My chat bubble — floats above my player circle */}
-          <div style={{ position: 'absolute', top: '-50px', left: '50%', transform: 'translateX(-50%)', width: '100%', pointerEvents: 'none' }}>
-            <ChatBubble messages={getMsgs(playerId)} isMe={true} position="top" />
-          </div>
-        </motion.div>
+      {/* ── Desktop Animations & Floating actions ── */}
+      {!isPortrait && (
+        <>
+          <MoveAnimation
+            fromPos={activeAnimation?.from}
+            toPos={activeAnimation?.to}
+            count={activeAnimation?.count}
+            onComplete={() => setActiveAnimation(null)}
+          />
+          <FloatingAction
+            fromPos={floatingAction?.from}
+            toPos={floatingAction?.to}
+            text={floatingAction?.text}
+            type={floatingAction?.type}
+            onComplete={() => setFloatingAction(null)}
+          />
+        </>
       )}
 
-      {/* ── My Hand ── */}
-      <AnimatePresence>
-        {!isSpectator && (!isPortrait || showMobileHand) && (
-          <motion.div
-            initial={isPortrait ? { y: 200, opacity: 0 } : { opacity: 0 }}
-            animate={isPortrait ? { y: 0, opacity: 1 } : { opacity: 1 }}
-            exit={isPortrait ? { y: 200, opacity: 0 } : { opacity: 0 }}
+      {/* ── ACTION CONTROLS HUD (centered just above fanned cards on mobile) ── */}
+      {isPortrait && !isSpectator && !isEnded && (
+        <div style={{
+          display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px',
+          padding: '8px 16px', zIndex: 80, width: '100%', flexShrink: 0
+        }}>
+          {isMyTurn && !isPickingPhase && !isResolution && (
+            <>
+              {/* Rank selector only when starting new round */}
+              {!roundRank && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  <span style={{ fontSize: '0.45rem', fontWeight: 900, color: '#94a3b8', paddingLeft: 2 }}>DECLARE RANK</span>
+                  <select
+                    value={declaredRank}
+                    onChange={e => setDeclaredRank(e.target.value)}
+                    className="rank-select"
+                    style={{ padding: '6px 10px', fontSize: '0.75rem', borderRadius: 8, background: '#1c0e35', border: '1px solid rgba(255,255,255,0.15)', color: '#fff' }}
+                  >
+                    {RANKS.map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                </div>
+              )}
+
+              {/* BLUFF button */}
+              {canCallBluff && (
+                <button
+                  className="btn btn-red btn-sm"
+                  onClick={callBluff}
+                  style={{ padding: '8px 14px', fontWeight: 900, width: 'auto', fontSize: '0.7rem', borderRadius: 10 }}
+                >
+                  <MaskIcon size={12} /> BLUFF
+                </button>
+              )}
+
+              {/* PLAY button */}
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={handlePlay}
+                disabled={selectedCards.length === 0}
+                style={{ padding: '8px 16px', opacity: selectedCards.length === 0 ? 0.35 : 1, width: 'auto', fontSize: '0.7rem', borderRadius: 10 }}
+              >
+                PLAY {selectedCards.length > 0 ? selectedCards.length : ''}
+              </button>
+
+              {/* PASS button */}
+              {canPass && (
+                <button
+                  className="btn btn-outline btn-sm"
+                  onClick={passTurn}
+                  style={{ padding: '8px 14px', width: 'auto', fontSize: '0.7rem', borderRadius: 10 }}
+                >
+                  PASS
+                </button>
+              )}
+            </>
+          )}
+
+          {!isMyTurn && !isResolution && (
+            <div style={{ padding: '6px 16px', borderRadius: 10, background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <span style={{ color: '#64748b', fontSize: '0.65rem', fontWeight: 900, letterSpacing: '0.05em' }}>
+                {state === 'WAITING' ? 'WAITING FOR HOST' : 'WAITING FOR TURN...'}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── BOTTOM HAND AREA (Portrait Viewport, scrollable and elegant fanning) ── */}
+      {!isSpectator && isPortrait && (
+        <div style={{
+          height: 160, display: 'flex', flexDirection: 'column', alignItems: 'center',
+          padding: '0 6px 1px', zIndex: 100, flexShrink: 0, width: '100%',
+        }}>
+          <div
             style={{
-              position: 'absolute', bottom: isPortrait ? '110px' : '120px',
-              left: 0, right: 0, display: 'flex', justifyContent: 'center',
-              zIndex: 40, pointerEvents: (isPickingPhase || isEnded || isResolution) ? 'none' : 'auto',
+              display: 'flex',
+              alignItems: 'flex-end',
+              justifyContent: 'flex-start',
+              width: '100%',
+              paddingTop: 30,
+              paddingBottom: 20,
+              overflowX: 'auto',
+              paddingLeft: 16,
+              paddingRight: 16,
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+              gap: 8,
+            }}
+            className="no-scrollbar"
+          >
+            {myHand.map((cardId, i) => {
+              const selected = selectedCards.includes(cardId);
+              const isLast = i === myHand.length - 1;
+              return (
+                <motion.div
+                  key={`${cardId}-${i}`}
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: selected ? -15 : 0, opacity: 1 }}
+                  transition={{ delay: i * 0.02 }}
+                  style={{
+                    marginRight: isLast ? 0 : -35,
+                    zIndex: selected ? 100 : i,
+                    position: 'relative',
+                    flexShrink: 0,
+                    cursor: isMyTurn ? 'pointer' : 'default',
+                  }}
+                  onClick={() => isMyTurn && !isPickingPhase && !isEnded && toggleCard(cardId)}
+                >
+                  <Card cardId={cardId} scale={0.8} />
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── My Hand on Desktop ── */}
+      <AnimatePresence>
+        {!isSpectator && !isPortrait && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{
+              position: 'absolute', bottom: '120px', left: 0, right: 0,
+              display: 'flex', justifyContent: 'center', zIndex: 40,
+              pointerEvents: (isPickingPhase || isEnded || isResolution) ? 'none' : 'auto',
             }}
           >
-            {isPortrait ? (
-              <div style={{
-                width: '100vw', display: 'flex', overflowX: 'auto', overflowY: 'visible',
-                padding: '12px 40px 50px', scrollBehavior: 'smooth', gap: '10px',
-                alignItems: 'flex-end', justifyContent: myHand.length < 5 ? 'center' : 'flex-start',
-                scrollbarWidth: 'none', msOverflowStyle: 'none',
-              }} className="no-scrollbar">
-                {myHand.map((cardId, i) => {
-                  const selected = selectedCards.includes(cardId);
-                  return (
-                    <div key={`${cardId}-${i}`}
-                      style={{
-                        cursor: isMyTurn ? 'pointer' : 'default', flexShrink: 0,
-                        transform: `translateY(${selected ? -18 : 0}px)`,
-                        transition: 'transform 0.2s ease',
-                        filter: selected ? 'drop-shadow(0 0 6px var(--secondary))' : 'none',
-                      }}
-                      onClick={() => isMyTurn && !isPickingPhase && !isEnded && toggleCard(cardId)}
-                    >
-                      <Card cardId={cardId} scale={0.8} index={i} />
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div style={{
-                position: 'relative', display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-                height: '180px', width: '95vw', maxWidth: '1200px', padding: '12px 0',
-              }}>
-                {myHand.map((cardId, i) => {
-                  const count = myHand.length;
-                  const cardWidth = 85;
-                  const containerWidth = Math.min(1100, window.innerWidth * 0.9);
-                  let overlap = 65;
-                  if (count > 1) {
-                    const neededWidth = (count * 65) + 20;
-                    if (neededWidth > containerWidth) {
-                      overlap = (containerWidth - cardWidth) / (count - 1);
-                    }
+            <div style={{
+              position: 'relative', display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+              height: '180px', width: '95vw', maxWidth: '1200px', padding: '12px 0',
+            }}>
+              {myHand.map((cardId, i) => {
+                const count = myHand.length;
+                const cardWidth = 85;
+                const containerWidth = Math.min(1100, window.innerWidth * 0.9);
+                let overlap = 65;
+                if (count > 1) {
+                  const neededWidth = (count * 65) + 20;
+                  if (neededWidth > containerWidth) {
+                    overlap = (containerWidth - cardWidth) / (count - 1);
                   }
-                  const totalWidth = overlap * (count - 1) + cardWidth;
-                  const startX = -totalWidth / 2 + cardWidth / 2;
-                  const tx = startX + (i * overlap);
-                  const selected = selectedCards.includes(cardId);
+                }
+                const totalWidth = overlap * (count - 1) + cardWidth;
+                const startX = -totalWidth / 2 + cardWidth / 2;
+                const tx = startX + (i * overlap);
+                const selected = selectedCards.includes(cardId);
 
-                  return (
-                    <motion.div
-                      key={`${cardId}-${i}`}
-                      layout
-                      whileHover={{ y: selected ? -40 : -18, zIndex: 100 }}
-                      style={{
-                        position: 'absolute', left: '50%', bottom: '20px',
-                        x: tx, y: selected ? -35 : 0,
-                        zIndex: i, cursor: isMyTurn ? 'pointer' : 'default',
-                        filter: selected ? 'drop-shadow(0 0 8px var(--secondary))' : 'none',
-                      }}
-                      onClick={() => isMyTurn && !isPickingPhase && !isEnded && toggleCard(cardId)}
-                    >
-                      <Card cardId={cardId} scale={1.05} index={i} />
-                    </motion.div>
-                  );
-                })}
-              </div>
-            )}
+                return (
+                  <motion.div
+                    key={`${cardId}-${i}`}
+                    layout
+                    whileHover={{ y: selected ? -40 : -18, zIndex: 100 }}
+                    style={{
+                      position: 'absolute', left: '50%', bottom: '20px',
+                      x: tx, y: selected ? -35 : 0,
+                      zIndex: i, cursor: isMyTurn ? 'pointer' : 'default',
+                      filter: selected ? 'drop-shadow(0 0 8px var(--secondary))' : 'none',
+                    }}
+                    onClick={() => isMyTurn && !isPickingPhase && !isEnded && toggleCard(cardId)}
+                  >
+                    <Card cardId={cardId} scale={1.05} index={i} />
+                  </motion.div>
+                );
+              })}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* ── HUD (Bottom Bar) ── */}
-      <div className="hud" style={{
-        flexDirection: isPortrait ? 'row' : undefined,
-        padding: isPortrait ? '8px 12px' : undefined,
-        height: isPortrait ? 'auto' : undefined,
-      }}>
-        <div style={{
-          width: '100%', maxWidth: '900px',
-          display: 'flex', alignItems: 'center',
-          justifyContent: isPortrait ? 'space-between' : 'center',
-          gap: isPortrait ? '6px' : '16px',
-          flexDirection: 'row',
-        }}>
-
-          {/* My Info + my chat bubble — only shown on landscape since "You" is a circle on the table in portrait */}
-          {!isPortrait && (
+      {/* ── HUD (Bottom Bar) on Desktop ── */}
+      {!isPortrait && (
+        <div className="hud">
+          <div style={{
+            width: '100%', maxWidth: '900px', display: 'flex', alignItems: 'center',
+            justifyContent: 'center', gap: '16px', flexDirection: 'row',
+          }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginRight: 'auto' }}>
               <div style={{ position: 'relative' }}>
-                 <AvatarDisplay avatarId={myInfo?.avatar} playerName={myInfo?.name || '?'} size={32} animated={true} />
+                <AvatarDisplay avatarId={myInfo?.avatar} playerName={myInfo?.name || '?'} size={32} animated={true} />
                 {getRankPos(playerId) && (
                   <div style={{ position: 'absolute', inset: -3, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.7)', borderRadius: '50%', border: '2px solid #f59e0b' }}>
                     <TrophyIcon size={10} />
                   </div>
                 )}
-                {/* My chat bubble — appears above my avatar in the HUD */}
                 <ChatBubble messages={getMsgs(playerId)} isMe={true} position="bottom" />
               </div>
               <div style={{ textAlign: 'left' }}>
@@ -865,120 +908,101 @@ export default function GameBoard() {
                 <p style={{ fontSize: '0.55rem', fontWeight: 800, color: 'var(--secondary)', margin: 0 }}>{myInfo?.name}</p>
               </div>
             </div>
-          )}
 
-          {/* FIX Bug 13: View Cards toggle integrated into HUD row (not a floating overlay) */}
-          {!isSpectator && isPortrait && state !== 'ENDED' && (
-            <button
-              className="btn btn-sm"
-              onClick={() => setShowMobileHand(!showMobileHand)}
-              style={{
-                background: showMobileHand ? 'var(--bg2)' : 'var(--primary)',
-                color: '#fff', border: '1px solid rgba(255,255,255,0.15)',
-                padding: '6px 10px', fontSize: '0.6rem', width: 'auto', flexShrink: 0,
-              }}
-            >
-              {showMobileHand ? '▲ HIDE' : `▼ CARDS (${myHand.length})`}
-            </button>
-          )}
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', wrap: 'wrap', justifyContent: 'center' }}>
+              {!isSpectator ? (
+                <>
+                  {isMyTurn && !isPickingPhase && !isEnded && !isResolution && (
+                    <>
+                      {!roundRank && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                          <span style={{ fontSize: '0.45rem', fontWeight: 900, color: '#6b7280', paddingLeft: 2 }}>DECLARE RANK</span>
+                          <select
+                            value={declaredRank}
+                            onChange={e => setDeclaredRank(e.target.value)}
+                            className="rank-select"
+                            style={{ padding: '5px 8px', fontSize: '0.75rem' }}
+                          >
+                            {RANKS.map(r => <option key={r} value={r} style={{ background: '#031015' }}>{r}</option>)}
+                          </select>
+                        </div>
+                      )}
 
-          {/* Action Buttons */}
-          <div style={{
-            display: 'flex', gap: '6px', alignItems: 'center',
-            flexWrap: isPortrait ? 'nowrap' : 'wrap',
-            justifyContent: isPortrait ? 'flex-end' : 'center',
-            flex: isPortrait ? 1 : undefined,
-          }}>
-            {!isSpectator ? (
-              <>
-                {isMyTurn && !isPickingPhase && !isEnded && !isResolution && (
-                  <>
-                    {/* Rank selector only when starting new round */}
-                    {!roundRank && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                        <span style={{ fontSize: '0.45rem', fontWeight: 900, color: '#6b7280', paddingLeft: 2 }}>DECLARE RANK</span>
-                        <select
-                          value={declaredRank}
-                          onChange={e => setDeclaredRank(e.target.value)}
-                          className="rank-select"
-                          style={{ padding: '5px 8px', fontSize: '0.75rem' }}
+                      {canCallBluff && (
+                        <button
+                          className="btn btn-red btn-sm"
+                          onClick={callBluff}
+                          style={{ padding: '8px 12px', fontWeight: 900, width: 'auto', fontSize: '0.75rem' }}
                         >
-                          {RANKS.map(r => <option key={r} value={r} style={{ background: '#031015' }}>{r}</option>)}
-                        </select>
-                      </div>
-                    )}
+                          <MaskIcon size={12} /> BLUFF
+                        </button>
+                      )}
 
-                    {/* BLUFF button */}
-                    {canCallBluff && (
                       <button
-                        className="btn btn-red btn-sm"
-                        onClick={callBluff}
-                        style={{ padding: '8px 12px', fontWeight: 900, width: 'auto', fontSize: '0.75rem' }}
+                        className="btn btn-primary btn-sm"
+                        onClick={handlePlay}
+                        disabled={selectedCards.length === 0}
+                        style={{ padding: '8px 16px', opacity: selectedCards.length === 0 ? 0.35 : 1, width: 'auto', fontSize: '0.75rem' }}
                       >
-                        <MaskIcon size={12} /> BLUFF
+                        PLAY {selectedCards.length > 0 ? selectedCards.length : ''}
                       </button>
-                    )}
 
-                    {/* PLAY button */}
-                    <button
-                      className="btn btn-primary btn-sm"
-                      onClick={handlePlay}
-                      disabled={selectedCards.length === 0}
-                      style={{ padding: '8px 16px', opacity: selectedCards.length === 0 ? 0.35 : 1, width: 'auto', fontSize: '0.75rem' }}
-                    >
-                      PLAY {selectedCards.length > 0 ? selectedCards.length : ''}
-                    </button>
+                      {canPass && (
+                        <button
+                          className="btn btn-outline btn-sm"
+                          onClick={passTurn}
+                          style={{ padding: '8px 12px', width: 'auto', fontSize: '0.75rem' }}
+                        >
+                          PASS
+                        </button>
+                      )}
+                    </>
+                  )}
 
-                    {/* FIX Bug 7: PASS only shown when pile has cards */}
-                    {canPass && (
-                      <button
-                        className="btn btn-outline btn-sm"
-                        onClick={passTurn}
-                        style={{ padding: '8px 12px', width: 'auto', fontSize: '0.75rem' }}
-                      >
-                        PASS
-                      </button>
-                    )}
-                  </>
-                )}
+                  {!isMyTurn && !isEnded && !isPickingPhase && !isResolution && (
+                    <p style={{ color: '#4b5563', fontSize: '0.7rem', fontWeight: 900, margin: 0, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                      {state === 'WAITING' ? 'Waiting for Host' : 'Waiting for Turn...'}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p style={{ color: '#9ca3af', fontSize: '0.7rem', fontWeight: 700, margin: 0, fontStyle: 'italic' }}>
+                  SPECTATING
+                </p>
+              )}
 
-                {!isMyTurn && !isEnded && !isPickingPhase && !isResolution && (
-                  <p style={{ color: '#4b5563', fontSize: '0.7rem', fontWeight: 900, margin: 0, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                    {state === 'WAITING' ? 'Waiting for Host' : 'Waiting for Turn...'}
-                  </p>
-                )}
-              </>
-            ) : (
-              <p style={{ color: '#9ca3af', fontSize: '0.7rem', fontWeight: 700, margin: 0, fontStyle: 'italic' }}>
-                SPECTATING
-              </p>
-            )}
+              {isPickingPhase && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div className="dot-live" style={{ width: 8, height: 8, background: '#ef4444' }} />
+                  <span style={{ fontSize: '0.65rem', fontWeight: 900, color: '#fff', letterSpacing: '0.08em' }}>BLUFF CHECK...</span>
+                </div>
+              )}
 
-            {isPickingPhase && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div className="dot-live" style={{ width: 8, height: 8, background: '#ef4444' }} />
-                <span style={{ fontSize: '0.65rem', fontWeight: 900, color: '#fff', letterSpacing: '0.08em' }}>BLUFF CHECK...</span>
-              </div>
-            )}
+              {isHost && !isEnded && (
+                <button
+                  onClick={closeGame}
+                  style={{
+                    color: '#ef4444', background: 'rgba(239,68,68,0.1)',
+                    fontSize: '0.65rem', fontWeight: 900, padding: '6px 12px', cursor: 'pointer',
+                    border: '1px solid rgba(239,68,68,0.3)', borderRadius: '6px', textTransform: 'uppercase',
+                  }}
+                >
+                  CLOSE
+                </button>
+              )}
 
-            {isHost && !isEnded && (
-              <button
-                onClick={closeGame}
-                style={{
-                  color: '#ef4444', background: 'rgba(239,68,68,0.1)',
-                  fontSize: '0.65rem', fontWeight: 900, padding: '6px 12px', cursor: 'pointer',
-                  border: '1px solid rgba(239,68,68,0.3)', borderRadius: '6px', textTransform: 'uppercase',
-                }}
-              >
-                CLOSE
-              </button>
-            )}
-
-            {/* Compact chat button — always accessible in HUD */}
-            {!isEnded && <ChatInput compact={true} />}
+              {!isEnded && <ChatInput compact={true} />}
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* ── Floating Chat Input on portrait mobile ── */}
+      {isPortrait && !isEnded && (
+        <div style={{ position: 'fixed', bottom: 12, right: 12, zIndex: 1000 }}>
+          <ChatInput compact={true} />
+        </div>
+      )}
 
       {/* ── Bluff Picking Overlay ── */}
       <AnimatePresence>
@@ -1067,7 +1091,7 @@ export default function GameBoard() {
             </motion.div>
 
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
-              style={{ textAlign: 'center' }}>
+               style={{ textAlign: 'center' }}>
               <p style={{ fontSize: isPortrait ? '0.9rem' : '1.2rem', fontWeight: 700, color: '#fff', margin: 0 }}>
                 {bluffResult.wasBluff
                   ? <><span style={{ color: '#ef4444' }}>{bluffResult.targetName}</span> was lying!</>
@@ -1095,7 +1119,6 @@ export default function GameBoard() {
               )}
             </motion.div>
 
-            {/* Auto-advance progress bar */}
             <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '5px', background: 'rgba(255,255,255,0.05)' }}>
               <motion.div
                 initial={{ width: '100%' }} animate={{ width: '0%' }}
@@ -1173,15 +1196,6 @@ export default function GameBoard() {
         )}
       </AnimatePresence>
 
-      {/* ── Floating Action Animation ── */}
-      <FloatingAction
-        fromPos={floatingAction?.from}
-        toPos={floatingAction?.to}
-        text={floatingAction?.text}
-        type={floatingAction?.type}
-        onComplete={() => setFloatingAction(null)}
-      />
-
       {/* ── Branding ── */}
       <div style={{ position: 'fixed', bottom: 4, right: 8, zIndex: 50, opacity: 0.25, pointerEvents: 'none' }}>
         <p style={{ color: '#fff', fontSize: '0.5rem', fontWeight: 800, letterSpacing: '0.1em', margin: 0 }}>
@@ -1201,6 +1215,7 @@ export default function GameBoard() {
           70%  { box-shadow: 0 0 0 14px rgba(8, 145, 178, 0); }
           100% { box-shadow: 0 0 0 0 rgba(8, 145, 178, 0); }
         }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
       `}</style>
     </div>
   );
