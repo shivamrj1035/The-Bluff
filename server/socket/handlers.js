@@ -974,7 +974,7 @@ function setupCPHandlers(io, socket) {
 
       const rawId = normalizeId(roomId);
       const trimmedName = String(playerName || '').trim().slice(0, 12);
-      const safeAvatar = String(avatar || 'P').slice(0, 2);
+      const safeAvatar = String(avatar || 'P').trim().slice(0, 20);
       const isCreate = !rawId;
 
       let effectiveRoomId = rawId;
@@ -1536,7 +1536,7 @@ function setupMendiCoatHandlers(io, socket) {
       }
       const rawId = normalizeId(roomId);
       const trimmedName = String(playerName || '').trim().slice(0, 12);
-      const safeAvatar = String(avatar || 'P').slice(0, 2);
+      const safeAvatar = String(avatar || 'P').trim().slice(0, 20);
       const isCreate = !rawId;
       let nid = rawId;
       if (isCreate) {
