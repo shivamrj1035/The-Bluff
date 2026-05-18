@@ -18,6 +18,9 @@ const { validateMCAction } = require("../logic/mendicoat/validator");
 const { serializeMCState } = require("./mcSync");
 const { getBotTrumpSuit: getMCBotTrumpSuit, getBotPlayCard: getMCBotPlayCard } = require("../logic/mendicoat/bot");
 
+// ─── Bluff Bot imports ──────────────────────────────────────────────────────────
+const { getBotPlayMove, getBotPickIndex } = require("../logic/bluffBot");
+
 const ROOM_TTL = 60 * 60 * 1; // 1 hour in seconds
 const ROOM_TTL_MS = ROOM_TTL * 1000;
 const EMPTY_ROOM_GRACE_MS = 5 * 60 * 1000;
@@ -597,6 +600,33 @@ function setupHandlers(io, socket) {
     }
   });
 
+  // --- ADD BOT ---
+  socket.on(EVENTS.ADD_BOT, async ({ roomId }) => {
+    try {
+      let room = await getRoom(roomId);
+      if (!room || room.hostId !== socket.id || room.state !== GAME_STATES.WAITING) return;
+      if (room.players.length >= (room.maxPlayers || 8)) return;
+      const botNames = ['SmartBot', 'BluffMaster', 'CardShark', 'SneakyBot', 'AcePlayer', 'JokerBot', 'NoBluffBot', 'RandomBot'];
+      const botName = botNames[room.players.length] || `Bot_${Math.floor(Math.random()*1000)}`;
+      
+      const botAvatars = ['ninja', 'crazy1', 'rocket', 'ghost', 'wizard', 'alien'];
+      const botAvatar = botAvatars[room.players.length % botAvatars.length];
+      
+      room.players.push({
+        id: `bot_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+        name: botName,
+        avatar: botAvatar,
+        isBot: true,
+        isConnected: true,
+        cardCount: 0,
+      });
+      saveRoom(roomId, room);
+      emitState(io, roomId, room);
+    } catch (e) {
+      console.error("[ADD_BOT error]", e);
+    }
+  });
+
   // --- CLOSE GAME ---
   socket.on(EVENTS.CLOSE_GAME, async ({ roomId }) => {
     try {
@@ -693,6 +723,82 @@ function emitState(io, roomId, room) {
   for (const socketId of roomSockets) {
     const filtered = serializeState(room, socketId);
     io.to(socketId).emit(EVENTS.GAME_STATE, filtered);
+  }
+
+  // Handle Bot Automation
+  if (room.state === GAME_STATES.PLAYER_TURN && room.currentTurn) {
+    const turnPlayer = room.players.find(p => p.id === room.currentTurn);
+    if (turnPlayer && turnPlayer.isBot && !room._botTimeoutPending) {
+      console.log(`[BLUFF BOT] Turn for Bot ${turnPlayer.name} (room: ${roomId}).`);
+      room._botTimeoutPending = true;
+      setTimeout(async () => {
+        try {
+          let r = getRoomFromCache(roomId);
+          if (!r || r.state !== GAME_STATES.PLAYER_TURN || r.currentTurn !== turnPlayer.id) return;
+          r._botTimeoutPending = false;
+
+          const botHand = r.hands[r.currentTurn] || [];
+          const move = getBotPlayMove(botHand, r.roundRank, r.pile, r.players, r.currentTurn);
+
+          console.log(`[BLUFF BOT] Bot ${turnPlayer.name} chooses action: ${move.action}`);
+
+          if (move.action === 'PLAY_CARDS') {
+            r = reducer(r, {
+              type: "PLAY_CARDS",
+              playerId: r.currentTurn,
+              payload: { cardIds: move.cardIds, declaredRank: move.declaredRank }
+            });
+          } else if (move.action === 'CALL_BLUFF') {
+            r = reducer(r, {
+              type: "CALL_BLUFF",
+              playerId: r.currentTurn
+            });
+          } else if (move.action === 'PASS_TURN') {
+            r = reducer(r, {
+              type: "PASS_TURN",
+              playerId: r.currentTurn
+            });
+          }
+
+          saveRoom(roomId, r);
+          emitState(io, roomId, r);
+        } catch (e) {
+          console.error('[BLUFF BOT] Bot Play Error:', e);
+          let r = getRoomFromCache(roomId);
+          if (r) r._botTimeoutPending = false;
+        }
+      }, 2000);
+    }
+  } else if (room.state === GAME_STATES.BLUFF_PICKING && room.bluffPickerId) {
+    const pickerPlayer = room.players.find(p => p.id === room.bluffPickerId);
+    if (pickerPlayer && pickerPlayer.isBot && !room._botTimeoutPending) {
+      console.log(`[BLUFF BOT] Bluff picking for Bot ${pickerPlayer.name} (room: ${roomId}).`);
+      room._botTimeoutPending = true;
+      setTimeout(async () => {
+        try {
+          let r = getRoomFromCache(roomId);
+          if (!r || r.state !== GAME_STATES.BLUFF_PICKING || r.bluffPickerId !== pickerPlayer.id) return;
+          r._botTimeoutPending = false;
+
+          const lastPlayedMove = r.pile[r.pile.length - 1];
+          if (lastPlayedMove) {
+            const cardIndex = getBotPickIndex(lastPlayedMove.cards.length);
+            console.log(`[BLUFF BOT] Bot ${pickerPlayer.name} picks card index ${cardIndex} of ${lastPlayedMove.cards.length}`);
+            r = reducer(r, {
+              type: "RESOLVE_BLUFF_PICK",
+              playerId: r.bluffPickerId,
+              payload: { cardIndex }
+            });
+            saveRoom(roomId, r);
+            emitState(io, roomId, r);
+          }
+        } catch (e) {
+          console.error('[BLUFF BOT] Bot Pick Error:', e);
+          let r = getRoomFromCache(roomId);
+          if (r) r._botTimeoutPending = false;
+        }
+      }, 2000);
+    }
   }
 }
 

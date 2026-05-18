@@ -8,8 +8,8 @@ import ChatInput from '../../../components/common/ChatInput';
 import AvatarDisplay from '../../../components/common/AvatarDisplay';
 
 const SUIT_SYMBOL = { H: '♥', D: '♦', C: '♣', S: '♠' };
-const SUIT_NAME   = { H: 'Hearts', D: 'Diamonds', C: 'Clubs', S: 'Spades' };
-const SUIT_COLOR  = { H: '#ef4444', D: '#ef4444', C: '#e2e8f0', S: '#e2e8f0' };
+const SUIT_NAME = { H: 'Hearts', D: 'Diamonds', C: 'Clubs', S: 'Spades' };
+const SUIT_COLOR = { H: '#ef4444', D: '#ef4444', C: '#e2e8f0', S: '#e2e8f0' };
 const TEAM_COLORS = { A: '#f59e0b', B: '#a78bfa' };
 
 function getCardSuit(c) { return c?.split('_')[0]; }
@@ -54,7 +54,7 @@ export default function CPGameBoard() {
     );
   }
 
-  const myId   = gs.myId;
+  const myId = gs.myId;
   const myTeam = gs.myTeam;
   const hand = useMemo(() => {
     const rawHand = gs.hands?.[myId] || [];
@@ -86,9 +86,9 @@ export default function CPGameBoard() {
   const getRelative = (offset) => players[(myIndex + offset + 4) % 4] || null;
 
   const bottomPlayer = players[myIndex];         // me
-  const topPlayer    = getRelative(2);           // partner (opposite)
-  const leftPlayer   = getRelative(3);           // opponent
-  const rightPlayer  = getRelative(1);           // opponent
+  const topPlayer = getRelative(2);           // partner (opposite)
+  const leftPlayer = getRelative(3);           // opponent
+  const rightPlayer = getRelative(1);           // opponent
 
   const trickCardFor = (playerId) =>
     gs.currentTrick?.find(t => t.playerId === playerId)?.card || null;
@@ -106,7 +106,7 @@ export default function CPGameBoard() {
     return isValidSuit(card);
   };
 
-  const isTrumpReveal    = gs.state === 'TRUMP_REVEAL';
+  const isTrumpReveal = gs.state === 'TRUMP_REVEAL';
   const isTrumpSelection = gs.state === 'TRUMP_SELECTION';
   const iAmTrumpSelector = gs.trumpSelecterId === myId;
   const showTrumpOverlay = isTrumpReveal || isTrumpSelection;
@@ -272,9 +272,9 @@ export default function CPGameBoard() {
       <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 50% 50%, #1a0a3a 0%, transparent 70%)', opacity: 0.4, pointerEvents: 'none' }} />
 
       {/* ── TOP HEADER ── */}
-      <div style={{ 
-        height: headerH, display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-        padding: isMobile ? '0 12px' : '0 24px', zIndex: 100, borderBottom: '1px solid rgba(255,255,255,0.05)', flexShrink: 0 
+      <div style={{
+        height: headerH, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        padding: isMobile ? '0 12px' : '0 24px', zIndex: 100, borderBottom: '1px solid rgba(255,255,255,0.05)', flexShrink: 0
       }}>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <span style={{ fontSize: '0.65rem', fontWeight: 900, color: '#f59e0b', letterSpacing: '0.15em' }}>COURT PIECE</span>
@@ -290,9 +290,9 @@ export default function CPGameBoard() {
               {scoreOpen ? 'Hide' : 'Score'}
             </button>
           )}
-          <button onClick={cpDisconnect} style={{ 
-            background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', 
-            color: '#f87171', padding: isMobile ? '5px 10px' : '6px 16px', borderRadius: 10, fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer' 
+          <button onClick={cpDisconnect} style={{
+            background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)',
+            color: '#f87171', padding: isMobile ? '5px 10px' : '6px 16px', borderRadius: 10, fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer'
           }}>
             Leave
           </button>
@@ -312,14 +312,14 @@ export default function CPGameBoard() {
       </AnimatePresence>
 
       {/* ── MAIN CONTENT ── */}
-      <div style={{ 
-        flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', 
+      <div style={{
+        flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: isMobile ? '10px 16px' : '20px 60px 20px 240px', minHeight: 0
       }}>
-        
+
         {/* Desktop Sidebar */}
         {!isMobile && (
-          <div style={{ 
+          <div style={{
             position: 'absolute', left: 24, top: '50%', transform: 'translateY(-50%)',
             width: 200, background: 'rgba(15,10,25,0.85)', backdropFilter: 'blur(12px)',
             borderRadius: 24, border: '1px solid rgba(255,255,255,0.08)', padding: 20,
@@ -346,13 +346,13 @@ export default function CPGameBoard() {
         )}
 
         {/* ── THE TABLE ── */}
-        <div style={{ 
+        <div style={{
           width: isMobile ? '85%' : 'min(100%, 860px)', position: 'relative',
           display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
           {/* Elliptical Table Shape */}
-          <div style={{ 
-            position: 'absolute', inset: 0, borderRadius: isMobile ? '120px' : '200px', 
+          <div style={{
+            position: 'absolute', inset: 0, borderRadius: isMobile ? '120px' : '200px',
             background: 'linear-gradient(180deg, #2b1255 0%, #160a2a 100%)',
             border: `${isMobile ? 5 : 8}px solid #1c0e35`,
             boxShadow: 'inset 0 0 60px rgba(0,0,0,0.8), 0 30px 100px rgba(0,0,0,0.6)',
@@ -361,7 +361,7 @@ export default function CPGameBoard() {
           }}>
             {/* Inner Border Line */}
             <div style={{ position: 'absolute', inset: isMobile ? 12 : 15, borderRadius: isMobile ? '108px' : '185px', border: '1px dashed rgba(255,255,255,0.1)' }} />
-            
+
             {/* Logo in Center */}
             <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', opacity: 0.06, textAlign: 'center' }}>
               <span style={{ fontSize: isMobile ? '0.55rem' : '0.8rem', fontWeight: 900, letterSpacing: '0.3em', color: '#fff' }}>COURT PIECE</span>
@@ -370,26 +370,26 @@ export default function CPGameBoard() {
 
           {/* Player Positions */}
           <div style={{ position: 'absolute', top: playerOff, left: '50%', transform: 'translateX(-50%)', zIndex: 10 }}>
-            {topPlayer && <CPPlayerArea player={topPlayer} team={players.indexOf(topPlayer)%2===0?'A':'B'} isMe={false} isCurrentTurn={gs.currentTurn===topPlayer.id} playedCard={trickCardFor(topPlayer.id)} trumpSuit={gs.trumpSuit} position="top" chatMessage={cpChatMessages?.find(m=>m.senderId===topPlayer.id)?.message} isHost={topPlayer.id===gs.hostId} compact={isMobile} />}
+            {topPlayer && <CPPlayerArea player={topPlayer} team={players.indexOf(topPlayer) % 2 === 0 ? 'A' : 'B'} isMe={false} isCurrentTurn={gs.currentTurn === topPlayer.id} playedCard={trickCardFor(topPlayer.id)} trumpSuit={gs.trumpSuit} position="top" chatMessage={cpChatMessages?.find(m => m.senderId === topPlayer.id)?.message} isHost={topPlayer.id === gs.hostId} compact={isMobile} />}
           </div>
           <div style={{ position: 'absolute', bottom: playerOff, left: '50%', transform: 'translateX(-50%)', zIndex: 10 }}>
-            {bottomPlayer && <CPPlayerArea player={bottomPlayer} team={myTeam} isMe={true} isCurrentTurn={gs.currentTurn===myId} playedCard={null} trumpSuit={gs.trumpSuit} position="bottom" chatMessage={cpChatMessages?.find(m=>m.senderId===myId)?.message} isHost={bottomPlayer.id===gs.hostId} compact={isMobile} />}
+            {bottomPlayer && <CPPlayerArea player={bottomPlayer} team={myTeam} isMe={true} isCurrentTurn={gs.currentTurn === myId} playedCard={null} trumpSuit={gs.trumpSuit} position="bottom" chatMessage={cpChatMessages?.find(m => m.senderId === myId)?.message} isHost={bottomPlayer.id === gs.hostId} compact={isMobile} />}
           </div>
           <div style={{ position: 'absolute', left: sideOff, top: '50%', transform: 'translateY(-50%)', zIndex: 10 }}>
-            {leftPlayer && <CPPlayerArea player={leftPlayer} team={players.indexOf(leftPlayer)%2===0?'A':'B'} isMe={false} isCurrentTurn={gs.currentTurn===leftPlayer.id} playedCard={trickCardFor(leftPlayer.id)} trumpSuit={gs.trumpSuit} position="left" chatMessage={cpChatMessages?.find(m=>m.senderId===leftPlayer.id)?.message} isHost={leftPlayer.id===gs.hostId} compact={isMobile} />}
+            {leftPlayer && <CPPlayerArea player={leftPlayer} team={players.indexOf(leftPlayer) % 2 === 0 ? 'A' : 'B'} isMe={false} isCurrentTurn={gs.currentTurn === leftPlayer.id} playedCard={trickCardFor(leftPlayer.id)} trumpSuit={gs.trumpSuit} position="left" chatMessage={cpChatMessages?.find(m => m.senderId === leftPlayer.id)?.message} isHost={leftPlayer.id === gs.hostId} compact={isMobile} />}
           </div>
           <div style={{ position: 'absolute', right: sideOff, top: '50%', transform: 'translateY(-50%)', zIndex: 10 }}>
-            {rightPlayer && <CPPlayerArea player={rightPlayer} team={players.indexOf(rightPlayer)%2===0?'A':'B'} isMe={false} isCurrentTurn={gs.currentTurn===rightPlayer.id} playedCard={trickCardFor(rightPlayer.id)} trumpSuit={gs.trumpSuit} position="right" chatMessage={cpChatMessages?.find(m=>m.senderId===rightPlayer.id)?.message} isHost={rightPlayer.id===gs.hostId} compact={isMobile} />}
+            {rightPlayer && <CPPlayerArea player={rightPlayer} team={players.indexOf(rightPlayer) % 2 === 0 ? 'A' : 'B'} isMe={false} isCurrentTurn={gs.currentTurn === rightPlayer.id} playedCard={trickCardFor(rightPlayer.id)} trumpSuit={gs.trumpSuit} position="right" chatMessage={cpChatMessages?.find(m => m.senderId === rightPlayer.id)?.message} isHost={rightPlayer.id === gs.hostId} compact={isMobile} />}
           </div>
 
           {/* Trick Cards in Center */}
           <div style={{ position: 'relative', width: trickSize, height: trickSize, zIndex: 5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <AnimatePresence>
               {[
-                { id: topPlayer?.id,    pos: { top: trickPad, left: '50%', x: '-50%' } },
+                { id: topPlayer?.id, pos: { top: trickPad, left: '50%', x: '-50%' } },
                 { id: bottomPlayer?.id, pos: { bottom: trickPad, left: '50%', x: '-50%' } },
-                { id: leftPlayer?.id,   pos: { left: trickPad, top: '50%', y: '-50%' } },
-                { id: rightPlayer?.id,  pos: { right: trickPad, top: '50%', y: '-50%' } },
+                { id: leftPlayer?.id, pos: { left: trickPad, top: '50%', y: '-50%' } },
+                { id: rightPlayer?.id, pos: { right: trickPad, top: '50%', y: '-50%' } },
               ].map(({ id, pos }) => {
                 const card = trickCardFor(id);
                 if (!card) return null;
@@ -411,7 +411,7 @@ export default function CPGameBoard() {
           {/* Overlays (Trump Selection, Round End, etc.) */}
           <AnimatePresence>
             {showTrumpOverlay && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 style={{ position: 'absolute', inset: 0, zIndex: 50, borderRadius: isMobile ? '120px' : '200px', background: 'rgba(10,5,20,0.85)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >
@@ -430,7 +430,7 @@ export default function CPGameBoard() {
                   </div>
                 )}
                 {isTrumpSelection && (
-                  <TrumpSelector onSelect={cpSelectTrump} disabled={!iAmTrumpSelector} selectorName={players.find(p=>p.id===gs.trumpSelecterId)?.name} />
+                  <TrumpSelector onSelect={cpSelectTrump} disabled={!iAmTrumpSelector} selectorName={players.find(p => p.id === gs.trumpSelecterId)?.name} />
                 )}
               </motion.div>
             )}
@@ -441,16 +441,16 @@ export default function CPGameBoard() {
       {/* ── FULL SCREEN ROUND/GAME OVER OVERLAY ── */}
       <AnimatePresence>
         {(isRoundEnd || isGameOver) && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            style={{ 
-              position: 'fixed', inset: 0, zIndex: 1000, 
+            style={{
+              position: 'fixed', inset: 0, zIndex: 1000,
               background: 'rgba(5, 2, 12, 0.75)', backdropFilter: 'blur(12px)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               padding: isMobile ? 12 : 20
             }}
           >
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }}
               style={{
                 width: 'min(100%, 540px)', background: 'rgba(20, 15, 35, 0.95)',
@@ -463,7 +463,7 @@ export default function CPGameBoard() {
               <span style={{ fontSize: '0.85rem', fontWeight: 900, color: '#f59e0b', letterSpacing: '0.4em', textTransform: 'uppercase', marginBottom: 16, display: 'block' }}>
                 {isGameOver ? 'Match Result' : 'Round Result'}
               </span>
-              
+
               <h2 style={{ fontSize: isMobile ? '2.2rem' : '3.5rem', fontWeight: 900, margin: '0 0 10px', background: 'linear-gradient(to bottom, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                 Team {isGameOver ? gs.matchWinner : gs.roundWinner}
               </h2>
@@ -471,8 +471,8 @@ export default function CPGameBoard() {
 
               <div style={{ display: 'flex', gap: isMobile ? 10 : 20, marginBottom: isMobile ? 20 : 50 }}>
                 {['A', 'B'].map(t => (
-                  <div key={t} style={{ 
-                    flex: 1, background: 'rgba(255,255,255,0.03)', borderRadius: isMobile ? 18 : 24, padding: isMobile ? '16px 10px' : '24px 16px', 
+                  <div key={t} style={{
+                    flex: 1, background: 'rgba(255,255,255,0.03)', borderRadius: isMobile ? 18 : 24, padding: isMobile ? '16px 10px' : '24px 16px',
                     border: `1px solid ${(isGameOver ? gs.matchWinner : gs.roundWinner) === t ? '#f59e0b' : 'rgba(255,255,255,0.08)'}`,
                     boxShadow: (isGameOver ? gs.matchWinner : gs.roundWinner) === t ? '0 10px 30px rgba(245,158,11,0.15)' : 'none'
                   }}>
@@ -488,27 +488,27 @@ export default function CPGameBoard() {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {isHost && (
-                  <button 
+                  <button
                     onClick={cpRestartGame}
-                    style={{ 
-                      width: '100%', background: '#f59e0b', color: '#000', border: 'none', 
-                      padding: isMobile ? '14px' : '18px', borderRadius: 16, fontWeight: 900, cursor: 'pointer', 
+                    style={{
+                      width: '100%', background: '#f59e0b', color: '#000', border: 'none',
+                      padding: isMobile ? '14px' : '18px', borderRadius: 16, fontWeight: 900, cursor: 'pointer',
                       fontSize: isMobile ? '0.9rem' : '1.1rem', transition: 'transform 0.2s'
                     }}
                   >
                     {isGameOver ? 'START NEW MATCH' : 'CONTINUE TO NEXT ROUND'}
                   </button>
                 )}
-                
-                <button 
+
+                <button
                   onClick={() => {
                     cpDisconnect();
                     window.location.href = '/';
                   }}
-                  style={{ 
-                    width: '100%', background: 'rgba(255,255,255,0.05)', color: '#fff', 
-                    border: '1px solid rgba(255,255,255,0.1)', padding: isMobile ? '12px' : '16px', 
-                    borderRadius: 16, fontWeight: 800, cursor: 'pointer', fontSize: isMobile ? '0.85rem' : '1rem' 
+                  style={{
+                    width: '100%', background: 'rgba(255,255,255,0.05)', color: '#fff',
+                    border: '1px solid rgba(255,255,255,0.1)', padding: isMobile ? '12px' : '16px',
+                    borderRadius: 16, fontWeight: 800, cursor: 'pointer', fontSize: isMobile ? '0.85rem' : '1rem'
                   }}
                 >
                   CLOSE & BACK TO HOME
@@ -520,8 +520,8 @@ export default function CPGameBoard() {
       </AnimatePresence>
 
       {/* ── BOTTOM HAND AREA ── */}
-      <div style={{ 
-        height: handAreaH, display: 'flex', flexDirection: 'column', alignItems: 'center', 
+      <div style={{
+        height: handAreaH, display: 'flex', flexDirection: 'column', alignItems: 'center',
         padding: isMobile ? '0 6px 1px' : '0 24px 20px', zIndex: 100, gap: isMobile ? 6 : 15, flexShrink: 0
       }}>
         <div

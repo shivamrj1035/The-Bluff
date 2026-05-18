@@ -25,15 +25,91 @@ function useWindowSize() {
 
 const GET_SEATS = (isPortrait, numOpponents) => {
   if (!isPortrait) {
-    return [
-      { top: '10%', left: '50%', transform: 'translateX(-50%)' },
-      { top: '18%', right: '1.5%' },
-      { bottom: '20%', right: '1.5%' },
-      { top: '18%', left: '1.5%' },
-      { bottom: '20%', left: '1.5%' },
-      { top: '10%', right: '12%' },
-      { top: '10%', left: '12%' },
-    ];
+    // Symmetrical landscape layouts relative to the table container bounds
+    if (numOpponents === 1) {
+      return [
+        { top: '8%', left: '50%', transform: 'translateX(-50%) scale(0.95)' }
+      ];
+    }
+    if (numOpponents === 2) {
+      return [
+        { top: '45%', left: '2%', transform: 'translateY(-50%) scale(0.95)' },
+        { top: '45%', right: '2%', transform: 'translateY(-50%) scale(0.95)' }
+      ];
+    }
+    if (numOpponents === 3) {
+      return [
+        { top: '45%', left: '2%', transform: 'translateY(-50%) scale(0.95)' },
+        { top: '8%', left: '50%', transform: 'translateX(-50%) scale(0.95)' },
+        { top: '45%', right: '2%', transform: 'translateY(-50%) scale(0.95)' }
+      ];
+    }
+    if (numOpponents === 4) {
+      return [
+        { top: '45%', left: '2%', transform: 'translateY(-50%) scale(0.9)' },
+        { top: '8%', left: '30%', transform: 'translateX(-50%) scale(0.9)' },
+        { top: '8%', right: '30%', transform: 'translateX(50%) scale(0.9)' },
+        { top: '45%', right: '2%', transform: 'translateY(-50%) scale(0.9)' }
+      ];
+    }
+    if (numOpponents === 5) {
+      return [
+        { top: '55%', left: '2%', transform: 'translateY(-50%) scale(0.85)' },
+        { top: '22%', left: '2%', transform: 'translateY(-50%) scale(0.85)' },
+        { top: '8%', left: '50%', transform: 'translateX(-50%) scale(0.85)' },
+        { top: '22%', right: '2%', transform: 'translateY(-50%) scale(0.85)' },
+        { top: '55%', right: '2%', transform: 'translateY(-50%) scale(0.85)' }
+      ];
+    }
+    if (numOpponents === 6) {
+      return [
+        { top: '55%', left: '2%', transform: 'translateY(-50%) scale(0.85)' },
+        { top: '22%', left: '2%', transform: 'translateY(-50%) scale(0.85)' },
+        { top: '8%', left: '30%', transform: 'translateX(-50%) scale(0.85)' },
+        { top: '8%', right: '30%', transform: 'translateX(50%) scale(0.85)' },
+        { top: '22%', right: '2%', transform: 'translateY(-50%) scale(0.85)' },
+        { top: '55%', right: '2%', transform: 'translateY(-50%) scale(0.85)' }
+      ];
+    }
+    if (numOpponents === 7) {
+      return [
+        { top: '65%', left: '2%', transform: 'translateY(-50%) scale(0.8)' },
+        { top: '38%', left: '2%', transform: 'translateY(-50%) scale(0.8)' },
+        { top: '15%', left: '8%', transform: 'translate(-50%, -50%) scale(0.8)' },
+        { top: '8%', left: '50%', transform: 'translateX(-50%) scale(0.8)' },
+        { top: '15%', right: '8%', transform: 'translate(50%, -50%) scale(0.8)' },
+        { top: '38%', right: '2%', transform: 'translateY(-50%) scale(0.8)' },
+        { top: '65%', right: '2%', transform: 'translateY(-50%) scale(0.8)' }
+      ];
+    }
+    if (numOpponents === 8) {
+      return [
+        { top: '70%', left: '2%', transform: 'translateY(-50%) scale(0.8)' },
+        { top: '42%', left: '2%', transform: 'translateY(-50%) scale(0.8)' },
+        { top: '18%', left: '2%', transform: 'translateY(-50%) scale(0.8)' },
+        { top: '8%', left: '30%', transform: 'translateX(-50%) scale(0.8)' },
+        { top: '8%', right: '30%', transform: 'translateX(50%) scale(0.8)' },
+        { top: '18%', right: '2%', transform: 'translateY(-50%) scale(0.8)' },
+        { top: '42%', right: '2%', transform: 'translateY(-50%) scale(0.8)' },
+        { top: '70%', right: '2%', transform: 'translateY(-50%) scale(0.8)' }
+      ];
+    }
+
+    // Mathematical fallback for 9 or more opponents (distribute along top elliptical perimeter)
+    const fallbackSeats = [];
+    const minAngle = 190 * Math.PI / 180;
+    const maxAngle = 350 * Math.PI / 180;
+    for (let i = 0; i < numOpponents; i++) {
+      const angle = minAngle + (i * (maxAngle - minAngle) / (numOpponents - 1 || 1));
+      const x = 50 + 44 * Math.cos(angle);
+      const y = 50 + 38 * Math.sin(angle);
+      fallbackSeats.push({
+        left: `${x}%`,
+        top: `${y}%`,
+        transform: 'translate(-50%, -50%) scale(0.7)'
+      });
+    }
+    return fallbackSeats;
   }
 
   // Symmetrical portrait layouts relative to the table container bounds
@@ -137,7 +213,7 @@ export default function GameBoard() {
     const fromPos = isMe
       ? (isPortrait ? { bottom: playerOff, left: '50%', transform: 'translateX(-50%) scale(0.8)' } : { bottom: '120px', left: '50%', transform: 'translateX(-50%)' })
       : SEATS[seatIdx % SEATS.length];
-    const toPos = isPortrait 
+    const toPos = isPortrait
       ? { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }
       : { top: '44%', left: '50%', transform: 'translate(-50%, -50%)' };
 
@@ -182,7 +258,7 @@ export default function GameBoard() {
         ? (isPortrait ? { bottom: playerOff, left: '50%', transform: 'translateX(-50%) scale(0.8)' } : { bottom: '120px', left: '50%', transform: 'translateX(-50%)' })
         : SEATS[seatIdx % SEATS.length];
       setActiveAnimation({
-        from: isPortrait 
+        from: isPortrait
           ? { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }
           : { top: '44%', left: '50%', transform: 'translate(-50%, -50%)' },
         to: toPos,
@@ -323,8 +399,8 @@ export default function GameBoard() {
       </div>
 
       {/* ── MAIN PLAY AREA CONTAINER ── */}
-      <div style={{ 
-        flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', 
+      <div style={{
+        flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: isPortrait ? '10px 16px' : '20px 60px 20px 240px', minHeight: 0
       }}>
 
@@ -424,95 +500,108 @@ export default function GameBoard() {
             const winRank = getRankPos(player.id);
             const playerWinner = !!winRank;
 
+            // Separate transform from positioning styles to prevent Framer Motion from overwriting translation
+            const { transform, ...positionStyles } = pos;
+
             return (
-              <motion.div
+              <div
                 key={player.id}
-                initial={false}
-                animate={{ scale: isActive ? 0.85 : 0.7 }}
                 style={{
-                  position: 'absolute', display: 'flex', flexDirection: 'column',
-                  alignItems: 'center', gap: '4px', zIndex: isActive ? 20 : 10,
-                  ...pos,
+                  position: 'absolute',
+                  zIndex: isActive ? 20 : 10,
+                  transform,
+                  ...positionStyles,
                 }}
               >
-                {/* Avatar Display */}
-                <div style={{ position: 'relative', width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {isActive && (
-                    <motion.div
-                      animate={{ scale: [1, 1.15, 1], opacity: [0.5, 0.8, 0.5] }}
-                      transition={{ repeat: Infinity, duration: 2 }}
-                      style={{
-                        position: 'absolute', inset: -4, borderRadius: '50%',
-                        background: 'radial-gradient(circle, var(--primary) 66%, transparent 70%)',
-                        border: '2px solid var(--primary-light)',
-                        boxShadow: '0 0 15px var(--shadow-p)', zIndex: -1,
-                      }}
-                    />
-                  )}
-                  <AvatarDisplay avatarId={player.avatar} playerName={player.name} size={34} animated={isActive} />
-                  {player.id === hostId && (
-                    <div style={{ position: 'absolute', top: -8, right: -8, fontSize: '0.75rem', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}>👑</div>
-                  )}
-                </div>
-
-                {/* Player details tag */}
-                <div style={{ 
-                  display: 'flex', flexDirection: 'column', alignItems: 'center',
-                  background: 'rgba(10,5,20,0.8)', backdropFilter: 'blur(8px)',
-                  border: `1.5px solid ${isActive ? 'var(--primary-light)' : 'rgba(255,255,255,0.08)'}`,
-                  borderRadius: 14, padding: '4px 10px', minWidth: 78, boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
-                  position: 'relative', overflow: 'hidden',
-                }}>
-                  <span style={{ fontSize: '0.62rem', fontWeight: 900, color: '#fff', maxWidth: 70, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.2 }}>
-                    {player.name.toUpperCase()}
-                  </span>
-                  <span style={{ fontSize: '0.52rem', fontWeight: 800, letterSpacing: '0.05em', color: hc === 0 ? '#f59e0b' : 'var(--muted)', textTransform: 'uppercase', lineHeight: 1.1 }}>
-                    {hc === 0 ? 'WINNER' : `${hc} CARDS`}
-                  </span>
-
-                  {isHost && !playerWinner && (
-                    <button
-                      onClick={() => kickPlayer(player.id)}
-                      style={{ position: 'absolute', top: -2, right: -2, background: '#ef4444', color: '#fff', width: 14, height: 14, borderRadius: '50%', fontSize: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, border: '1px solid #000', cursor: 'pointer', zIndex: 10 }}
-                    >✕</button>
-                  )}
-
-                  {playerWinner && (
-                    <motion.div
-                      initial={{ scale: 0 }} animate={{ scale: 1 }}
-                      style={{
-                        position: 'absolute', inset: 0,
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                        background: 'rgba(0,0,0,0.85)', borderRadius: 'inherit',
-                        border: '1.5px solid #f59e0b', backdropFilter: 'blur(4px)',
-                      }}
-                    >
-                      <TrophyIcon size={14} />
-                      <span style={{ fontSize: '0.55rem', fontWeight: 900, color: '#f59e0b' }}>#{winRank}</span>
-                    </motion.div>
-                  )}
-                </div>
-
-                {/* Floating chat messages bubbles */}
-                <div style={{ position: 'absolute', top: '-50px', left: '50%', transform: 'translateX(-50%)', width: '100%', pointerEvents: 'none' }}>
-                  <ChatBubble messages={getMsgs(player.id)} isMe={false} position="top" />
-                </div>
-
-                {/* Opponent mini card fan backs */}
-                {!playerWinner && hc > 0 && (
-                  <div style={{ position: 'relative', height: '28px', width: '100%', display: 'flex', justifyContent: 'center', marginTop: 1 }}>
-                    {[...Array(Math.min(hc, 5))].map((_, ci) => (
-                      <div key={ci} className="face-down-card" style={{
-                        width: '20px', height: '30px', left: '50%', marginLeft: '-10px',
-                        transform: `translateX(${(ci - 2) * 8}px) rotate(${(ci - 2) * 4}deg)`, zIndex: ci,
-                      }} />
-                    ))}
-                    {hc > 5 && (
-                      <div style={{ position: 'absolute', right: '-10px', top: 0, fontSize: '.5rem', fontWeight: 900, color: '#9ca3af' }}>+{hc - 5}</div>
+                <motion.div
+                  initial={false}
+                  animate={{ scale: isActive ? 0.85 : 0.7 }}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  {/* Avatar Display */}
+                  <div style={{ position: 'relative', width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {isActive && (
+                      <motion.div
+                        animate={{ scale: [1, 1.15, 1], opacity: [0.5, 0.8, 0.5] }}
+                        transition={{ repeat: Infinity, duration: 2 }}
+                        style={{
+                          position: 'absolute', inset: -4, borderRadius: '50%',
+                          background: 'radial-gradient(circle, var(--primary) 66%, transparent 70%)',
+                          border: '2px solid var(--primary-light)',
+                          boxShadow: '0 0 15px var(--shadow-p)', zIndex: -1,
+                        }}
+                      />
+                    )}
+                    <AvatarDisplay avatarId={player.avatar} playerName={player.name} size={34} animated={isActive} />
+                    {player.id === hostId && (
+                      <div style={{ position: 'absolute', top: -8, right: -8, fontSize: '0.75rem', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}>👑</div>
                     )}
                   </div>
-                )}
-              </motion.div>
+
+                  {/* Player details tag */}
+                  <div style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center',
+                    background: 'rgba(10,5,20,0.8)', backdropFilter: 'blur(8px)',
+                    border: `1.5px solid ${isActive ? 'var(--primary-light)' : 'rgba(255,255,255,0.08)'}`,
+                    borderRadius: 14, padding: '4px 10px', minWidth: 78, boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+                    position: 'relative', overflow: 'hidden',
+                  }}>
+                    <span style={{ fontSize: '0.62rem', fontWeight: 900, color: '#fff', maxWidth: 70, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.2 }}>
+                      {player.name.toUpperCase()}
+                    </span>
+                    <span style={{ fontSize: '0.52rem', fontWeight: 800, letterSpacing: '0.05em', color: hc === 0 ? '#f59e0b' : 'var(--muted)', textTransform: 'uppercase', lineHeight: 1.1 }}>
+                      {hc === 0 ? 'WINNER' : `${hc} CARDS`}
+                    </span>
+
+                    {isHost && !playerWinner && (
+                      <button
+                        onClick={() => kickPlayer(player.id)}
+                        style={{ position: 'absolute', top: -2, right: -2, background: '#ef4444', color: '#fff', width: 14, height: 14, borderRadius: '50%', fontSize: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, border: '1px solid #000', cursor: 'pointer', zIndex: 10 }}
+                      >✕</button>
+                    )}
+
+                    {playerWinner && (
+                      <motion.div
+                        initial={{ scale: 0 }} animate={{ scale: 1 }}
+                        style={{
+                          position: 'absolute', inset: 0,
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                          background: 'rgba(0,0,0,0.85)', borderRadius: 'inherit',
+                          border: '1.5px solid #f59e0b', backdropFilter: 'blur(4px)',
+                        }}
+                      >
+                        <TrophyIcon size={14} />
+                        <span style={{ fontSize: '0.55rem', fontWeight: 900, color: '#f59e0b' }}>#{winRank}</span>
+                      </motion.div>
+                    )}
+                  </div>
+
+                  {/* Floating chat messages bubbles */}
+                  <div style={{ position: 'absolute', top: '-50px', left: '50%', transform: 'translateX(-50%)', width: '100%', pointerEvents: 'none' }}>
+                    <ChatBubble messages={getMsgs(player.id)} isMe={false} position="top" />
+                  </div>
+
+                  {/* Opponent mini card fan backs */}
+                  {!playerWinner && hc > 0 && (
+                    <div style={{ position: 'relative', height: '28px', width: '100%', display: 'flex', justifyContent: 'center', marginTop: 1 }}>
+                      {[...Array(Math.min(hc, 5))].map((_, ci) => (
+                        <div key={ci} className="face-down-card" style={{
+                          width: '20px', height: '30px', left: '50%', marginLeft: '-10px',
+                          transform: `translateX(${(ci - 2) * 8}px) rotate(${(ci - 2) * 4}deg)`, zIndex: ci,
+                        }} />
+                      ))}
+                      {hc > 5 && (
+                        <div style={{ position: 'absolute', right: '-10px', top: 0, fontSize: '.5rem', fontWeight: 900, color: '#9ca3af' }}>+{hc - 5}</div>
+                      )}
+                    </div>
+                  )}
+                </motion.div>
+              </div>
             );
           })}
 
@@ -547,7 +636,7 @@ export default function GameBoard() {
                   )}
                 </div>
 
-                <div style={{ 
+                <div style={{
                   display: 'flex', flexDirection: 'column', alignItems: 'center',
                   background: 'rgba(10,5,20,0.8)', backdropFilter: 'blur(8px)',
                   border: `1.5px solid ${isMyTurn ? 'var(--primary-light)' : 'rgba(255,255,255,0.08)'}`,
@@ -615,84 +704,97 @@ export default function GameBoard() {
         const winRank = getRankPos(player.id);
         const playerWinner = !!winRank;
 
+        // Separate transform from positioning styles to prevent Framer Motion from overwriting translation
+        const { transform, ...positionStyles } = pos;
+
         return (
-          <motion.div
+          <div
             key={player.id}
-            initial={false}
-            animate={{ scale: isActive ? 1.05 : 0.85 }}
             style={{
-              position: 'absolute', display: 'flex', flexDirection: 'column',
-              alignItems: 'center', gap: '4px', zIndex: isActive ? 20 : 10,
-              ...pos,
+              position: 'absolute',
+              zIndex: isActive ? 20 : 10,
+              transform,
+              ...positionStyles,
             }}
           >
-            <div className={`panel-sm${isActive ? ' active-pulse' : ''}`} style={{
-              padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '6px', minWidth: '90px',
-              border: isActive ? '2.5px solid var(--secondary)' : '1.5px solid rgba(255,255,255,0.08)',
-              background: isActive ? 'rgba(8,145,178,0.3)' : 'rgba(255,255,255,0.04)',
-              boxShadow: isActive ? '0 0 25px rgba(8,145,178,0.4)' : 'none',
-              position: 'relative', overflow: 'hidden',
-            }}>
-              <AvatarDisplay avatarId={player.avatar} playerName={player.name} size={28} animated={true} />
-              <div style={{ textAlign: 'left', flex: 1 }}>
-                <p style={{ fontSize: '0.65rem', fontWeight: 900, color: '#fff', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '65px' }}>
-                  {player.name.toUpperCase()}
-                </p>
-                {!playerWinner && (
-                  <p style={{
-                    fontSize: '0.55rem',
-                    color: hc === 0 ? '#f59e0b' : '#6b7280',
-                    fontWeight: 800, margin: 0,
-                    animation: hc === 0 ? 'pulse 1s infinite' : 'none'
-                  }}>
-                    {hc === 0 ? 'WINNER PENDING...' : `${hc} CARDS`}
+            <motion.div
+              initial={false}
+              animate={{ scale: isActive ? 1.05 : 0.85 }}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '4px',
+              }}
+            >
+              <div className={`panel-sm${isActive ? ' active-pulse' : ''}`} style={{
+                padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '6px', minWidth: '90px',
+                border: isActive ? '2.5px solid var(--secondary)' : '1.5px solid rgba(255,255,255,0.08)',
+                background: isActive ? 'rgba(8,145,178,0.3)' : 'rgba(255,255,255,0.04)',
+                boxShadow: isActive ? '0 0 25px rgba(8,145,178,0.4)' : 'none',
+                position: 'relative', overflow: 'hidden',
+              }}>
+                <AvatarDisplay avatarId={player.avatar} playerName={player.name} size={28} animated={true} />
+                <div style={{ textAlign: 'left', flex: 1 }}>
+                  <p style={{ fontSize: '0.65rem', fontWeight: 900, color: '#fff', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '65px' }}>
+                    {player.name.toUpperCase()}
                   </p>
+                  {!playerWinner && (
+                    <p style={{
+                      fontSize: '0.55rem',
+                      color: hc === 0 ? '#f59e0b' : '#6b7280',
+                      fontWeight: 800, margin: 0,
+                      animation: hc === 0 ? 'pulse 1s infinite' : 'none'
+                    }}>
+                      {hc === 0 ? 'WINNER PENDING...' : `${hc} CARDS`}
+                    </p>
+                  )}
+                  {playerWinner && (
+                    <p style={{ fontSize: '0.55rem', color: '#f59e0b', fontWeight: 900, margin: 0 }}>FINISHED #{winRank}</p>
+                  )}
+                </div>
+                {isHost && !playerWinner && (
+                  <button
+                    onClick={() => kickPlayer(player.id)}
+                    style={{ position: 'absolute', top: -6, right: -6, background: '#ef4444', color: '#fff', width: 18, height: 18, borderRadius: '50%', fontSize: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, border: '2px solid #000', cursor: 'pointer', zIndex: 10 }}
+                  >✕</button>
                 )}
                 {playerWinner && (
-                  <p style={{ fontSize: '0.55rem', color: '#f59e0b', fontWeight: 900, margin: 0 }}>FINISHED #{winRank}</p>
+                  <motion.div
+                    initial={{ scale: 0 }} animate={{ scale: 1 }}
+                    style={{
+                      position: 'absolute', inset: 0,
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                      background: 'rgba(0,0,0,0.75)', borderRadius: 'inherit',
+                      border: '2px solid #f59e0b',
+                      backdropFilter: 'blur(4px)',
+                    }}
+                  >
+                    <TrophyIcon size={22} />
+                    <span style={{ fontSize: '0.7rem', fontWeight: 900, color: '#f59e0b' }}>#{winRank}</span>
+                  </motion.div>
                 )}
               </div>
-              {isHost && !playerWinner && (
-                <button
-                  onClick={() => kickPlayer(player.id)}
-                  style={{ position: 'absolute', top: -6, right: -6, background: '#ef4444', color: '#fff', width: 18, height: 18, borderRadius: '50%', fontSize: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, border: '2px solid #000', cursor: 'pointer', zIndex: 10 }}
-                >✕</button>
-              )}
-              {playerWinner && (
-                <motion.div
-                  initial={{ scale: 0 }} animate={{ scale: 1 }}
-                  style={{
-                    position: 'absolute', inset: 0,
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                    background: 'rgba(0,0,0,0.75)', borderRadius: 'inherit',
-                    border: '2px solid #f59e0b',
-                    backdropFilter: 'blur(4px)',
-                  }}
-                >
-                  <TrophyIcon size={22} />
-                  <span style={{ fontSize: '0.7rem', fontWeight: 900, color: '#f59e0b' }}>#{winRank}</span>
-                </motion.div>
-              )}
-            </div>
 
-            <div style={{ position: 'absolute', top: '-58px', left: '50%', transform: 'translateX(-50%)', width: '100%', pointerEvents: 'none' }}>
-              <ChatBubble messages={getMsgs(player.id)} isMe={false} position="top" />
-            </div>
-
-            {!playerWinner && hc > 0 && (
-              <div style={{ position: 'relative', height: '32px', width: '100%', display: 'flex', justifyContent: 'center', marginTop: 1 }}>
-                {[...Array(Math.min(hc, 5))].map((_, ci) => (
-                  <div key={ci} className="face-down-card" style={{
-                    width: '22px', height: '34px', left: '50%', marginLeft: '-11px',
-                    transform: `translateX(${(ci - 2) * 8}px) rotate(${(ci - 2) * 4}deg)`, zIndex: ci,
-                  }} />
-                ))}
-                {hc > 5 && (
-                  <div style={{ position: 'absolute', right: '-12px', top: 0, fontSize: '.55rem', fontWeight: 900, color: '#9ca3af' }}>+{hc - 5}</div>
-                )}
+              <div style={{ position: 'absolute', top: '-58px', left: '50%', transform: 'translateX(-50%)', width: '100%', pointerEvents: 'none' }}>
+                <ChatBubble messages={getMsgs(player.id)} isMe={false} position="top" />
               </div>
-            )}
-          </motion.div>
+
+              {!playerWinner && hc > 0 && (
+                <div style={{ position: 'relative', height: '32px', width: '100%', display: 'flex', justifyContent: 'center', marginTop: 1 }}>
+                  {[...Array(Math.min(hc, 5))].map((_, ci) => (
+                    <div key={ci} className="face-down-card" style={{
+                      width: '22px', height: '34px', left: '50%', marginLeft: '-11px',
+                      transform: `translateX(${(ci - 2) * 8}px) rotate(${(ci - 2) * 4}deg)`, zIndex: ci,
+                    }} />
+                  ))}
+                  {hc > 5 && (
+                    <div style={{ position: 'absolute', right: '-12px', top: 0, fontSize: '.55rem', fontWeight: 900, color: '#9ca3af' }}>+{hc - 5}</div>
+                  )}
+                </div>
+              )}
+            </motion.div>
+          </div>
         );
       })}
 
@@ -719,7 +821,8 @@ export default function GameBoard() {
       {isPortrait && !isSpectator && !isEnded && (
         <div style={{
           display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px',
-          padding: '8px 16px', zIndex: 80, width: '100%', flexShrink: 0
+          padding: '4px 16px 12px', zIndex: 80, width: '100%', flexShrink: 0,
+          marginTop: '-24px', // Shift up slightly to overlap beautifully with the bottom table area
         }}>
           {isMyTurn && !isPickingPhase && !isResolution && (
             <>
@@ -785,7 +888,7 @@ export default function GameBoard() {
       {/* ── BOTTOM HAND AREA (Portrait Viewport, scrollable and elegant fanning) ── */}
       {!isSpectator && isPortrait && (
         <div style={{
-          height: 160, display: 'flex', flexDirection: 'column', alignItems: 'center',
+          height: 175, display: 'flex', flexDirection: 'column', alignItems: 'center',
           padding: '0 6px 1px', zIndex: 100, flexShrink: 0, width: '100%',
         }}>
           <div
@@ -794,9 +897,11 @@ export default function GameBoard() {
               alignItems: 'flex-end',
               justifyContent: 'flex-start',
               width: '100%',
-              paddingTop: 30,
+              paddingTop: 10,
               paddingBottom: 20,
               overflowX: 'auto',
+              overflowY: 'hidden',
+              touchAction: 'pan-x',
               paddingLeft: 16,
               paddingRight: 16,
               scrollbarWidth: 'none',
@@ -811,8 +916,8 @@ export default function GameBoard() {
               return (
                 <motion.div
                   key={`${cardId}-${i}`}
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: selected ? -15 : 0, opacity: 1 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
                   transition={{ delay: i * 0.02 }}
                   style={{
                     marginRight: isLast ? 0 : -35,
@@ -1091,7 +1196,7 @@ export default function GameBoard() {
             </motion.div>
 
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
-               style={{ textAlign: 'center' }}>
+              style={{ textAlign: 'center' }}>
               <p style={{ fontSize: isPortrait ? '0.9rem' : '1.2rem', fontWeight: 700, color: '#fff', margin: 0 }}>
                 {bluffResult.wasBluff
                   ? <><span style={{ color: '#ef4444' }}>{bluffResult.targetName}</span> was lying!</>
@@ -1104,7 +1209,7 @@ export default function GameBoard() {
             </motion.div>
 
             <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.7 }}
-              style={{ display: 'flex', overflowX: 'auto', gap: '5px', padding: '8px', justifyContent: 'center', scrollbarWidth: 'none', maxWidth: '85vw' }}
+              style={{ display: 'flex', overflowX: 'auto', gap: '5px', padding: '80px', justifyContent: 'center', scrollbarWidth: 'none', maxWidth: '85vw' }}
               className="no-scrollbar"
             >
               {bluffResult.assignedCards?.slice(0, 24).map((cId, idx) => (

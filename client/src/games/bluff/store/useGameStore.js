@@ -406,6 +406,11 @@ export const useGameStore = create((set, get) => ({
     s?.emit('start_game', { roomId });
   },
 
+  addBot: () => {
+    const { socket: s, roomId } = get();
+    s?.emit('add_bot', { roomId });
+  },
+
   playCards: (declaredRank) => {
     const { socket: s, roomId, selectedCards } = get();
     if (!selectedCards.length) return;

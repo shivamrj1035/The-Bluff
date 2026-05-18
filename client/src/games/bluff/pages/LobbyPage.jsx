@@ -114,14 +114,14 @@ export default function LobbyPage() {
   const {
     gameState, startGame, roomId, disconnect, kickPlayer,
     reorderPlayers, hostTransferredName, hostTransferredId,
-    chatMessages, playerName, avatar,
+    chatMessages, playerName, avatar, addBot, playerId,
   } = useGameStore();
   const [copied, setCopied] = useState(false);
   const prevHostTransfer = useRef(null);
   const [activity, setActivity] = useState([]);
 
   const players = gameState?.players || [];
-  const myId = gameState?.myId ?? null;
+  const myId = playerId;
   const isHost = Boolean(gameState && myId && gameState.hostId === myId);
   const canStart = players.length >= 2;
 
@@ -270,7 +270,8 @@ export default function LobbyPage() {
                         {gameState.hostId === p.id && <span className="badge badge-host">👑 HOST</span>}
                         {i === 0 && <span className="badge badge-first">GOES FIRST</span>}
                         {p.id === myId && <span className="badge badge-you">(YOU)</span>}
-                        {!p.isConnected && <span className="badge badge-dc">DISCONNECTED</span>}
+                        {p.isBot && <span className="badge" style={{ color: '#22d3ee' }}>🤖 BOT</span>}
+                        {!p.isConnected && !p.isBot && <span className="badge badge-dc">DISCONNECTED</span>}
                       </div>
                     </div>
                     {isHost && (
@@ -296,6 +297,27 @@ export default function LobbyPage() {
           <div className="start-area">
             {isHost ? (
               <>
+                {players.length < 8 && (
+                  <motion.button
+                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                    onClick={addBot}
+                    style={{
+                      width: '100%',
+                      padding: '11px',
+                      borderRadius: 14,
+                      background: 'rgba(6, 182, 212, 0.12)',
+                      border: '1px solid rgba(6, 182, 212, 0.25)',
+                      color: '#22d3ee',
+                      fontWeight: 800,
+                      fontSize: '0.82rem',
+                      cursor: 'pointer',
+                      letterSpacing: '0.04em',
+                      marginBottom: '8px',
+                    }}
+                  >
+                    🤖 ADD BOT PLAYER
+                  </motion.button>
+                )}
                 {canStart && <div className="hint-text">✦ SET TURN ORDER ABOVE, THEN START ✦</div>}
                 {!canStart && <div className="hint-text" style={{ color: '#6b7280' }}>Waiting for at least 2 players…</div>}
                 <button className="start-btn" onClick={startGame} disabled={!canStart}>

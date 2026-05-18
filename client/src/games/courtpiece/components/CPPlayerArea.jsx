@@ -73,14 +73,14 @@ export default function CPPlayerArea({
             }}
           />
         )}
-        
+
         <AvatarDisplay
           avatarId={player.avatar}
           playerName={player.name}
           size={compact ? 28 : 40}
           animated={isCurrentTurn}
         />
-        
+
         {/* Host Crown */}
         {isHost && (
           <div style={{ position: 'absolute', top: compact ? -8 : -10, right: compact ? -8 : -10, fontSize: compact ? '0.7rem' : '1rem', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}>
@@ -90,9 +90,9 @@ export default function CPPlayerArea({
       </div>
 
       {/* Player Info Badge */}
-      <div style={{ 
-        display: 'flex', 
-        flexDirection: 'column', 
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
         background: 'rgba(15,10,25,0.7)',
         backdropFilter: 'blur(8px)',
@@ -128,9 +128,9 @@ export default function CPPlayerArea({
 
       {/* AI Takeover / Offline Status */}
       {!player.isConnected && (
-        <div style={{ 
-          background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', 
-          fontSize: '0.55rem', fontWeight: 900, padding: '2px 8px', 
+        <div style={{
+          background: 'rgba(239, 68, 68, 0.15)', color: '#f87171',
+          fontSize: '0.55rem', fontWeight: 900, padding: '2px 8px',
           borderRadius: 6, border: '1px solid rgba(239, 68, 68, 0.3)',
           letterSpacing: '0.05em', marginTop: 2
         }}>

@@ -30,6 +30,7 @@ const EVENTS = {
   PROCEED_NEXT_TURN: "proceed_next_turn", // internal/timer to end resolution
   REORDER_PLAYERS: "reorder_players",   // host reorders player turn order
   CHAT_MESSAGE: "chat_message",          // player sends/receives a chat message
+  ADD_BOT: "add_bot",                   // host adds a bot player
 
   // Server -> Client
   GAME_STATE: "game_state",
