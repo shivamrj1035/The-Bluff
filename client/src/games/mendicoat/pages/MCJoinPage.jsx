@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useMCStore } from '../store/useMCStore';
 import { useGameStore } from '../../bluff/store/useGameStore';
@@ -6,15 +6,25 @@ import { toast } from '../../../components/common/Toast';
 
 export default function MCJoinPage() {
   const { connectMC, setMCScreen } = useMCStore();
-  const { playerName, avatar, user } = useGameStore();
+  const { playerName: storedName, avatar, user, setIdentity } = useGameStore();
+  const [name, setName] = useState(storedName || '');
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleJoin = () => {
+  useEffect(() => {
+    const roomFromUrl = new URLSearchParams(window.location.search).get('room');
+    if (roomFromUrl) {
+      setCode(roomFromUrl.toUpperCase());
+    }
+  }, []);
+
+  const handleJoin = async () => {
     const clean = code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (!clean || clean.length < 4) { toast.error('Enter a valid room code'); return; }
+    if (!name.trim()) { toast.error('Enter your player name first'); return; }
     setLoading(true);
-    connectMC(clean, playerName, avatar || 'P', user?.id);
+    await setIdentity(name.trim(), avatar || 'P');
+    connectMC(clean, name.trim(), avatar || 'P', user?.id);
   };
 
   return (
@@ -52,6 +62,23 @@ export default function MCJoinPage() {
         </p>
 
         <label style={{ fontSize: '0.68rem', fontWeight: 800, color: '#6b7280', letterSpacing: '0.14em', display: 'block', marginBottom: 8 }}>
+          YOUR NAME
+        </label>
+        <input
+          value={name}
+          onChange={e => setName(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleJoin()}
+          placeholder="Enter your name"
+          maxLength={12}
+          style={{
+            width: '100%', padding: '14px 16px', marginBottom: 20,
+            background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 14, color: '#fff', fontSize: '1rem', fontWeight: 700,
+            outline: 'none', boxSizing: 'border-box',
+          }}
+        />
+
+        <label style={{ fontSize: '0.68rem', fontWeight: 800, color: '#6b7280', letterSpacing: '0.14em', display: 'block', marginBottom: 8 }}>
           ROOM CODE
         </label>
         <input
@@ -60,7 +87,7 @@ export default function MCJoinPage() {
           onKeyDown={e => e.key === 'Enter' && handleJoin()}
           placeholder="e.g. AB3K9M"
           style={{
-            width: '100%', padding: '14px 16px', marginBottom: 16,
+            width: '100%', padding: '14px 16px', marginBottom: 20,
             background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(251,146,60,0.3)',
             borderRadius: 14, color: '#fff', fontSize: '1.4rem', fontWeight: 800,
             letterSpacing: '0.24em', textAlign: 'center', outline: 'none',
@@ -70,13 +97,13 @@ export default function MCJoinPage() {
 
         <motion.button
           whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-          onClick={handleJoin} disabled={loading || !code.trim()}
+          onClick={handleJoin} disabled={loading || !code.trim() || !name.trim()}
           style={{
             width: '100%', padding: '15px', borderRadius: 16,
-            background: code.trim() ? 'linear-gradient(135deg,#c2410c,#9a3412)' : 'rgba(255,255,255,0.06)',
-            border: 'none', color: code.trim() ? '#fff' : '#4b5563',
-            fontSize: '0.96rem', fontWeight: 800, cursor: code.trim() ? 'pointer' : 'not-allowed',
-            boxShadow: code.trim() ? '0 10px 28px rgba(251,146,60,0.28)' : 'none',
+            background: (code.trim() && name.trim()) ? 'linear-gradient(135deg,#c2410c,#9a3412)' : 'rgba(255,255,255,0.06)',
+            border: 'none', color: (code.trim() && name.trim()) ? '#fff' : '#4b5563',
+            fontSize: '0.96rem', fontWeight: 800, cursor: (code.trim() && name.trim()) ? 'pointer' : 'not-allowed',
+            boxShadow: (code.trim() && name.trim()) ? '0 10px 28px rgba(251,146,60,0.28)' : 'none',
           }}
         >
           {loading ? 'Joining...' : 'Join Table →'}
