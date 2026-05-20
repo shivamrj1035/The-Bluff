@@ -37,12 +37,13 @@ export const useMCStore = create((set, get) => ({
   setMCScreen: (screen) => set({ mcScreen: screen }),
 
   // ── Connect to a MendiCoat room ──────────────────────────────────────────
-  connectMC: (roomId, playerName, avatar) => {
+  connectMC: (roomId, playerName, avatar, userId) => {
     const s = getMCSocket();
     const pName = playerName || get().mcPlayerName || '';
     const av    = avatar    || get().mcAvatar     || 'P';
-    const uId   = get().mcPlayerId;
+    const uId   = userId || get().mcPlayerId;
     
+    if (userId) set({ mcPlayerId: userId });
     if (uId) localStorage.setItem('mc_userId', uId);
 
     s.off('mc_game_state');

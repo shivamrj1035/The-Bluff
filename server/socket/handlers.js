@@ -1123,6 +1123,8 @@ function setupCPHandlers(io, socket) {
         const oldId = existing.id;
         existing.id = socket.id;
         existing.isConnected = true;
+        if (trimmedName) existing.name = trimmedName;
+        if (userId) existing.userId = userId;
         existing.avatar = safeAvatar || existing.avatar;
         if (room.hostId === oldId) room.hostId = socket.id;
         if (room.currentTurn === oldId) room.currentTurn = socket.id;
@@ -1664,6 +1666,8 @@ function setupMendiCoatHandlers(io, socket) {
         const oldId = existing.id;
         existing.id = socket.id;
         existing.isConnected = true;
+        if (trimmedName) existing.name = trimmedName;
+        if (userId) existing.userId = userId;
         existing.avatar = safeAvatar || existing.avatar;
         if (room.hostId === oldId) room.hostId = socket.id;
         if (room.currentTurn === oldId) room.currentTurn = socket.id;

@@ -18,6 +18,12 @@ export default function MCJoinPage() {
     }
   }, []);
 
+  useEffect(() => {
+    if (storedName) {
+      setName(storedName);
+    }
+  }, [storedName]);
+
   const handleJoin = async () => {
     const clean = code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (!clean || clean.length < 4) { toast.error('Enter a valid room code'); return; }

@@ -37,12 +37,13 @@ export const useCPStore = create((set, get) => ({
   setCPScreen: (screen) => set({ cpScreen: screen }),
 
   // ── Connect to a Court Piece room ────────────────────────────────────────
-  connectCP: (roomId, playerName, avatar) => {
+  connectCP: (roomId, playerName, avatar, userId) => {
     const s = getCPSocket();
     const pName = playerName || get().cpPlayerName || '';
     const av    = avatar    || get().cpAvatar     || 'P';
-    const uId   = get().cpPlayerId;
+    const uId   = userId || get().cpPlayerId;
     
+    if (userId) set({ cpPlayerId: userId });
     if (uId) localStorage.setItem('cp_userId', uId);
 
     s.off('cp_game_state');

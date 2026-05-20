@@ -18,6 +18,12 @@ export default function CourtPieceEntryPage() {
 
   useEffect(() => { if (editingName) nameRef.current?.focus(); }, [editingName]);
 
+  useEffect(() => {
+    if (storedName || profile?.username) {
+      setName(storedName || profile?.username || '');
+    }
+  }, [storedName, profile?.username]);
+
 
   const persistIdentity = async () => {
     if (!name.trim()) { toast.error('Enter your player name first'); return false; }
