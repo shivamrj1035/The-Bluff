@@ -34,7 +34,7 @@ export default function JKCard({
     [suit, rank] = cardId.split('_');
   }
 
-  const color = isJoker ? '#facc15' : (SUIT_COLOR[suit] || '#fff'); // Golden for Joker
+  const color = isJoker ? '#1e3a8a' : (SUIT_COLOR[suit] || '#fff'); // Deep blue for Joker corner details
   const symbol = isJoker ? '🃏' : (SUIT_SYMBOL[suit] || suit);
   const displayRank = isJoker ? 'JK' : (RANK_DISPLAY[rank] || rank);
 
@@ -55,17 +55,17 @@ export default function JKCard({
         background: disabled
           ? 'linear-gradient(160deg, #1c1c2e, #111118)'
           : isJoker
-            ? 'linear-gradient(135deg, #db2777 0%, #7c3aed 100%)' // Hot pink to violet gradient for Joker!
+            ? 'url(/joker.jpg) no-repeat center center / cover' // Fancy Joker image background
             : 'linear-gradient(160deg, #ffffff 0%, #f1f5f9 100%)',
         border: selected
           ? `2px solid ${color}`
           : isJoker
-            ? '2px dashed #facc15'
+            ? '2px solid #1e3a8a'
             : '1.5px solid rgba(255,255,255,0.12)',
         boxShadow: selected
           ? `0 0 18px ${color}88, 0 8px 24px rgba(0,0,0,0.4)`
           : isJoker
-            ? '0 0 15px rgba(219,39,119,0.5), 0 4px 16px rgba(0,0,0,0.3)'
+            ? '0 0 15px rgba(30,58,138,0.5), 0 4px 16px rgba(0,0,0,0.3)'
             : '0 4px 16px rgba(0,0,0,0.3)',
         cursor: disabled ? 'not-allowed' : onClick ? 'pointer' : 'default',
         position: 'relative',
@@ -96,15 +96,15 @@ export default function JKCard({
           inset: 0,
           backfaceVisibility: 'hidden',
           background: isJoker
-            ? 'linear-gradient(135deg, #db2777 0%, #7c3aed 100%)'
+            ? 'url(/joker.jpg) no-repeat center center / cover'
             : (suit === 'H' || suit === 'D')
               ? 'linear-gradient(160deg, #ffffff 0%, #fff5f5 100%)'
               : 'linear-gradient(160deg, #ffffff 0%, #f8fafc 100%)',
           borderRadius: 10,
           border: selected
-            ? `2px solid ${isJoker ? '#facc15' : '#f59e0b'}`
+            ? `2px solid ${isJoker ? '#1e3a8a' : '#f59e0b'}`
             : isJoker
-              ? '2px solid #facc15'
+              ? '1px solid rgba(0,0,0,0.1)'
               : '1px solid rgba(0,0,0,0.05)',
           boxShadow: isJoker
             ? 'none'
@@ -122,27 +122,29 @@ export default function JKCard({
             alignItems: 'center',
             lineHeight: 1
           }}>
-            <span style={{ fontSize: dims.rank, fontWeight: 900, color: isJoker ? '#fff' : color, fontFamily: 'serif' }}>{displayRank}</span>
-            <span style={{ fontSize: `calc(${dims.rank} * 0.9)`, color: isJoker ? '#fff' : color }}>{symbol}</span>
+            <span style={{ fontSize: dims.rank, fontWeight: 900, color: isJoker ? '#1e3a8a' : color, fontFamily: 'serif' }}>{displayRank}</span>
+            <span style={{ fontSize: `calc(${dims.rank} * 0.9)`, color: isJoker ? '#1e3a8a' : color }}>{symbol}</span>
           </div>
 
           {/* Center symbol */}
-          <div style={{
-            position: 'absolute',
-            inset: 0,
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            pointerEvents: 'none'
-          }}>
-            <span style={{
-              fontSize: isJoker ? `calc(${dims.suit} * 2.2)` : `calc(${dims.suit} * 1.5)`,
-              color: isJoker ? '#facc15' : (disabled ? '#444' : color),
-              filter: isJoker ? 'drop-shadow(0 0 10px #facc15)' : `drop-shadow(0 2px 6px ${color}66)`,
+          {!isJoker && (
+            <div style={{
+              position: 'absolute',
+              inset: 0,
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              pointerEvents: 'none'
             }}>
-              {symbol}
-            </span>
-          </div>
+              <span style={{
+                fontSize: `calc(${dims.suit} * 1.5)`,
+                color: disabled ? '#444' : color,
+                filter: `drop-shadow(0 2px 6px ${color}66)`,
+              }}>
+                {symbol}
+              </span>
+            </div>
+          )}
 
           {/* Bottom Corner */}
           <div style={{
@@ -155,8 +157,8 @@ export default function JKCard({
             lineHeight: 1,
             transform: 'rotate(180deg)'
           }}>
-            <span style={{ fontSize: dims.rank, fontWeight: 900, color: isJoker ? '#fff' : color, fontFamily: 'serif' }}>{displayRank}</span>
-            <span style={{ fontSize: `calc(${dims.rank} * 0.9)`, color: isJoker ? '#fff' : color }}>{symbol}</span>
+            <span style={{ fontSize: dims.rank, fontWeight: 900, color: isJoker ? '#1e3a8a' : color, fontFamily: 'serif' }}>{displayRank}</span>
+            <span style={{ fontSize: `calc(${dims.rank} * 0.9)`, color: isJoker ? '#1e3a8a' : color }}>{symbol}</span>
           </div>
         </div>
 

@@ -219,7 +219,8 @@ export default function JKGameBoard() {
           setDiscardAnims(prev => prev.filter(a => a.id !== animId));
         }, 3000);
       } else {
-        toast.info(`${picker} drew a card from ${target}.`);
+        // Silenced toast notification to prevent clutter
+        // toast.info(`${picker} drew a card from ${target}.`);
       }
     } else if (act.type === 'discard') {
       const player = getPlayerName(act.playerId);
