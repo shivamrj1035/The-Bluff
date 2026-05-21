@@ -6,7 +6,7 @@
  */
 
 function serializeJKState(room, playerId) {
-  const { hands, ...rest } = room;
+  const { hands, lastAction, ...rest } = room;
 
   // Mask hands — only the requesting player sees their own cards
   const filteredHands = {};
@@ -16,11 +16,26 @@ function serializeJKState(room, playerId) {
       : (hands[id] || []).map(() => 'X');
   });
 
+  // Mask lastAction card details for non-pickers
+  let filteredLastAction = null;
+  if (lastAction) {
+    if (lastAction.type === 'pick') {
+      const isPicker = lastAction.pickerId === playerId;
+      filteredLastAction = {
+        ...lastAction,
+        card: isPicker ? lastAction.card : 'X',
+      };
+    } else {
+      filteredLastAction = lastAction;
+    }
+  }
+
   const isSpectator = !room.players.find(p => p.id === playerId);
 
   return {
     ...rest,
     hands: filteredHands,
+    lastAction: filteredLastAction,
     myId: playerId,
     isSpectator,
   };

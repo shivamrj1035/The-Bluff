@@ -9,7 +9,7 @@ import { toast } from '../../../components/common/Toast';
 
 const SUIT_SYMBOL = { H: '♥', D: '♦', C: '♣', S: '♠' };
 const SUIT_NAME = { H: 'Hearts', D: 'Diamonds', C: 'Clubs', S: 'Spades' };
-const SUIT_COLOR = { H: '#ef4444', D: '#ef4444', C: '#22d3ee', S: '#a78bfa' };
+const SUIT_COLOR = { H: '#dc2626', D: '#dc2626', C: '#1e293b', S: '#0f172a' };
 
 function useWindowSize() {
   const [size, setSize] = useState({ w: window.innerWidth, h: window.innerHeight });
@@ -21,33 +21,33 @@ function useWindowSize() {
   return size;
 }
 
-const seatLayouts = {
+const getSeatLayouts = (isMobile) => ({
   2: [
-    { top: '-60px', left: '50%', transform: 'translateX(-50%)', label: 'Top' }
+    { top: isMobile ? '-105px' : '-135px', left: '50%', transform: 'translateX(-50%)', label: 'Top' }
   ],
   3: [
-    { top: '10%', left: '15%', transform: 'translate(-50%, -50%)', label: 'Left' },
-    { top: '10%', right: '15%', transform: 'translate(50%, -50%)', label: 'Right' }
+    { top: isMobile ? '-35px' : '-50px', left: isMobile ? '15%' : '10%', transform: 'translate(-50%, -50%)', label: 'Left' },
+    { top: isMobile ? '-35px' : '-50px', right: isMobile ? '15%' : '10%', transform: 'translate(50%, -50%)', label: 'Right' }
   ],
   4: [
-    { top: '50%', left: '-60px', transform: 'translateY(-50%)', label: 'Left' },
-    { top: '-60px', left: '50%', transform: 'translateX(-50%)', label: 'Top' },
-    { top: '50%', right: '-60px', transform: 'translateY(-50%)', label: 'Right' }
+    { top: '50%', left: isMobile ? '0px' : '-80px', transform: 'translateY(-50%)', label: 'Left' },
+    { top: isMobile ? '-105px' : '-135px', left: '50%', transform: 'translateX(-50%)', label: 'Top' },
+    { top: '50%', right: isMobile ? '0px' : '-80px', transform: 'translateY(-50%)', label: 'Right' }
   ],
   5: [
-    { top: '55%', left: '-50px', transform: 'translateY(-50%)', label: 'Left' },
-    { top: '-30px', left: '25%', transform: 'translateX(-50%)', label: 'Top Left' },
-    { top: '-30px', right: '25%', transform: 'translateX(50%)', label: 'Top Right' },
-    { top: '55%', right: '-50px', transform: 'translateY(-50%)', label: 'Right' }
+    { top: isMobile ? '70%' : '65%', left: isMobile ? '10px' : '-20px', transform: 'translate(-50%, -50%)', label: 'Left' },
+    { top: isMobile ? '-35px' : '-45px', left: isMobile ? '16%' : '12%', transform: 'translate(-50%, -50%)', label: 'Top Left' },
+    { top: isMobile ? '-35px' : '-45px', right: isMobile ? '16%' : '12%', transform: 'translate(50%, -50%)', label: 'Top Right' },
+    { top: isMobile ? '70%' : '65%', right: isMobile ? '10px' : '-20px', transform: 'translate(50%, -50%)', label: 'Right' }
   ],
   6: [
-    { top: '60%', left: '-50px', transform: 'translateY(-50%)', label: 'Left' },
-    { top: '5%', left: '15%', transform: 'translate(-50%, -50%)', label: 'Top Left' },
-    { top: '-60px', left: '50%', transform: 'translateX(-50%)', label: 'Top' },
-    { top: '5%', right: '15%', transform: 'translate(50%, -50%)', label: 'Top Right' },
-    { top: '60%', right: '-50px', transform: 'translateY(-50%)', label: 'Right' }
+    { top: isMobile ? '70%' : '65%', left: isMobile ? '10px' : '-20px', transform: 'translate(-50%, -50%)', label: 'Left' },
+    { top: isMobile ? '-35px' : '-45px', left: isMobile ? '16%' : '12%', transform: 'translate(-50%, -50%)', label: 'Top Left' },
+    { top: isMobile ? '-75px' : '-85px', left: '50%', transform: 'translate(-50%, -50%)', label: 'Top' },
+    { top: isMobile ? '-35px' : '-45px', right: isMobile ? '16%' : '12%', transform: 'translate(50%, -50%)', label: 'Top Right' },
+    { top: isMobile ? '70%' : '65%', right: isMobile ? '10px' : '-20px', transform: 'translate(50%, -50%)', label: 'Right' }
   ]
-};
+});
 
 export default function JKGameBoard() {
   const {
@@ -68,6 +68,70 @@ export default function JKGameBoard() {
   const [selectedCards, setSelectedCards] = useState([]);
   const [discardAnims, setDiscardAnims] = useState([]);
   const [drawnCardOverlay, setDrawnCardOverlay] = useState(null);
+  const [flyingCard, setFlyingCard] = useState(null); // { from, mid, to }
+  const flyColor = '#eab308'; // Keep secret: constant gold outline glow
+  const flySymbol = '🃏'; // Keep secret: constant generic Joker wildcard icon
+  const [pendingAddedCards, setPendingAddedCards] = useState([]); // cards to hold from hand until animation finishes
+  const [pendingRemovedCards, setPendingRemovedCards] = useState([]); // cards to keep in hand until overlay completes
+  const [lastActionKey, setLastActionKey] = useState(null);
+
+  // Synchronous state adjustment during render to prevent race conditions
+  const renderMyId = gs?.myId;
+  const currentActionKey = gs?.lastAction ? JSON.stringify(gs.lastAction) : null;
+  if (currentActionKey !== lastActionKey) {
+    setLastActionKey(currentActionKey);
+    if (gs?.lastAction) {
+      const act = gs.lastAction;
+      if (act.type === 'deal') {
+        setPendingAddedCards([]);
+        setPendingRemovedCards([]);
+      } else if (act.type === 'pick' && act.pickerId === renderMyId && act.removedPair) {
+        const matchCard = act.removedPair.find(c => c !== act.card);
+        if (matchCard) {
+          setPendingRemovedCards(prev => {
+            if (!prev.includes(matchCard)) {
+              return [...prev, matchCard];
+            }
+            return prev;
+          });
+        }
+      }
+    }
+  }
+
+  const getPlayerCoords = (playerId) => {
+    if (playerId === myId) {
+      return { top: '120%', left: '50%' };
+    }
+    const idx = players.findIndex(p => p.id === playerId);
+    if (idx === -1) return { top: '50%', left: '50%' };
+    const myIndex = players.findIndex(p => p.id === myId);
+    if (myIndex === -1) return { top: '50%', left: '50%' };
+    const relativeIdx = (idx - myIndex - 1 + players.length) % players.length;
+    const numPlayers = players.length;
+    if (numPlayers === 2) {
+      return { top: '-15%', left: '50%' };
+    } else if (numPlayers === 3) {
+      if (relativeIdx === 0) return { top: '-2%', left: '20%' };
+      if (relativeIdx === 1) return { top: '-2%', left: '80%' };
+    } else if (numPlayers === 4) {
+      if (relativeIdx === 0) return { top: '50%', left: '2%' };
+      if (relativeIdx === 1) return { top: '-15%', left: '50%' };
+      if (relativeIdx === 2) return { top: '50%', left: '98%' };
+    } else if (numPlayers === 5) {
+      if (relativeIdx === 0) return { top: '65%', left: '0%' };
+      if (relativeIdx === 1) return { top: '-5%', left: '15%' };
+      if (relativeIdx === 2) return { top: '-5%', left: '85%' };
+      if (relativeIdx === 3) return { top: '65%', left: '100%' };
+    } else if (numPlayers === 6) {
+      if (relativeIdx === 0) return { top: '65%', left: '0%' };
+      if (relativeIdx === 1) return { top: '-5%', left: '15%' };
+      if (relativeIdx === 2) return { top: '-15%', left: '50%' };
+      if (relativeIdx === 3) return { top: '-5%', left: '85%' };
+      if (relativeIdx === 4) return { top: '65%', left: '100%' };
+    }
+    return { top: '50%', left: '50%' };
+  };
 
   // Handle Game Action Notification Toast & Animations
   const [lastActionId, setLastActionId] = useState(null);
@@ -83,19 +147,63 @@ export default function JKGameBoard() {
 
     if (act.type === 'deal') {
       toast.info('Cards dealt! Check your hand.');
+      setPendingAddedCards([]);
+      setPendingRemovedCards([]);
     } else if (act.type === 'pick') {
       const picker = getPlayerName(act.pickerId);
       const target = getPlayerName(act.targetId);
       
-      // If I am the picker, trigger drawn card overlay
+      // Trigger card flying animation with a curved parabolic path
+      const fromCoords = getPlayerCoords(act.targetId);
+      const toCoords = getPlayerCoords(act.pickerId);
+      const fromTop = parseFloat(fromCoords.top);
+      const fromLeft = parseFloat(fromCoords.left);
+      const toTop = parseFloat(toCoords.top);
+      const toLeft = parseFloat(toCoords.left);
+      
+      const midTop = (Math.min(fromTop, toTop) - 20) + '%';
+      const midLeft = ((fromLeft + toLeft) / 2) + '%';
+
+      setFlyingCard({
+        from: fromCoords,
+        mid: { top: midTop, left: midLeft },
+        to: toCoords,
+        cardId: act.card
+      });
+      setTimeout(() => {
+        setFlyingCard(null);
+      }, 900);
+
+      // If I am the picker, trigger drawn card overlay after flight completes
       if (act.pickerId === myId) {
-        setDrawnCardOverlay({
-          card: act.card,
-          removedPair: act.removedPair
-        });
+        setTimeout(() => {
+          setDrawnCardOverlay({
+            card: act.card,
+            removedPair: act.removedPair
+          });
+        }, 800);
         setTimeout(() => {
           setDrawnCardOverlay(null);
-        }, 3200);
+          // Add pending cards to hand now that reveal is completed
+          setPendingAddedCards(pending => {
+            if (pending.length > 0) {
+              setMyCardOrder(currentOrder => {
+                const filtered = currentOrder.filter(c => !pending.includes(c));
+                return filtered.concat(sortHand(pending));
+              });
+            }
+            return [];
+          });
+          // Remove pending removed cards now that reveal is completed
+          setPendingRemovedCards(pending => {
+            if (pending.length > 0) {
+              setMyCardOrder(currentOrder => {
+                return currentOrder.filter(c => !pending.includes(c));
+              });
+            }
+            return [];
+          });
+        }, 4000);
       }
 
       if (act.removedPair) {
@@ -149,10 +257,10 @@ export default function JKGameBoard() {
     const idx = players.findIndex(p => p.id === myId);
     if (idx === -1) return null;
     for (let i = 1; i < players.length; i++) {
-      const nextIdx = (idx + i) % players.length;
-      const nextPlayer = players[nextIdx];
-      if (gs.hands[nextPlayer.id] && gs.hands[nextPlayer.id].length > 0) {
-        return nextPlayer.id;
+      const prevIdx = (idx - i + players.length) % players.length;
+      const prevPlayer = players[prevIdx];
+      if (gs.hands[prevPlayer.id] && gs.hands[prevPlayer.id].length > 0) {
+        return prevPlayer.id;
       }
     }
     return null;
@@ -178,19 +286,29 @@ export default function JKGameBoard() {
   useEffect(() => {
     if (!serverHand) return;
     const serverSet = new Set(serverHand);
-    const localSet = new Set(myCardOrder);
-    const isSameSet = serverHand.length === myCardOrder.length && serverHand.every(c => localSet.has(c));
+    const totalLocalSet = new Set([...myCardOrder, ...pendingAddedCards]);
+    
+    // Find cards in serverHand that are not in myCardOrder and not in pendingAddedCards. These are newly added cards.
+    const added = serverHand.filter(c => !totalLocalSet.has(c));
+    
+    // Find cards in myCardOrder that are not in serverHand and not in pendingRemovedCards. These are removed cards that should be synced immediately.
+    const removedFromMyCardOrder = myCardOrder.filter(c => !serverSet.has(c) && !pendingRemovedCards.includes(c));
 
-    if (!isSameSet) {
+    if (added.length > 0 || removedFromMyCardOrder.length > 0) {
       if (myCardOrder.length === 0) {
         setMyCardOrder(sortHand(serverHand));
       } else {
-        const added = serverHand.filter(c => !localSet.has(c));
-        const updatedOrder = myCardOrder.filter(c => serverSet.has(c)).concat(sortHand(added));
-        setMyCardOrder(updatedOrder);
+        if (added.length > 0) {
+          // Store new cards in pendingAddedCards so they do not render in hand immediately
+          setPendingAddedCards(prev => [...prev, ...added]);
+        }
+        // Keep cards that are either in serverSet OR in pendingRemovedCards
+        setMyCardOrder(currentOrder => {
+          return currentOrder.filter(c => serverSet.has(c) || pendingRemovedCards.includes(c));
+        });
       }
     }
-  }, [serverHand, myCardOrder]);
+  }, [serverHand, myCardOrder, pendingAddedCards, pendingRemovedCards]);
 
   const isHost = Boolean(myId && gs.hostId === myId);
   const isMyTurn = gs.currentTurn === myId && !gs.revealAnimationPending;
@@ -352,7 +470,7 @@ export default function JKGameBoard() {
             position: 'absolute', inset: 0, borderRadius: isMobile ? '120px' : '200px',
             background: 'linear-gradient(180deg, #3b0712 0%, #160207 100%)', // Crimson red theme table
             border: `${isMobile ? 5 : 8}px solid #27030a`,
-            boxShadow: 'inset 0 0 60px rgba(0,0,0,0.8), 0 30px 100px rgba(0,0,0,0.6)',
+            boxShadow: 'inset 0 0 60px rgba(0,0,0,0.85), 0 0 30px rgba(139, 92, 246, 0.2), 0 0 60px rgba(34, 197, 94, 0.12), 0 30px 100px rgba(0,0,0,0.7)',
             aspectRatio: isMobile ? '3/2' : '2/1',
             zIndex: 1
           }}>
@@ -364,7 +482,7 @@ export default function JKGameBoard() {
 
           {/* Opponents Positions around the table */}
           {opponents.map((opp, idx) => {
-            const layout = seatLayouts[players.length]?.[idx] || {};
+            const layout = getSeatLayouts(isMobile)[players.length]?.[idx] || {};
             const isTarget = opp.id === expectedTargetId;
             const chatMsg = jkChatMessages?.find(m => m.senderId === opp.id);
             const discardMsg = discardAnims.find(a => a.playerId === opp.id);
@@ -397,7 +515,7 @@ export default function JKGameBoard() {
           })}
 
           {/* Bottom Player Area (Me) */}
-          <div style={{ position: 'absolute', bottom: isMobile ? -75 : -80, left: '50%', transform: 'translateX(-50%)', zIndex: 10 }}>
+          <div style={{ position: 'absolute', bottom: isMobile ? '-60px' : '-80px', left: '50%', transform: 'translateX(-50%)', zIndex: 10 }}>
             {players[myIndex] && (
               <JKPlayerArea
                 player={players[myIndex]}
@@ -410,6 +528,69 @@ export default function JKGameBoard() {
               />
             )}
           </div>
+
+          {/* Flying Card Animation */}
+          <AnimatePresence>
+            {flyingCard && (
+              <motion.div
+                initial={{
+                  position: 'absolute',
+                  top: flyingCard.from.top,
+                  left: flyingCard.from.left,
+                  x: '-50%',
+                  y: '-50%',
+                  scale: 0.5,
+                  opacity: 0,
+                  zIndex: 500
+                }}
+                animate={{
+                  top: [flyingCard.from.top, flyingCard.mid.top, flyingCard.to.top],
+                  left: [flyingCard.from.left, flyingCard.mid.left, flyingCard.to.left],
+                  scale: [0.5, 1.25, 0.75],
+                  opacity: [0, 1, 1, 0.95],
+                  rotate: [0, 180, 360],
+                  boxShadow: [
+                    `0 0 15px ${flyColor}55`,
+                    `0 0 40px ${flyColor}`,
+                    `0 0 25px ${flyColor}aa`
+                  ]
+                }}
+                exit={{
+                  opacity: 0,
+                  scale: 0.3,
+                  filter: 'blur(4px)'
+                }}
+                transition={{
+                  duration: 0.8,
+                  ease: 'easeInOut'
+                }}
+                style={{
+                  width: 50,
+                  height: 75,
+                  borderRadius: 8,
+                  backgroundImage: 'url(/card_back.jpg)',
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  backgroundRepeat: 'no-repeat',
+                  border: `2px solid ${flyColor}`,
+                  boxShadow: 'inset 0 0 8px rgba(0,0,0,0.6), 0 4px 12px rgba(0,0,0,0.4)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                  position: 'relative'
+                }}
+              >
+                <div style={{
+                  position: 'absolute',
+                  inset: 3,
+                  borderRadius: 5,
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  pointerEvents: 'none',
+                }} />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
@@ -514,21 +695,48 @@ export default function JKGameBoard() {
               padding: isMobile ? 12 : 20
             }}
           >
-            <motion.div
+             <motion.div
               initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }}
+              className="game-over-modal"
               style={{
                 width: 'min(100%, 540px)', background: 'rgba(20, 15, 35, 0.95)',
                 borderRadius: isMobile ? 24 : 40, border: '1px solid rgba(255, 255, 255, 0.1)',
                 padding: isMobile ? '28px 20px' : '50px 40px', textAlign: 'center',
                 boxShadow: '0 40px 100px rgba(0,0,0,0.8), inset 0 0 40px rgba(239,68,68,0.05)',
-                overflowY: 'auto', maxHeight: '90vh'
+                overflowY: players.length > 5 ? 'auto' : 'hidden', maxHeight: '90vh',
+                scrollbarWidth: 'thin',
+                scrollbarColor: 'rgba(255, 255, 255, 0.15) transparent'
               }}
             >
+              <style>{`
+                .game-over-modal::-webkit-scrollbar {
+                  width: 4px;
+                }
+                .game-over-modal::-webkit-scrollbar-track {
+                  background: transparent;
+                }
+                .game-over-modal::-webkit-scrollbar-thumb {
+                  background: rgba(255, 255, 255, 0.15);
+                  border-radius: 4px;
+                }
+                .game-over-modal::-webkit-scrollbar-thumb:hover {
+                  background: rgba(255, 255, 255, 0.3);
+                }
+              `}</style>
               <span style={{ fontSize: '0.85rem', fontWeight: 900, color: 'var(--red)', letterSpacing: '0.4em', textTransform: 'uppercase', marginBottom: 16, display: 'block' }}>
                 Game Over
               </span>
 
-              <h2 style={{ fontSize: isMobile ? '1.8rem' : '2.8rem', fontWeight: 900, margin: '0 0 10px', background: 'linear-gradient(to bottom, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              <h2 style={{
+                fontSize: isMobile ? '1.8rem' : '2.8rem',
+                fontWeight: 900,
+                margin: '0 0 10px',
+                backgroundImage: 'linear-gradient(to bottom, #fff, #94a3b8)',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                color: 'transparent'
+              }}>
                 {players.find(p => p.id === gs.matchWinner)?.name || 'Someone'} Lost!
               </h2>
               <p style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--red)', marginBottom: isMobile ? 20 : 40 }}>
@@ -663,12 +871,11 @@ export default function JKGameBoard() {
             paddingTop: 30,
             paddingBottom: 25,
             overflowX: isMobile ? 'auto' : 'visible',
-            paddingLeft: isMobile ? 12 : 0,
-            paddingRight: isMobile ? 12 : 0,
+            paddingLeft: isMobile ? 16 : 0,
+            paddingRight: isMobile ? 32 : 0,
             scrollbarWidth: 'none',
             msOverflowStyle: 'none',
             margin: 0,
-            padding: 0,
             listStyle: 'none',
           }}
           className="no-scrollbar"
@@ -677,8 +884,14 @@ export default function JKGameBoard() {
             const isLast = idx === myCardOrder.length - 1;
             // Overlap sizing
             const cardW = isMobile ? 42 : 68;
-            const maxHandW = isMobile ? w - 16 : w - 280;
-            const overlapGap = isMobile ? 8 : (myCardOrder.length * (cardW + 4) > maxHandW ? -Math.ceil((myCardOrder.length * (cardW + 4) - maxHandW) / Math.max(myCardOrder.length - 1, 1)) : 4);
+            const maxHandW = isMobile ? w - 24 : w - 280;
+            const overlapGap = isMobile
+              ? (myCardOrder.length * (cardW + 4) > maxHandW
+                  ? Math.max(-22, -Math.ceil((myCardOrder.length * (cardW + 4) - maxHandW) / Math.max(myCardOrder.length - 1, 1)))
+                  : 4)
+              : (myCardOrder.length * (cardW + 4) > maxHandW
+                  ? -Math.ceil((myCardOrder.length * (cardW + 4) - maxHandW) / Math.max(myCardOrder.length - 1, 1))
+                  : 4);
             const isSelected = selectedCards.includes(card);
 
             return (

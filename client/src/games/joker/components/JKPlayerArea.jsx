@@ -18,7 +18,9 @@ export default function JKPlayerArea({
 }) {
   if (!player) return null;
 
-  const glowColor = 'var(--red)';
+  const turnGlowColor = '#22c55e'; // Acid Lime Green for active turn
+  const targetGlowColor = '#eab308'; // Acid Yellow/Gold for target picker
+  const orangeColor = '#f97316'; // Orange for AI takeover
 
   // Opponent's face-down cards to show
   const cardCount = player.cardCount || 0;
@@ -29,7 +31,7 @@ export default function JKPlayerArea({
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        gap: 6,
+        gap: 2,
         position: 'relative',
         zIndex: 5,
         opacity: player.isConnected ? 1 : 0.7,
@@ -48,19 +50,49 @@ export default function JKPlayerArea({
             style={{
               position: 'absolute',
               zIndex: 100,
-              background: 'linear-gradient(135deg, #ef4444 0%, #7f1d1d 100%)',
+              background: 'linear-gradient(135deg, #dc2626 0%, #7f1d1d 100%)',
               color: '#fff',
               padding: '6px 12px',
               borderRadius: 20,
               fontSize: compact ? '0.65rem' : '0.75rem',
               fontWeight: 800,
               whiteSpace: 'nowrap',
-              boxShadow: '0 0 15px rgba(239, 68, 68, 0.5), 0 4px 10px rgba(0,0,0,0.4)',
+              boxShadow: '0 0 15px rgba(220, 38, 38, 0.5), 0 4px 10px rgba(0,0,0,0.4)',
               border: '1.5px solid rgba(255, 255, 255, 0.2)',
               pointerEvents: 'none'
             }}
           >
             {discardMessage.text}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Floating Picking Turn Badge */}
+      <AnimatePresence>
+        {isCurrentTurn && (
+          <motion.div
+            initial={{ opacity: 0, y: 10, scale: 0.8, x: '-50%' }}
+            animate={{ opacity: 1, y: -25, scale: 1, x: '-50%' }}
+            exit={{ opacity: 0, scale: 0.8, x: '-50%' }}
+            style={{
+              position: 'absolute',
+              left: '50%',
+              zIndex: 100,
+              background: 'linear-gradient(135deg, #22c55e 0%, #15803d 100%)', // Acid green gradient
+              color: '#fff',
+              padding: '4px 10px',
+              borderRadius: 12,
+              fontSize: '0.65rem',
+              fontWeight: 900,
+              whiteSpace: 'nowrap',
+              boxShadow: '0 0 15px rgba(34, 197, 94, 0.6), 0 4px 10px rgba(0,0,0,0.4)',
+              border: '1.5px solid rgba(255, 255, 255, 0.4)',
+              pointerEvents: 'none',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em'
+            }}
+          >
+            {isMe ? 'Your Turn to Pick! 🃏' : 'Picking...'}
           </motion.div>
         )}
       </AnimatePresence>
@@ -82,9 +114,26 @@ export default function JKPlayerArea({
               position: 'absolute',
               inset: compact ? -4 : -6,
               borderRadius: '50%',
-              background: `radial-gradient(circle, ${glowColor}66 0%, transparent 70%)`,
-              border: `2px solid ${glowColor}`,
-              boxShadow: `0 0 15px ${glowColor}44`,
+              background: `radial-gradient(circle, ${turnGlowColor}66 0%, transparent 70%)`,
+              border: `2px solid ${turnGlowColor}`,
+              boxShadow: `0 0 15px ${turnGlowColor}44`,
+              zIndex: -1,
+            }}
+          />
+        )}
+
+        {/* Target Picker Glow */}
+        {isTarget && isMyTurn && (
+          <motion.div
+            animate={{ scale: [1, 1.15, 1], opacity: [0.6, 0.9, 0.6] }}
+            transition={{ repeat: Infinity, duration: 1.5 }}
+            style={{
+              position: 'absolute',
+              inset: compact ? -4 : -6,
+              borderRadius: '50%',
+              background: `radial-gradient(circle, ${targetGlowColor}55 0%, transparent 70%)`,
+              border: `2px solid ${targetGlowColor}`,
+              boxShadow: `0 0 15px ${targetGlowColor}44`,
               zIndex: -1,
             }}
           />
@@ -112,11 +161,21 @@ export default function JKPlayerArea({
         alignItems: 'center',
         background: 'rgba(15,10,25,0.7)',
         backdropFilter: 'blur(8px)',
-        border: `1px solid ${isCurrentTurn ? glowColor : isTarget && isMyTurn ? '#facc15' : 'rgba(255,255,255,0.1)'}`,
+        border: `1.5px solid ${
+          isCurrentTurn
+            ? turnGlowColor
+            : isTarget && isMyTurn
+              ? targetGlowColor
+              : 'rgba(255,255,255,0.1)'
+        }`,
         borderRadius: compact ? 14 : 20,
         padding: compact ? '3px 8px' : '4px 12px',
         minWidth: compact ? 70 : 100,
-        boxShadow: isTarget && isMyTurn ? '0 0 12px rgba(250,204,21,0.4)' : '0 4px 12px rgba(0,0,0,0.3)',
+        boxShadow: isCurrentTurn
+          ? `0 0 12px rgba(34, 197, 94, 0.3)`
+          : isTarget && isMyTurn
+            ? `0 0 12px rgba(234, 179, 8, 0.4)`
+            : '0 4px 12px rgba(0,0,0,0.3)',
       }}>
         <span style={{
           fontSize: compact ? '0.65rem' : '0.75rem',
@@ -134,20 +193,24 @@ export default function JKPlayerArea({
           fontSize: compact ? '0.5rem' : '0.55rem',
           fontWeight: 800,
           letterSpacing: '0.05em',
-          color: isTarget && isMyTurn ? '#facc15' : 'var(--red)',
+          color: isTarget && isMyTurn
+            ? targetGlowColor
+            : isCurrentTurn
+              ? turnGlowColor
+              : '#94a3b8',
           textTransform: 'uppercase',
           lineHeight: 1,
         }}>
-          {isTarget && isMyTurn ? 'Pick from!' : `${cardCount} Cards`}
+          {isTarget && isMyTurn ? 'Pick from!' : isCurrentTurn ? 'Active' : `${cardCount} Cards`}
         </span>
       </div>
 
       {/* Disconnected / AI takeover status */}
       {!player.isConnected && (
         <div style={{
-          background: 'rgba(239, 68, 68, 0.15)', color: '#f87171',
+          background: 'rgba(249, 115, 22, 0.15)', color: '#ffedd5',
           fontSize: '0.55rem', fontWeight: 900, padding: '2px 8px',
-          borderRadius: 6, border: '1px solid rgba(239, 68, 68, 0.3)',
+          borderRadius: 6, border: '1px solid rgba(249, 115, 22, 0.3)',
           letterSpacing: '0.05em', marginTop: 2
         }}>
           AI TAKEOVER
@@ -155,47 +218,54 @@ export default function JKPlayerArea({
       )}
 
       {/* Face-down cards fan (only for Opponents) */}
-      {!isMe && cardCount > 0 && (
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          marginTop: 6,
-          position: 'relative',
-          height: compact ? 38 : 50,
-          width: Math.min(120, cardCount * 12 + 25),
-        }}>
-          {Array.from({ length: cardCount }).map((_, idx) => {
-            const rot = (idx - (cardCount - 1) / 2) * (cardCount > 6 ? 6 : 10);
-            const clickable = isTarget && isMyTurn;
-            return (
-              <motion.div
-                key={idx}
-                style={{
-                  position: 'absolute',
-                  left: `${idx * (100 / Math.max(cardCount, 1))}%`,
-                  transformOrigin: 'bottom center',
-                  zIndex: idx,
-                }}
-                animate={{
-                  rotate: rot,
-                }}
-                whileHover={clickable ? { scale: 1.15, zIndex: 100, y: -8 } : {}}
-              >
-                <JKCard
-                  cardId="X"
-                  faceDown={true}
-                  size={compact ? 'xs' : 'sm'}
-                  onClick={clickable ? () => onPickCard(idx) : undefined}
+      {!isMe && cardCount > 0 && (() => {
+        const cardW = compact ? 42 : 52;
+        const containerW = compact
+          ? Math.max(42, Math.min(100, cardCount * 12 + 25))
+          : Math.max(52, Math.min(140, cardCount * 16 + 30));
+        const step = cardCount > 1 ? (containerW - cardW) / (cardCount - 1) : 0;
+        return (
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            marginTop: -4,
+            position: 'relative',
+            height: compact ? 66 : 80,
+            width: containerW,
+          }}>
+            {Array.from({ length: cardCount }).map((_, idx) => {
+              const rot = (idx - (cardCount - 1) / 2) * (cardCount > 6 ? 6 : 10);
+              const clickable = isTarget && isMyTurn;
+              return (
+                <motion.div
+                  key={idx}
                   style={{
-                    border: clickable ? '1.5px solid #facc15' : '1px solid rgba(255,255,255,0.1)',
-                    boxShadow: clickable ? '0 0 10px rgba(250,204,21,0.5)' : 'none',
+                    position: 'absolute',
+                    left: idx * step,
+                    transformOrigin: 'bottom center',
+                    zIndex: idx,
                   }}
-                />
-              </motion.div>
-            );
-          })}
-        </div>
-      )}
+                  animate={{
+                    rotate: rot,
+                  }}
+                  whileHover={clickable ? { scale: 1.15, zIndex: 100, y: -8 } : {}}
+                >
+                  <JKCard
+                    cardId="X"
+                    faceDown={true}
+                    size={compact ? 'xs' : 'sm'}
+                    onClick={clickable ? () => onPickCard(idx) : undefined}
+                    style={{
+                      border: clickable ? '1.5px solid #facc15' : '1px solid rgba(255,255,255,0.1)',
+                      boxShadow: clickable ? '0 0 10px rgba(250,204,21,0.5)' : 'none',
+                    }}
+                  />
+                </motion.div>
+              );
+            })}
+          </div>
+        );
+      })()}
     </div>
   );
 }

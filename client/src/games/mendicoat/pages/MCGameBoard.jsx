@@ -369,7 +369,18 @@ export default function MCGameBoard() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(5,2,12,0.8)', backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isMobile ? 12 : 20 }}>
             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} style={{ width: 'min(100%, 520px)', background: 'rgba(20,15,35,0.98)', borderRadius: isMobile ? 24 : 40, border: '1px solid rgba(255,255,255,0.1)', padding: isMobile ? '28px 20px' : '50px 40px', textAlign: 'center', boxShadow: '0 40px 100px rgba(0,0,0,0.8)', overflowY: 'auto', maxHeight: '90vh' }}>
               <span style={{ fontSize: '0.75rem', fontWeight: 900, color: '#f59e0b', letterSpacing: '0.3em', textTransform: 'uppercase', marginBottom: 12, display: 'block' }}>{isGameOver ? 'Match Result' : 'Round Result'}</span>
-              <h2 style={{ fontSize: isMobile ? '2.2rem' : '3.5rem', fontWeight: 900, margin: '0 0 8px', background: 'linear-gradient(to bottom, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Team {isGameOver ? gs.matchWinner : gs.roundWinner}</h2>
+              <h2 style={{
+                fontSize: isMobile ? '2.2rem' : '3.5rem',
+                fontWeight: 900,
+                margin: '0 0 8px',
+                backgroundImage: 'linear-gradient(to bottom, #fff, #94a3b8)',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                color: 'transparent'
+              }}>
+                Team {isGameOver ? gs.matchWinner : gs.roundWinner}
+              </h2>
               <p style={{ fontSize: '1rem', fontWeight: 700, color: '#f59e0b', marginBottom: isMobile ? 20 : 40 }}>VICTORY</p>
 
               <div style={{ display: 'flex', gap: 12, marginBottom: isMobile ? 20 : 50 }}>

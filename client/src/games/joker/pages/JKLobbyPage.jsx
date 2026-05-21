@@ -111,8 +111,29 @@ export default function JKLobbyPage() {
               const isPlayerHost = p.id === jkGameState?.hostId;
               const chatMsg = jkChatMessages?.find(m => m.senderId === p.id);
 
+              const slotBg = isPlayerHost
+                ? 'rgba(245, 158, 11, 0.04)'
+                : isMe
+                  ? 'rgba(139, 92, 246, 0.04)'
+                  : 'rgba(255, 255, 255, 0.02)';
+              const slotBorder = isPlayerHost
+                ? '1px solid rgba(245, 158, 11, 0.3)'
+                : isMe
+                  ? '1px solid rgba(139, 92, 246, 0.35)'
+                  : '1px solid rgba(255, 255, 255, 0.06)';
+
               return (
-                <div key={p.id} style={{ position:'relative', display:'flex', alignItems:'center', gap:12, padding:'10px 14px', borderRadius:14, background: isMe ? 'rgba(239,68,68,0.06)' : 'rgba(255,255,255,0.03)', border:`1px solid ${isMe ? 'rgba(239,68,68,0.18)' : 'rgba(255,255,255,0.05)'}` }}>
+                <div key={p.id} style={{
+                  position:'relative',
+                  display:'flex',
+                  alignItems:'center',
+                  gap:12,
+                  padding:'10px 14px',
+                  borderRadius:14,
+                  background: slotBg,
+                  border: slotBorder,
+                  boxShadow: isPlayerHost ? '0 4px 12px rgba(245, 158, 11, 0.05)' : isMe ? '0 4px 12px rgba(139, 92, 246, 0.05)' : 'none'
+                }}>
                   {chatMsg && (
                     <div style={{ position:'absolute', bottom:'100%', left:60, zIndex:20, marginBottom:6, pointerEvents:'none' }}>
                       <ChatBubble message={chatMsg.message} isMe={isMe} />
@@ -130,17 +151,17 @@ export default function JKLobbyPage() {
                     <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                       {isPlayerHost && <span style={{ fontSize:'0.65rem' }}>👑</span>}
                       <span style={{ fontWeight:700, fontSize:'0.9rem', color: p.isConnected ? '#e2e8f0' : '#4b5563', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                        {p.name} {isMe && <span style={{ color:'var(--red)', fontSize:'0.72rem' }}>(You)</span>}
+                        {p.name} {isMe && <span style={{ color:'#8b5cf6', fontSize:'0.72rem' }}>(You)</span>}
                         {p.isBot && (
                           <span style={{
-                            color: p.difficulty === 'hard' ? '#ef4444' : p.difficulty === 'medium' ? '#fbbf24' : '#10b981',
+                            color: p.difficulty === 'hard' ? '#ef4444' : p.difficulty === 'medium' ? '#eab308' : '#22c55e',
                             fontSize: '0.7rem',
                             fontWeight: 800,
                             marginLeft: 6,
-                            background: p.difficulty === 'hard' ? 'rgba(239,68,68,0.1)' : p.difficulty === 'medium' ? 'rgba(245,158,11,0.1)' : 'rgba(16,185,129,0.1)',
+                            background: p.difficulty === 'hard' ? 'rgba(239,68,68,0.1)' : p.difficulty === 'medium' ? 'rgba(234,179,8,0.1)' : 'rgba(34,197,94,0.1)',
                             padding: '2px 6px',
                             borderRadius: 6,
-                            border: `1px solid ${p.difficulty === 'hard' ? 'rgba(239,68,68,0.2)' : p.difficulty === 'medium' ? 'rgba(245,158,11,0.2)' : 'rgba(16,185,129,0.2)'}`,
+                            border: `1px solid ${p.difficulty === 'hard' ? 'rgba(239,68,68,0.2)' : p.difficulty === 'medium' ? 'rgba(234,179,8,0.2)' : 'rgba(34,197,94,0.2)'}`,
                           }}>
                             🤖 {p.difficulty || 'easy'}
                           </span>
@@ -207,19 +228,19 @@ export default function JKLobbyPage() {
               <div style={{ display: 'flex', gap: 8 }}>
                 <button
                   onClick={() => jkAddBot('easy')}
-                  style={{ flex: 1, padding: '10px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}
+                  style={{ flex: 1, padding: '10px', borderRadius: 10, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)', color: '#22c55e', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}
                 >
                   🟢 Easy
                 </button>
                 <button
                   onClick={() => jkAddBot('medium')}
-                  style={{ flex: 1, padding: '10px', borderRadius: 10, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)', color: '#fbbf24', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}
+                  style={{ flex: 1, padding: '10px', borderRadius: 10, background: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.25)', color: '#eab308', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}
                 >
                   🟡 Medium
                 </button>
                 <button
                   onClick={() => jkAddBot('hard')}
-                  style={{ flex: 1, padding: '10px', borderRadius: 10, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: 'var(--red)', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}
+                  style={{ flex: 1, padding: '10px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#ef4444', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}
                 >
                   🔴 Hard
                 </button>

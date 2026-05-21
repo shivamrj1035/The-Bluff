@@ -2035,7 +2035,7 @@ function emitJKState(io, roomId, room) {
                 saveJKRoom(roomId, r2);
                 emitJKState(io, roomId, r2);
               } catch(e) { console.error('[JK DEBUG] Bot clear animation timeout error', e); }
-            }, 3500);
+            }, 4000);
           }
         } catch(e) { console.error('[JK DEBUG] Bot Pick Error', e); }
       }, delay);
@@ -2160,7 +2160,7 @@ function setupJKHandlers(io, socket) {
         } catch (e) {
           console.error('[JK DEBUG] Clear human animation timeout error', e);
         }
-      }, 3500);
+      }, 4000);
     } catch (e) { console.error('JK PICK error', e); }
   });
 
@@ -2190,8 +2190,18 @@ function setupJKHandlers(io, socket) {
       if (!room || room.hostId !== socket.id || room.state !== JK_GAME_STATES.WAITING) return;
       if (room.players.length >= 6) return;
       const difficulty = payload?.difficulty || 'easy';
-      const botNames = ['JokerBot_A', 'JokerBot_B', 'JokerBot_C', 'JokerBot_D', 'JokerBot_E'];
-      const botName = botNames[room.players.length] || `Bot_${Math.floor(Math.random()*1000)}`;
+      const funBotNames = [
+        'Joker Wild', 'Ace High', 'Card Sharky', 'Sneaky Steve', 'Lucky Lucy',
+        'Bluffing Bob', 'Lady Luck', 'Double Down', 'Poker Face', 'Deck Master',
+        'Rusty Ranks', 'Tricky Penny', 'Shuffler Sam', 'Jack Spades', 'Queen Hearts',
+        'King Clubs', 'Wild Card', 'Captain Card', 'Penny Pincher', 'Sir Shuffle'
+      ];
+      const existingNames = new Set(room.players.map(p => p.name));
+      const availableNames = funBotNames.filter(name => !existingNames.has(name));
+      const botName = availableNames.length > 0 
+        ? availableNames[Math.floor(Math.random() * availableNames.length)]
+        : `JokerBot_${Math.floor(Math.random() * 100)}`;
+
       room.players.push({ id: `bot_${Date.now()}`, name: botName, avatar: 'B', isBot: true, difficulty, isConnected: true, cardCount: 0 });
       saveJKRoom(nid, room);
       emitJKState(io, nid, room);

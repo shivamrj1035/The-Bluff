@@ -464,7 +464,16 @@ export default function CPGameBoard() {
                 {isGameOver ? 'Match Result' : 'Round Result'}
               </span>
 
-              <h2 style={{ fontSize: isMobile ? '2.2rem' : '3.5rem', fontWeight: 900, margin: '0 0 10px', background: 'linear-gradient(to bottom, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              <h2 style={{
+                fontSize: isMobile ? '2.2rem' : '3.5rem',
+                fontWeight: 900,
+                margin: '0 0 10px',
+                backgroundImage: 'linear-gradient(to bottom, #fff, #94a3b8)',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                color: 'transparent'
+              }}>
                 Team {isGameOver ? gs.matchWinner : gs.roundWinner}
               </h2>
               <p style={{ fontSize: '1.2rem', fontWeight: 700, color: '#f59e0b', marginBottom: isMobile ? 20 : 40 }}>VICTORY</p>

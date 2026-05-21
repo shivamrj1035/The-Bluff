@@ -1,4 +1,4 @@
-const { getNextActivePlayer } = require('./deck');
+const { getPreviousActivePlayer } = require('./deck');
 
 /**
  * Initializes or updates memory for all bots in the room.
@@ -134,7 +134,7 @@ function updateJKBotMemory(room, action) {
  * Main function to retrieve play action for a bot.
  */
 function getJKBotPlayAction(room, botId) {
-  const targetPlayerId = getNextActivePlayer(room.players, botId, room.hands);
+  const targetPlayerId = getPreviousActivePlayer(room.players, botId, room.hands);
   if (!targetPlayerId) return null;
 
   const targetHand = room.hands[targetPlayerId] || [];

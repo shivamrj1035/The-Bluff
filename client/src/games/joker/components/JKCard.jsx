@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 
-const SUIT_COLOR = { H: '#ef4444', D: '#ef4444', C: '#22d3ee', S: '#a78bfa' }; // Neon Red, Cyan, Purple
+const SUIT_COLOR = { H: '#dc2626', D: '#dc2626', C: '#1e293b', S: '#0f172a' }; // Classic red and deep black / slate-900
 const SUIT_SYMBOL = { H: '♥', D: '♦', C: '♣', S: '♠' };
 const RANK_DISPLAY = {
   '2': '2', '3': '3', '4': '4', '5': '5', '6': '6', '7': '7', '8': '8', '9': '9',
@@ -97,28 +97,46 @@ export default function JKCard({
           backfaceVisibility: 'hidden',
           background: isJoker
             ? 'linear-gradient(135deg, #db2777 0%, #7c3aed 100%)'
-            : 'linear-gradient(160deg, #ffffff 0%, #f8fafc 100%)',
+            : (suit === 'H' || suit === 'D')
+              ? 'linear-gradient(160deg, #ffffff 0%, #fff5f5 100%)'
+              : 'linear-gradient(160deg, #ffffff 0%, #f8fafc 100%)',
           borderRadius: 10,
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          padding: '6px 8px',
           border: selected
             ? `2px solid ${isJoker ? '#facc15' : '#f59e0b'}`
             : isJoker
               ? '2px solid #facc15'
               : '1px solid rgba(0,0,0,0.05)',
+          boxShadow: isJoker
+            ? 'none'
+            : (suit === 'H' || suit === 'D')
+              ? 'inset 0 0 8px rgba(220, 38, 38, 0.05)'
+              : 'inset 0 0 8px rgba(15, 23, 42, 0.04)',
         }}>
           {/* Top Corner */}
-          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
+          <div style={{
+            position: 'absolute',
+            top: size === 'xs' ? 3 : size === 'sm' ? 4 : size === 'lg' ? 10 : 6,
+            left: size === 'xs' ? 4 : size === 'sm' ? 6 : size === 'lg' ? 12 : 8,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            lineHeight: 1
+          }}>
             <span style={{ fontSize: dims.rank, fontWeight: 900, color: isJoker ? '#fff' : color, fontFamily: 'serif' }}>{displayRank}</span>
             <span style={{ fontSize: `calc(${dims.rank} * 0.9)`, color: isJoker ? '#fff' : color }}>{symbol}</span>
           </div>
 
           {/* Center symbol */}
-          <div style={{ textAlign: 'center', display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            pointerEvents: 'none'
+          }}>
             <span style={{
-              fontSize: isJoker ? `calc(${dims.suit} * 2.2)` : `calc(${dims.suit} * 1.6)`,
+              fontSize: isJoker ? `calc(${dims.suit} * 2.2)` : `calc(${dims.suit} * 1.5)`,
               color: isJoker ? '#facc15' : (disabled ? '#444' : color),
               filter: isJoker ? 'drop-shadow(0 0 10px #facc15)' : `drop-shadow(0 2px 6px ${color}66)`,
             }}>
@@ -127,7 +145,16 @@ export default function JKCard({
           </div>
 
           {/* Bottom Corner */}
-          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1, transform: 'rotate(180deg)', alignSelf: 'flex-end' }}>
+          <div style={{
+            position: 'absolute',
+            bottom: size === 'xs' ? 3 : size === 'sm' ? 4 : size === 'lg' ? 10 : 6,
+            right: size === 'xs' ? 4 : size === 'sm' ? 6 : size === 'lg' ? 12 : 8,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            lineHeight: 1,
+            transform: 'rotate(180deg)'
+          }}>
             <span style={{ fontSize: dims.rank, fontWeight: 900, color: isJoker ? '#fff' : color, fontFamily: 'serif' }}>{displayRank}</span>
             <span style={{ fontSize: `calc(${dims.rank} * 0.9)`, color: isJoker ? '#fff' : color }}>{symbol}</span>
           </div>
@@ -139,20 +166,25 @@ export default function JKCard({
           inset: 0,
           backfaceVisibility: 'hidden',
           transform: 'rotateY(180deg)',
-          background: 'linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%)',
+          backgroundImage: 'url(/card_back.jpg)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
           borderRadius: 10,
-          border: '2px solid rgba(239, 68, 68, 0.2)',
+          border: '1.5px solid rgba(255, 255, 255, 0.15)',
+          boxShadow: 'inset 0 0 10px rgba(0,0,0,0.6), 0 4px 12px rgba(0,0,0,0.4)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           overflow: 'hidden'
         }}>
           <div style={{
-            position: 'absolute', inset: 4, borderRadius: 8,
-            border: '1px solid rgba(239, 68, 68, 0.1)',
-            background: 'repeating-linear-gradient(45deg, rgba(239,68,68,0.03) 0px, rgba(239,68,68,0.03) 1px, transparent 1px, transparent 10px)',
+            position: 'absolute',
+            inset: size === 'xs' ? 2 : size === 'sm' ? 3 : size === 'lg' ? 6 : 4,
+            borderRadius: size === 'xs' ? 5 : size === 'sm' ? 6 : size === 'lg' ? 9 : 7,
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            pointerEvents: 'none',
           }} />
-          <span style={{ color: 'rgba(239, 68, 68, 0.15)', fontSize: dims.center, fontWeight: 900 }}>JK</span>
         </div>
       </div>
     </motion.div>

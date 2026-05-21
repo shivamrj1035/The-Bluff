@@ -169,9 +169,11 @@ export default function BluffEntryPage() {
               <span style={{ color: '#fff' }}>Play </span>
               <span
                 style={{
-                  background: 'linear-gradient(135deg, var(--primary-light), var(--primary))',
+                  backgroundImage: 'linear-gradient(135deg, var(--primary-light), var(--primary))',
+                  backgroundClip: 'text',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
+                  color: 'transparent',
                 }}
               >
                 The Bluff

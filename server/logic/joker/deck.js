@@ -75,10 +75,24 @@ function getNextActivePlayer(players, currentId, hands) {
   return null;
 }
 
+function getPreviousActivePlayer(players, currentId, hands) {
+  const idx = players.findIndex(p => p.id === currentId);
+  if (idx === -1) return null;
+  for (let i = 1; i < players.length; i++) {
+    const prevIdx = (idx - i + players.length) % players.length;
+    const prevPlayer = players[prevIdx];
+    if (hands[prevPlayer.id] && hands[prevPlayer.id].length > 0) {
+      return prevPlayer.id;
+    }
+  }
+  return null;
+}
+
 module.exports = {
   createDeck,
   shuffleDeck,
   dealAll,
   removePairsFromHand,
   getNextActivePlayer,
+  getPreviousActivePlayer,
 };

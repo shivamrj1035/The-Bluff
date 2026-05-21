@@ -1,5 +1,5 @@
 const { JK_GAME_STATES } = require('./constants');
-const { getNextActivePlayer } = require('./deck');
+const { getPreviousActivePlayer } = require('./deck');
 
 function validateJKAction(room, playerId, actionType, payload) {
   if (!room) return { valid: false, message: 'Room not found.' };
@@ -11,9 +11,9 @@ function validateJKAction(room, playerId, actionType, payload) {
       if (room.currentTurn !== playerId) return { valid: false, message: 'It is not your turn.' };
       
       const { targetPlayerId, cardIndex } = payload;
-      const expectedTarget = getNextActivePlayer(room.players, playerId, room.hands);
+      const expectedTarget = getPreviousActivePlayer(room.players, playerId, room.hands);
       if (targetPlayerId !== expectedTarget) {
-        return { valid: false, message: 'You must draw from the next active player.' };
+        return { valid: false, message: 'You must draw from the previous active player.' };
       }
       
       const targetHand = room.hands[targetPlayerId] || [];

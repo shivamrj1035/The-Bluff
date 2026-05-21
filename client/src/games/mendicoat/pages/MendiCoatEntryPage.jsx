@@ -104,7 +104,13 @@ export default function MendiCoatEntryPage() {
             </p>
             <h1 style={{ margin: 0, fontSize: '2.1rem', lineHeight: 0.95, fontWeight: 900, letterSpacing: '-0.03em' }}>
               <span style={{ color: 'var(--text)' }}>Play </span>
-              <span style={{ background: 'linear-gradient(135deg, var(--gold), var(--green))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              <span style={{
+                backgroundImage: 'linear-gradient(135deg, var(--gold), var(--green))',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                color: 'transparent'
+              }}>
                 MendiCoat
               </span>
             </h1>
