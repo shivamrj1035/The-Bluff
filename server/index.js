@@ -8,7 +8,8 @@ const { sql, ensureProfileSchema, ensureSettingsSchema, incrementRoomCounter, en
 const { 
   setupHandlers, getRoomForHttp, getActiveRoomsList, 
   setupCPHandlers, getCPRoomForHttp, deleteRoom, deleteCPRoom,
-  setupMendiCoatHandlers, getMCRoomForHttp, deleteMCRoom 
+  setupMendiCoatHandlers, getMCRoomForHttp, deleteMCRoom,
+  setupJKHandlers, getJKRoomForHttp, deleteJKRoom
 } = require("./socket/handlers");
 const redis = require("./redisClient");
 const app = express();
@@ -223,6 +224,7 @@ app.delete("/api/admin/rooms/:id", adminOnly, async (req, res) => {
     await deleteRoom(id);
     await deleteCPRoom(id);
     await deleteMCRoom(id);
+    await deleteJKRoom(id);
     io.to(id).emit("room_closed", { message: "This room was terminated by an administrator." });
     res.json({ success: true, message: "Room terminated" });
   } catch (err) {
@@ -311,6 +313,7 @@ io.on("connection", (socket) => {
   setupHandlers(io, socket);
   setupCPHandlers(io, socket);
   setupMendiCoatHandlers(io, socket);
+  setupJKHandlers(io, socket);
 });
 
 const PORT = process.env.PORT || 4000;

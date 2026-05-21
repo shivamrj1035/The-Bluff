@@ -14,6 +14,7 @@ import Preloader from './components/common/Preloader';
 import { useGameStore } from './games/bluff/store/useGameStore';
 import { useCPStore } from './games/courtpiece/store/useCPStore';
 import { useMCStore } from './games/mendicoat/store/useMCStore';
+import { useJKStore } from './games/joker/store/useJKStore';
 
 // Court Piece pages — lazy loaded so they don't affect Bluff bundle
 const CourtPieceEntryPage = lazy(() => import('./games/courtpiece/pages/CourtPieceEntryPage'));
@@ -26,6 +27,12 @@ const MendiCoatEntryPage = lazy(() => import('./games/mendicoat/pages/MendiCoatE
 const MCJoinPage = lazy(() => import('./games/mendicoat/pages/MCJoinPage'));
 const MCLobbyPage = lazy(() => import('./games/mendicoat/pages/MCLobbyPage'));
 const MCGameBoard = lazy(() => import('./games/mendicoat/pages/MCGameBoard'));
+
+// Joker pages
+const JokerEntryPage = lazy(() => import('./games/joker/pages/JokerEntryPage'));
+const JKJoinPage = lazy(() => import('./games/joker/pages/JKJoinPage'));
+const JKLobbyPage = lazy(() => import('./games/joker/pages/JKLobbyPage'));
+const JKGameBoard = lazy(() => import('./games/joker/pages/JKGameBoard'));
 
 const Spinner = () => (
   <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', gap: '20px' }}>
@@ -60,6 +67,7 @@ export default function App() {
   }, [fetchSettings]);
   const { cpStatus, cpGameState, cpScreen } = useCPStore();
   const { mcStatus, mcGameState, mcScreen } = useMCStore();
+  const { jkStatus, jkGameState, jkScreen } = useJKStore();
 
   const params = new URLSearchParams(window.location.search);
   const roomParam = params.get('room');
@@ -67,6 +75,7 @@ export default function App() {
   const shouldOpenBluffJoin = Boolean(roomParam) && (gameParam === 'bluff');
   const shouldOpenCPJoin = Boolean(roomParam) && (gameParam === 'courtpiece');
   const shouldOpenMCJoin = Boolean(roomParam) && (gameParam === 'mendicoat');
+  const shouldOpenJKJoin = Boolean(roomParam) && (gameParam === 'joker');
 
   // ── Court Piece is active (connected to a CP room) ──────────────────────
   if (cpStatus === 'CONNECTING' || cpStatus === 'RECONNECTING') {
@@ -171,6 +180,60 @@ export default function App() {
         <Suspense fallback={<Spinner />}>
           <Toaster /><ClerkSync />
           <MCJoinPage />
+        </Suspense>
+      );
+    }
+  }
+
+  // ── Joker is active (connected to a JK room) ──────────────────────
+  if (jkStatus === 'CONNECTING' || jkStatus === 'RECONNECTING') {
+    return (
+      <Suspense fallback={<Spinner />}>
+        <Toaster /><ClerkSync />
+        <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', gap: 24 }}>
+          <div style={{ width: 40, height: 40, border: '3px solid var(--primary)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+          <p style={{ color: 'var(--text)', fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>
+            {jkStatus === 'RECONNECTING' ? 'Reconnecting...' : 'Connecting...'}
+          </p>
+          <style>{`@keyframes spin { to { transform:rotate(360deg); } }`}</style>
+        </div>
+      </Suspense>
+    );
+  }
+
+  if (jkStatus === 'CONNECTED') {
+    const isInJKGame = jkGameState && jkGameState.state !== 'WAITING';
+    return (
+      <Suspense fallback={<Spinner />}>
+        <Toaster /><ClerkSync />
+        {isInJKGame ? <JKGameBoard /> : <JKLobbyPage />}
+      </Suspense>
+    );
+  }
+
+  // ── Joker entry/join (idle state, JK screens) ─────────────────────
+  if (jkStatus === 'IDLE' || jkStatus === 'ERROR') {
+    if (shouldOpenJKJoin) {
+      return (
+        <Suspense fallback={<Spinner />}>
+          <Toaster /><ClerkSync />
+          <JKJoinPage />
+        </Suspense>
+      );
+    }
+    if (jkScreen === 'JK_ENTRY') {
+      return (
+        <Suspense fallback={<Spinner />}>
+          <Toaster /><ClerkSync />
+          <JokerEntryPage />
+        </Suspense>
+      );
+    }
+    if (jkScreen === 'JK_JOIN') {
+      return (
+        <Suspense fallback={<Spinner />}>
+          <Toaster /><ClerkSync />
+          <JKJoinPage />
         </Suspense>
       );
     }

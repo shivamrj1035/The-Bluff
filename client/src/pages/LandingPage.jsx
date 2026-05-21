@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../games/bluff/store/useGameStore';
 import { useCPStore } from '../games/courtpiece/store/useCPStore';
 import { useMCStore } from '../games/mendicoat/store/useMCStore';
+import { useJKStore } from '../games/joker/store/useJKStore';
 import AuthDialog from '../components/common/AuthDialog';
 import {
   GridIcon, EnergyIcon, LockIcon,
@@ -17,6 +18,7 @@ export default function LandingPage() {
   const { setScreen, playerName, avatar, user, profile, signOut, siteSettings, isAdmin } = useGameStore();
   const { setCPScreen } = useCPStore();
   const { setMCScreen } = useMCStore();
+  const { setJKScreen } = useJKStore();
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [pendingScreen, setPendingScreen] = useState(null);
@@ -32,6 +34,7 @@ export default function LandingPage() {
     
     if (gameType === 'courtpiece') setCPScreen(screen);
     else if (gameType === 'mendicoat') setMCScreen(screen);
+    else if (gameType === 'joker') setJKScreen(screen);
     else setScreen(screen);
   };
 
@@ -40,10 +43,11 @@ export default function LandingPage() {
     
     if (pendingGameType === 'courtpiece') setCPScreen(pendingScreen);
     else if (pendingGameType === 'mendicoat') setMCScreen(pendingScreen);
+    else if (pendingGameType === 'joker') setJKScreen(pendingScreen);
     else setScreen(pendingScreen);
 
     setPendingScreen(null);
-  }, [pendingScreen, setScreen, setCPScreen, setMCScreen, user, pendingGameType]);
+  }, [pendingScreen, setScreen, setCPScreen, setMCScreen, setJKScreen, user, pendingGameType]);
 
   const metrics = [
     { value: '2.3K+', label: 'players online' },
@@ -261,6 +265,7 @@ export default function LandingPage() {
                 if (game.entryScreen === 'BLUFF_ENTRY') goToProtectedScreen('BLUFF_ENTRY', 'bluff');
                 else if (game.entryScreen === 'CP_ENTRY') goToProtectedScreen('CP_ENTRY', 'courtpiece');
                 else if (game.entryScreen === 'MC_ENTRY') goToProtectedScreen('MC_ENTRY', 'mendicoat');
+                else if (game.entryScreen === 'JK_ENTRY') goToProtectedScreen('JK_ENTRY', 'joker');
               }}
             >
               <div className="lp-game-media">

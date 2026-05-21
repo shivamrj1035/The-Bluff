@@ -57,7 +57,7 @@ async function ensureSettingsSchema() {
       header_title: "MULTIPLAYER GAMING HUB",
       hero_title: "Compact. Fast. Ready to play.",
       hero_subtitle: "A tighter landing experience for card players who want instant access, live tables and a cleaner multiplayer hub.",
-      enabled_games: ["bluff", "joker", "uno", "uno-flip"],
+      enabled_games: ["bluff", "courtpiece", "mendicoat", "joker", "uno", "uno-flip"],
       theme: {
         primary: "#7c3aed",
         primary_light: "#a78bfa",

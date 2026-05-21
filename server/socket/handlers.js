@@ -18,6 +18,13 @@ const { validateMCAction } = require("../logic/mendicoat/validator");
 const { serializeMCState } = require("./mcSync");
 const { getBotTrumpSuit: getMCBotTrumpSuit, getBotPlayCard: getMCBotPlayCard } = require("../logic/mendicoat/bot");
 
+// ─── Joker imports ─────────────────────────────────────────────────────────────
+const { JK_EVENTS, JK_GAME_STATES } = require("../logic/joker/constants");
+const { createJKRoom, jkReducer } = require("../logic/joker/gameState");
+const { validateJKAction } = require("../logic/joker/validator");
+const { serializeJKState } = require("./jkSync");
+const { getJKBotPlayAction } = require("../logic/joker/bot");
+
 // ─── Bluff Bot imports ──────────────────────────────────────────────────────────
 const { getBotPlayMove, getBotPickIndex } = require("../logic/bluffBot");
 
@@ -855,6 +862,21 @@ function getActiveRoomsList() {
     }
   }
 
+  // Joker rooms
+  for (const roomId of jkActiveRooms) {
+    const room = jkRoomCache.get(roomId);
+    if (room) {
+      list.push({
+        roomId,
+        game: 'joker',
+        state: room.state,
+        players: room.players.map(p => ({ name: p.name, isConnected: p.isConnected })),
+        lastActivityAt: room.lastActivityAt,
+        expiresAt: room.expiresAt,
+      });
+    }
+  }
+
   return list;
 }
 
@@ -866,9 +888,12 @@ module.exports = {
   getCPRoomForHttp, 
   setupMendiCoatHandlers,
   getMCRoomForHttp,
+  setupJKHandlers,
+  getJKRoomForHttp,
   deleteRoom, 
   deleteCPRoom,
-  deleteMCRoom
+  deleteMCRoom,
+  deleteJKRoom
 };
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1822,3 +1847,473 @@ function setupMendiCoatHandlers(io, socket) {
     } catch (err) { console.error('MC DISCONNECT error', err); }
   });
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  JOKER HANDLERS
+//  Separate caches, separate Redis prefix (jkroom:).
+// ══════════════════════════════════════════════════════════════════════════════
+
+const jkRoomCache = new Map();
+const jkDirtyRooms = new Set();
+const jkActiveRooms = new Set();
+const jkSocketRoomMap = new Map();
+const JK_ROOM_TTL = 60 * 60 * 1;
+const JK_ROOM_TTL_MS = JK_ROOM_TTL * 1000;
+let jkTimerInterval = null;
+
+function startJKGlobalTimer(io) {
+  if (jkTimerInterval) return;
+  jkTimerInterval = setInterval(() => {
+    for (const roomId of jkActiveRooms) {
+      try {
+        let room = getJKRoomFromCache(roomId);
+        if (!room) { jkActiveRooms.delete(roomId); continue; }
+        const now = Date.now();
+        
+        if (room.emptySince && now - room.emptySince >= EMPTY_ROOM_GRACE_MS) {
+          deleteJKRoom(roomId).catch(e => {});
+          jkActiveRooms.delete(roomId);
+          continue;
+        }
+
+        if (room.expiresAt && now >= room.expiresAt) {
+          io.to(roomId).emit(JK_EVENTS.JK_ERROR, { message: "This table expired due to inactivity." });
+          io.to(roomId).emit("room_closed");
+          deleteJKRoom(roomId).catch(e => {});
+          jkActiveRooms.delete(roomId);
+          continue;
+        }
+
+        if (room.createdAt && now - room.createdAt >= 60 * 60 * 1000) {
+          io.to(roomId).emit(JK_EVENTS.JK_ERROR, { message: "This table has reached its maximum duration of 1 hour." });
+          io.to(roomId).emit("room_closed");
+          deleteJKRoom(roomId).catch(e => {});
+          jkActiveRooms.delete(roomId);
+          continue;
+        }
+      } catch (e) {
+        console.error("JK Timer error:", e);
+      }
+    }
+  }, 3000);
+}
+
+function getJKRoomFromCache(roomId) {
+  return jkRoomCache.get(roomId) || null;
+}
+
+async function getJKRoom(roomId) {
+  if (jkRoomCache.has(roomId)) return jkRoomCache.get(roomId);
+  try {
+    const data = await redis.get(`jkroom:${roomId}`);
+    if (data) {
+      const room = JSON.parse(data);
+      jkRoomCache.set(roomId, room);
+      return room;
+    }
+  } catch (e) {
+    console.error('[JK Cache miss Redis error]', e.message);
+  }
+  return null;
+}
+
+function saveJKRoom(roomId, room) {
+  room.lastActivityAt = Date.now();
+  room.expiresAt = room.lastActivityAt + JK_ROOM_TTL_MS;
+  jkRoomCache.set(roomId, room);
+  jkDirtyRooms.add(roomId);
+}
+
+async function deleteJKRoom(roomId) {
+  jkRoomCache.delete(roomId);
+  jkDirtyRooms.delete(roomId);
+  try { await redis.del(`jkroom:${roomId}`); } catch (e) { }
+}
+
+async function persistJKRoomImmediately(roomId, room) {
+  try {
+    await redis.set(`jkroom:${roomId}`, JSON.stringify(room), 'EX', JK_ROOM_TTL);
+  } catch (e) {
+    jkDirtyRooms.add(roomId);
+    console.error(`[JK Persist error] room ${roomId}:`, e.message);
+  }
+}
+
+setInterval(async () => {
+  if (jkDirtyRooms.size === 0) return;
+  const toFlush = [...jkDirtyRooms];
+  jkDirtyRooms.clear();
+  for (const roomId of toFlush) {
+    const room = jkRoomCache.get(roomId);
+    if (!room) continue;
+    try {
+      await redis.set(`jkroom:${roomId}`, JSON.stringify(room), 'EX', JK_ROOM_TTL);
+    } catch (e) {
+      jkDirtyRooms.add(roomId);
+    }
+  }
+}, 30_000);
+
+async function recordJokerGameEnd(resRoom) {
+  try {
+    const nid = resRoom.roomId;
+    const playersData = resRoom.players.map(p => ({
+      userId: p.userId,
+      name: p.name,
+      rank: p.id === resRoom.matchWinner ? 2 : 1,
+      status: p.id === resRoom.matchWinner ? 'Loser' : 'Winner'
+    }));
+
+    const winners = resRoom.players.filter(p => p.id !== resRoom.matchWinner);
+    for (const wp of winners) {
+      if (wp.isBot) continue;
+      await recordGameResult({
+        gameType: 'joker',
+        roomId: nid,
+        players: playersData,
+        winnerId: wp.userId || wp.id
+      }).catch(err => console.error('[DB] recordGameResult error:', err));
+    }
+  } catch (err) {
+    console.error('[DB] Joker recordGameResult error:', err);
+  }
+}
+
+function emitJKState(io, roomId, room) {
+  if (!room) return;
+  const roomSockets = io.sockets.adapter.rooms.get(roomId);
+  if (!roomSockets) return;
+  for (const socketId of roomSockets) {
+    io.to(socketId).emit(JK_EVENTS.JK_GAME_STATE, serializeJKState(room, socketId));
+  }
+
+  // Handle Bot Automation
+  if (room.state === JK_GAME_STATES.PLAYING && room.currentTurn && !room.revealAnimationPending) {
+    const turnPlayer = room.players.find(p => p.id === room.currentTurn);
+    if (turnPlayer && (turnPlayer.isBot || !turnPlayer.isConnected) && !room._botTimeoutPending) {
+      const difficulty = turnPlayer.difficulty || 'medium'; // Default takeover for disconnected players
+      let delay = 2000;
+      if (difficulty === 'easy') {
+        delay = Math.floor(Math.random() * 2000) + 1000; // 1-3s
+      } else if (difficulty === 'medium') {
+        delay = Math.floor(Math.random() * 1500) + 1000; // 1-2.5s
+      } else {
+        delay = Math.floor(Math.random() * 1000) + 1000; // 1-2s
+      }
+
+      console.log(`[JK DEBUG] Room ${roomId}: Bot/Disconnected (${turnPlayer.name}, difficulty: ${difficulty}) taking turn in ${delay}ms.`);
+      room._botTimeoutPending = true;
+      setTimeout(async () => {
+        try {
+          let r = getJKRoomFromCache(roomId);
+          if (!r || r.state !== JK_GAME_STATES.PLAYING) return;
+          r._botTimeoutPending = false;
+          
+          if (r.revealAnimationPending) return; // safety check
+
+          const payload = getJKBotPlayAction(r, r.currentTurn);
+          if (payload) {
+            console.log(`[JK DEBUG] Room ${roomId}: Bot ${turnPlayer.name} picking index ${payload.cardIndex} from player ${payload.targetPlayerId}.`);
+            r = jkReducer(r, { type: 'JK_PICK_CARD', playerId: r.currentTurn, payload });
+            
+            // Bot draw also sets animation pending flag
+            r.revealAnimationPending = true;
+
+            if (r.state === JK_GAME_STATES.GAME_OVER) {
+              await recordJokerGameEnd(r);
+            }
+            
+            saveJKRoom(roomId, r);
+            emitJKState(io, roomId, r);
+
+            // Timeout to clear revealAnimationPending for bots
+            setTimeout(() => {
+              try {
+                let r2 = getJKRoomFromCache(roomId);
+                if (!r2 || r2.state !== JK_GAME_STATES.PLAYING) return;
+                r2.revealAnimationPending = false;
+                saveJKRoom(roomId, r2);
+                emitJKState(io, roomId, r2);
+              } catch(e) { console.error('[JK DEBUG] Bot clear animation timeout error', e); }
+            }, 3500);
+          }
+        } catch(e) { console.error('[JK DEBUG] Bot Pick Error', e); }
+      }, delay);
+    }
+  }
+}
+
+function getJKRoomForHttp(roomId) {
+  return jkRoomCache.get(roomId) || null;
+}
+
+function pickJKNewHost(room, departingId) {
+  const candidate = room.players.find(p => p.id !== departingId && p.isConnected);
+  return candidate ? candidate.id : null;
+}
+
+function setupJKHandlers(io, socket) {
+  startJKGlobalTimer(io);
+  const normalizeId = (id) => String(id || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+
+  socket.on(JK_EVENTS.JK_JOIN_ROOM, async ({ roomId, playerName, avatar, userId }) => {
+    try {
+      if (userId && sql) {
+        const [user] = await sql`SELECT is_blocked FROM profiles WHERE id = ${userId}`;
+        if (user?.is_blocked) {
+          socket.emit(JK_EVENTS.JK_ERROR, { message: "You are blocked by CardNexus please contact Admin Shivam Jayswal." });
+          return;
+        }
+      }
+      const rawId = normalizeId(roomId);
+      const trimmedName = String(playerName || '').trim().slice(0, 12);
+      const safeAvatar = String(avatar || 'P').trim().slice(0, 20);
+      const isCreate = !rawId;
+      let nid = rawId;
+      if (isCreate) {
+        for (let i = 0; i < 20; i++) {
+          let code = '';
+          for (let j = 0; j < 6; j++) code += ROOM_CODE_CHARS[Math.floor(Math.random() * ROOM_CODE_CHARS.length)];
+          const exists = getJKRoomFromCache(code) || await getJKRoom(code);
+          if (!exists) { nid = code; await incrementRoomCounter(); break; }
+        }
+        if (!nid) { socket.emit(JK_EVENTS.JK_ERROR, { message: 'Failed to generate room code.' }); return; }
+      }
+      let room = await getJKRoom(nid);
+      if (room && room.expiresAt && Date.now() >= room.expiresAt) { await deleteJKRoom(nid); jkActiveRooms.delete(nid); room = null; }
+      if (!room && !isCreate) { socket.emit(JK_EVENTS.JK_ERROR, { message: 'Room not found.' }); return; }
+      if (!room) { room = createJKRoom(nid); room.hostId = socket.id; }
+
+      const existing = room.players.find(p => (userId && p.userId === userId) || p.name === trimmedName);
+      if (existing) {
+        const oldId = existing.id;
+        existing.id = socket.id;
+        existing.isConnected = true;
+        if (trimmedName) existing.name = trimmedName;
+        if (userId) existing.userId = userId;
+        existing.avatar = safeAvatar || existing.avatar;
+        if (room.hostId === oldId) room.hostId = socket.id;
+        if (room.currentTurn === oldId) room.currentTurn = socket.id;
+        if (room.hands[oldId]) { room.hands[socket.id] = room.hands[oldId]; delete room.hands[oldId]; }
+        if (room.removedPairs[oldId]) { room.removedPairs[socket.id] = room.removedPairs[oldId]; delete room.removedPairs[oldId]; }
+        jkSocketRoomMap.delete(oldId);
+        room.emptySince = null;
+      } else {
+        if (room.state === JK_GAME_STATES.WAITING) {
+          if (room.players.length >= 6) { socket.emit(JK_EVENTS.JK_ERROR, { message: 'Room is full.' }); return; }
+          room.players.push({ id: socket.id, name: trimmedName, avatar: safeAvatar, userId, isConnected: true, cardCount: 0 });
+          if (!room.hostId) room.hostId = socket.id;
+        } else {
+          socket.emit(JK_EVENTS.JK_ERROR, { message: 'Game already in progress.' });
+          return;
+        }
+      }
+      socket.join(nid);
+      jkSocketRoomMap.set(socket.id, nid);
+      jkActiveRooms.add(nid);
+      saveJKRoom(nid, room);
+      emitJKState(io, nid, room);
+    } catch (e) { console.error('JK JOIN error', e); }
+  });
+
+  socket.on(JK_EVENTS.JK_START_GAME, () => {
+    try {
+      const nid = jkSocketRoomMap.get(socket.id);
+      if (!nid) return;
+      let room = getJKRoomFromCache(nid);
+      if (!room || room.hostId !== socket.id) return;
+      if (room.players.length < 2) { socket.emit(JK_EVENTS.JK_ERROR, { message: 'Need at least 2 players to start.' }); return; }
+      room = jkReducer(room, { type: 'JK_START_GAME' });
+      saveJKRoom(nid, room);
+      emitJKState(io, nid, room);
+    } catch (e) { console.error('JK START error', e); }
+  });
+
+  socket.on(JK_EVENTS.JK_PICK_CARD, (payload) => {
+    try {
+      const nid = jkSocketRoomMap.get(socket.id);
+      if (!nid) return;
+      let room = getJKRoomFromCache(nid);
+      const v = validateJKAction(room, socket.id, 'JK_PICK_CARD', payload);
+      if (!v.valid) { socket.emit(JK_EVENTS.JK_ERROR, { message: v.message }); return; }
+      
+      room = jkReducer(room, { type: 'JK_PICK_CARD', playerId: socket.id, payload });
+      
+      // Set animation pending
+      room.revealAnimationPending = true;
+
+      if (room.state === JK_GAME_STATES.GAME_OVER) {
+        recordJokerGameEnd(room);
+      }
+
+      saveJKRoom(nid, room);
+      emitJKState(io, nid, room);
+
+      // Set timeout to clear revealAnimationPending
+      setTimeout(() => {
+        try {
+          let r = getJKRoomFromCache(nid);
+          if (!r || r.state !== JK_GAME_STATES.PLAYING) return;
+          r.revealAnimationPending = false;
+          saveJKRoom(nid, r);
+          emitJKState(io, nid, r);
+        } catch (e) {
+          console.error('[JK DEBUG] Clear human animation timeout error', e);
+        }
+      }, 3500);
+    } catch (e) { console.error('JK PICK error', e); }
+  });
+
+  socket.on(JK_EVENTS.JK_DISCARD_PAIR, (payload) => {
+    try {
+      const nid = jkSocketRoomMap.get(socket.id);
+      if (!nid) return;
+      let room = getJKRoomFromCache(nid);
+      const v = validateJKAction(room, socket.id, 'JK_DISCARD_PAIR', payload);
+      if (!v.valid) { socket.emit(JK_EVENTS.JK_ERROR, { message: v.message }); return; }
+      room = jkReducer(room, { type: 'JK_DISCARD_PAIR', playerId: socket.id, payload });
+      
+      if (room.state === JK_GAME_STATES.GAME_OVER) {
+        recordJokerGameEnd(room);
+      }
+
+      saveJKRoom(nid, room);
+      emitJKState(io, nid, room);
+    } catch (e) { console.error('JK DISCARD_PAIR error', e); }
+  });
+
+  socket.on(JK_EVENTS.JK_ADD_BOT, (payload) => {
+    try {
+      const nid = jkSocketRoomMap.get(socket.id);
+      if (!nid) return;
+      let room = getJKRoomFromCache(nid);
+      if (!room || room.hostId !== socket.id || room.state !== JK_GAME_STATES.WAITING) return;
+      if (room.players.length >= 6) return;
+      const difficulty = payload?.difficulty || 'easy';
+      const botNames = ['JokerBot_A', 'JokerBot_B', 'JokerBot_C', 'JokerBot_D', 'JokerBot_E'];
+      const botName = botNames[room.players.length] || `Bot_${Math.floor(Math.random()*1000)}`;
+      room.players.push({ id: `bot_${Date.now()}`, name: botName, avatar: 'B', isBot: true, difficulty, isConnected: true, cardCount: 0 });
+      saveJKRoom(nid, room);
+      emitJKState(io, nid, room);
+    } catch (e) { console.error('JK BOT error', e); }
+  });
+
+  socket.on(JK_EVENTS.JK_CLOSE_GAME, () => {
+    try {
+      const nid = jkSocketRoomMap.get(socket.id);
+      if (!nid) return;
+      let room = getJKRoomFromCache(nid);
+      if (!room || room.hostId !== socket.id) return;
+      room = jkReducer(room, { type: 'JK_RESET_TO_LOBBY' });
+      saveJKRoom(nid, room);
+      emitJKState(io, nid, room);
+    } catch (e) { console.error('JK CLOSE_GAME error', e); }
+  });
+
+  socket.on(JK_EVENTS.JK_RESTART_GAME, () => {
+    try {
+      const nid = jkSocketRoomMap.get(socket.id);
+      if (!nid) return;
+      let room = getJKRoomFromCache(nid);
+      if (!room || room.hostId !== socket.id) return;
+      room = jkReducer(room, { type: 'JK_START_GAME' });
+      saveJKRoom(nid, room);
+      emitJKState(io, nid, room);
+    } catch (e) { console.error('JK RESTART_GAME error', e); }
+  });
+
+  socket.on(JK_EVENTS.JK_REORDER_PLAYERS, (payload) => {
+    try {
+      const nid = jkSocketRoomMap.get(socket.id);
+      if (!nid) return;
+      let room = getJKRoomFromCache(nid);
+      if (!room || room.hostId !== socket.id || room.state !== JK_GAME_STATES.WAITING) return;
+      room = jkReducer(room, { type: 'JK_REORDER_PLAYERS', payload });
+      saveJKRoom(nid, room);
+      emitJKState(io, nid, room);
+    } catch (e) { console.error('JK REORDER error', e); }
+  });
+
+  socket.on(JK_EVENTS.JK_LEAVE_ROOM, () => {
+    try {
+      const nid = jkSocketRoomMap.get(socket.id);
+      if (!nid) return;
+      let room = getJKRoomFromCache(nid);
+      if (!room) return;
+      room.players = room.players.filter(p => p.id !== socket.id);
+      room.players.forEach(p => {
+        if (room.hands[p.id]) {
+          // Re-evaluate if players leave during a game? Usually we reset to lobby.
+        }
+      });
+      if (room.players.length === 0) {
+        deleteJKRoom(nid);
+        jkActiveRooms.delete(nid);
+        return;
+      }
+      if (room.hostId === socket.id) {
+        room.hostId = room.players[0].id;
+      }
+      if (room.state !== JK_GAME_STATES.WAITING) {
+        room = jkReducer(room, { type: 'JK_RESET_TO_LOBBY' });
+      }
+      saveJKRoom(nid, room);
+      emitJKState(io, nid, room);
+    } catch (e) { console.error('JK LEAVE error', e); }
+  });
+
+  socket.on(JK_EVENTS.JK_KICK_PLAYER, ({ targetId }) => {
+    try {
+      const nid = jkSocketRoomMap.get(socket.id);
+      if (!nid) return;
+      let room = getJKRoomFromCache(nid);
+      if (!room || room.hostId !== socket.id) return;
+      room = jkReducer(room, { type: 'JK_KICK_PLAYER', payload: { targetId } });
+      io.to(targetId).emit(JK_EVENTS.JK_KICKED);
+      saveJKRoom(nid, room);
+      emitJKState(io, nid, room);
+    } catch (e) { console.error('JK KICK error', e); }
+  });
+
+  socket.on(JK_EVENTS.CHAT_MESSAGE, ({ text }) => {
+    try {
+      const nid = jkSocketRoomMap.get(socket.id);
+      if (!nid) return;
+      const room = getJKRoomFromCache(nid);
+      if (!room) return;
+      const player = room.players.find(p => p.id === socket.id);
+      if (!player) return;
+      io.to(nid).emit(JK_EVENTS.CHAT_BROADCAST, {
+        playerId: socket.id,
+        sender: player.name,
+        text: String(text || "").slice(0, 100),
+        ts: Date.now(),
+      });
+    } catch (err) { console.error('[JK CHAT_MESSAGE error]', err); }
+  });
+
+  socket.on('disconnect', async () => {
+    try {
+      const jkRoomId = jkSocketRoomMap.get(socket.id);
+      jkSocketRoomMap.delete(socket.id);
+      if (!jkRoomId) return;
+      let room = getJKRoomFromCache(jkRoomId) || await getJKRoom(jkRoomId);
+      if (!room) return;
+      const player = room.players.find(p => p.id === socket.id);
+      if (player) player.isConnected = false;
+      const anyConnected = room.players.some(p => p.isConnected);
+      if (!anyConnected) { room.emptySince = Date.now(); saveJKRoom(jkRoomId, room); return; }
+      if (room.hostId === socket.id) {
+        const newHostId = pickJKNewHost(room, socket.id);
+        if (newHostId) {
+          room = jkReducer(room, { type: 'JK_TRANSFER_HOST', payload: { newHostId } });
+          const nh = room.players.find(p => p.id === newHostId);
+          io.to(jkRoomId).emit(JK_EVENTS.JK_HOST_TRANSFERRED, { newHostId, newHostName: nh?.name || 'Unknown' });
+        }
+      }
+      saveJKRoom(jkRoomId, room);
+      emitJKState(io, jkRoomId, room);
+    } catch (err) { console.error('JK DISCONNECT error', err); }
+  });
+}
+

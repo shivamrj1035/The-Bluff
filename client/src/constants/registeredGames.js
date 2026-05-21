@@ -58,13 +58,14 @@ export const REGISTERED_GAMES = [
   {
     id: 'joker',
     title: 'Joker Game',
-    desc: 'Master the wild card!',
-    players: '2-4 Players',
+    desc: 'Old Maid style. Avoid the wildcard Joker!',
+    players: '2-6 Players',
     time: '20-40 min',
     image: '/joker_thumbnail.png',
-    accent: '#f59e0b',
+    accent: '#ef4444',
     category: 'Strategy',
-    isImplemented: false,
+    entryScreen: 'JK_ENTRY',
+    isImplemented: true,
   },
   {
     id: 'uno',
@@ -83,15 +84,15 @@ export const REGISTERED_GAMES = [
  * Helper to determine if a game should be playable.
  * A game is "Active" if it is both implemented and enabled by admin.
  */
+export const DEFAULT_ENABLED_GAMES = ['bluff', 'courtpiece', 'mendicoat', 'joker'];
+
 export const isGameActive = (gameId, enabledGames) => {
   const game = REGISTERED_GAMES.find(g => g.id === gameId);
   if (!game || !game.isImplemented) return false;
   
-  // If no settings yet, default to bluff
-  if (!enabledGames) return gameId === 'bluff';
+  if (!enabledGames || enabledGames.length === 0) {
+    return DEFAULT_ENABLED_GAMES.includes(gameId);
+  }
   
-  return enabledGames.includes(gameId);
+  return enabledGames.includes(gameId) || DEFAULT_ENABLED_GAMES.includes(gameId);
 };
-
-/** Default enabled games when no settings exist in DB yet */
-export const DEFAULT_ENABLED_GAMES = ['bluff'];

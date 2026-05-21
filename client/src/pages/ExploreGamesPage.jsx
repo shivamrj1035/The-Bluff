@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../games/bluff/store/useGameStore';
 import { useCPStore } from '../games/courtpiece/store/useCPStore';
 import { useMCStore } from '../games/mendicoat/store/useMCStore';
+import { useJKStore } from '../games/joker/store/useJKStore';
 import AuthDialog from '../components/common/AuthDialog';
 import AvatarDisplay from '../components/common/AvatarDisplay';
 import { REGISTERED_GAMES, isGameActive } from '../constants/registeredGames';
@@ -22,6 +23,7 @@ export default function ExploreGamesPage() {
   const { setScreen, playerName, avatar, user, profile, signOut, siteSettings, isAdmin } = useGameStore();
   const { setCPScreen } = useCPStore();
   const { setMCScreen } = useMCStore();
+  const { setJKScreen } = useJKStore();
   const [activeTab, setActiveTab] = useState('All Games');
   const [sortBy, setSortBy] = useState('Popular');
   const [isAuthOpen, setIsAuthOpen] = useState(false);
@@ -39,6 +41,7 @@ export default function ExploreGamesPage() {
     
     if (gameType === 'courtpiece') setCPScreen(screen);
     else if (gameType === 'mendicoat') setMCScreen(screen);
+    else if (gameType === 'joker') setJKScreen(screen);
     else setScreen(screen);
   };
 
@@ -47,10 +50,11 @@ export default function ExploreGamesPage() {
     
     if (pendingGameType === 'courtpiece') setCPScreen(pendingScreen);
     else if (pendingGameType === 'mendicoat') setMCScreen(pendingScreen);
+    else if (pendingGameType === 'joker') setJKScreen(pendingScreen);
     else setScreen(pendingScreen);
 
     setPendingScreen(null);
-  }, [pendingScreen, setScreen, setCPScreen, setMCScreen, user, pendingGameType]);
+  }, [pendingScreen, setScreen, setCPScreen, setMCScreen, setJKScreen, user, pendingGameType]);
 
   const tabs = ['All Games', 'Popular', 'Classic', 'Strategy', 'Party', 'Quick Play'];
 
@@ -236,6 +240,7 @@ export default function ExploreGamesPage() {
                 if (game.entryScreen === 'BLUFF_ENTRY') goToProtectedScreen('BLUFF_ENTRY', 'bluff');
                 else if (game.entryScreen === 'CP_ENTRY') goToProtectedScreen('CP_ENTRY', 'courtpiece');
                 else if (game.entryScreen === 'MC_ENTRY') goToProtectedScreen('MC_ENTRY', 'mendicoat');
+                else if (game.entryScreen === 'JK_ENTRY') goToProtectedScreen('JK_ENTRY', 'joker');
               }}
             >
               <div className="card-media">

@@ -11,10 +11,10 @@ toast.error   = (msg, dur) => toast(msg, 'error', dur);
 toast.info    = (msg, dur) => toast(msg, 'info', dur);
 
 const ICONS = { success: '✅', error: '❌', info: 'ℹ️' };
-const COLORS = {
-  success: 'border-green-500/40 text-green-300',
-  error:   'border-red-500/40 text-red-300',
-  info:    'border-cyan-500/40 text-cyan-300',
+const COLORS_STYLE = {
+  success: { borderColor: 'rgba(34, 197, 94, 0.4)', color: '#86efac' },
+  error:   { borderColor: 'rgba(239, 68, 68, 0.4)', color: '#fca5a5' },
+  info:    { borderColor: 'rgba(6, 182, 212, 0.4)', color: '#67e8f9' },
 };
 
 export function Toaster() {
@@ -33,7 +33,19 @@ export function Toaster() {
   }, [remove]);
 
   return (
-    <div className="fixed top-4 left-1/2 z-[999] flex flex-col gap-2" style={{ transform: 'translateX(-50%)', minWidth: '280px', maxWidth: '400px' }}>
+    <div style={{
+      position: 'fixed',
+      top: '16px',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      zIndex: 9999,
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '8px',
+      minWidth: '280px',
+      maxWidth: '400px',
+      pointerEvents: 'none',
+    }}>
       <AnimatePresence>
         {toasts.map(t => (
           <motion.div
@@ -43,11 +55,30 @@ export function Toaster() {
             exit={{ opacity: 0, scale: 0.9, y: -10 }}
             transition={{ type: 'spring', stiffness: 300, damping: 24 }}
             onClick={() => remove(t.id)}
-            className={`flex items-start gap-3 px-4 py-3 rounded-2xl cursor-pointer border ${COLORS[t.type]}`}
-            style={{ background: 'rgba(10,10,20,0.92)', backdropFilter: 'blur(20px)' }}
+            style={{
+              pointerEvents: 'auto',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '12px',
+              padding: '12px 16px',
+              borderRadius: '16px',
+              cursor: 'pointer',
+              borderWidth: '1px',
+              borderStyle: 'solid',
+              background: 'rgba(15, 10, 25, 0.95)',
+              backdropFilter: 'blur(20px)',
+              boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+              ...COLORS_STYLE[t.type]
+            }}
           >
-            <span className="text-lg shrink-0">{ICONS[t.type]}</span>
-            <p className="text-sm font-semibold text-white/90 leading-snug">{t.message}</p>
+            <span style={{ fontSize: '1.1rem', flexShrink: 0 }}>{ICONS[t.type]}</span>
+            <p style={{
+              margin: 0,
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              color: '#f8fafc',
+              lineHeight: 1.4
+            }}>{t.message}</p>
           </motion.div>
         ))}
       </AnimatePresence>
