@@ -170,9 +170,9 @@ export const useMCStore = create((set, get) => ({
   // Chat messages
   mcChatMessages: [],
 
-  mcAddBot: () => {
+  mcAddBot: (difficulty) => {
     const { mcSocket: s, mcRoomId } = get();
-    s?.emit('mc_add_bot', { roomId: mcRoomId });
+    s?.emit('mc_add_bot', { roomId: mcRoomId, difficulty });
   },
 
   mcCloseGame: () => {

@@ -19,6 +19,7 @@ export default function MCLobbyPage() {
 
   const [copied, setCopied] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
+  const [showBotDropdown, setShowBotDropdown] = useState(false);
 
   const myId    = mcGameState?.myId;
   const isHost  = Boolean(mcGameState && myId && mcGameState.hostId === myId);
@@ -139,6 +140,21 @@ export default function MCLobbyPage() {
                       <span style={{ fontWeight:700, fontSize:'0.9rem', color: p.isConnected ? '#e2e8f0' : '#4b5563', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                         {p.name} {isMe && <span style={{ color:'#fb923c', fontSize:'0.72rem' }}>(You)</span>}
                       </span>
+                      {p.isBot && (
+                        <span style={{
+                          fontSize: '0.62rem',
+                          fontWeight: 800,
+                          padding: '1px 5px',
+                          borderRadius: 4,
+                          background: p.difficulty === 'Expert' ? 'rgba(245,158,11,0.15)' : p.difficulty === 'Hard' ? 'rgba(167,139,250,0.15)' : p.difficulty === 'Medium' ? 'rgba(59,130,246,0.15)' : 'rgba(16,185,129,0.15)',
+                          color: p.difficulty === 'Expert' ? '#fb923c' : p.difficulty === 'Hard' ? '#a78bfa' : p.difficulty === 'Medium' ? '#60a5fa' : '#34d399',
+                          border: `1px solid ${p.difficulty === 'Expert' ? 'rgba(245,158,11,0.3)' : p.difficulty === 'Hard' ? 'rgba(167,139,250,0.3)' : p.difficulty === 'Medium' ? 'rgba(59,130,246,0.3)' : 'rgba(16,185,129,0.3)'}`,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.04em'
+                        }}>
+                          {p.difficulty || 'Expert'}
+                        </span>
+                      )}
                     </div>
                     <div style={{ fontSize:'0.65rem', fontWeight:800, color: teamColor, textTransform:'uppercase', letterSpacing:'0.08em' }}>
                       Team {team} {idx === 0 || idx === 1 ? '· Deals 13 cards' : ''}
@@ -200,17 +216,129 @@ export default function MCLobbyPage() {
           </button>
 
           {isHost && players.length < 4 && (
-            <motion.button
-              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-              onClick={mcAddBot}
-              style={{
-                padding:'11px', borderRadius:14, background:'rgba(59,130,246,0.1)',
-                border:'1px solid rgba(59,130,246,0.25)', color:'#60a5fa',
-                fontWeight:700, fontSize:'0.82rem', cursor:'pointer'
-              }}
-            >
-              🤖 Add Bot Player
-            </motion.button>
+            <div style={{ position: 'relative', width: '100%' }}>
+              <motion.button
+                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                onClick={() => setShowBotDropdown(!showBotDropdown)}
+                style={{
+                  width: '100%',
+                  padding:'11px', borderRadius:14, background:'rgba(59,130,246,0.1)',
+                  border:'1px solid rgba(59,130,246,0.25)', color:'#60a5fa',
+                  fontWeight:700, fontSize:'0.82rem', cursor:'pointer'
+                }}
+              >
+                🤖 Add Bot Player...
+              </motion.button>
+              
+              <AnimatePresence>
+                {showBotDropdown && (
+                  <>
+                    <div 
+                      onClick={() => setShowBotDropdown(false)} 
+                      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 998 }} 
+                    />
+                    
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 8 }}
+                      style={{
+                        position: 'absolute',
+                        bottom: '120%',
+                        left: 0,
+                        right: 0,
+                        zIndex: 999,
+                        background: 'rgba(15, 10, 35, 0.98)',
+                        backdropFilter: 'blur(12px)',
+                        border: '1px solid rgba(251, 146, 60, 0.3)',
+                        borderRadius: 16,
+                        boxShadow: '0 12px 32px rgba(0, 0, 0, 0.6)',
+                        padding: 10,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 6
+                      }}
+                    >
+                      {[
+                        { 
+                          name: 'Easy', 
+                          color: '#34d399', 
+                          bg: 'rgba(16,185,129,0.15)',
+                          border: 'rgba(16,185,129,0.3)',
+                          desc: 'Legal moves only. Plays simple lowest legal cards.' 
+                        },
+                        { 
+                          name: 'Medium', 
+                          color: '#60a5fa', 
+                          bg: 'rgba(59,130,246,0.15)',
+                          border: 'rgba(59,130,246,0.3)',
+                          desc: 'Conserves trump cards and avoids wasting high cards.' 
+                        },
+                        { 
+                          name: 'Hard', 
+                          color: '#a78bfa', 
+                          bg: 'rgba(167,139,250,0.15)',
+                          border: 'rgba(167,139,250,0.3)',
+                          desc: 'Tracks played Mendis, plays partner-aware, and plans endgame.' 
+                        },
+                        { 
+                          name: 'Expert', 
+                          color: '#fb923c', 
+                          bg: 'rgba(245,158,11,0.15)',
+                          border: 'rgba(245,158,11,0.3)',
+                          desc: 'Tracks played trumps & opponent void suits, uses Chase and Emergency modes.' 
+                        }
+                      ].map(lvl => (
+                        <div
+                          key={lvl.name}
+                          onClick={() => {
+                            mcAddBot(lvl.name);
+                            setShowBotDropdown(false);
+                          }}
+                          style={{
+                            padding: '8px 12px',
+                            borderRadius: 10,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'flex-start',
+                            background: 'rgba(255, 255, 255, 0.02)',
+                            border: '1px solid rgba(255, 255, 255, 0.03)',
+                            transition: 'all 0.2s ease',
+                            textAlign: 'left'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)';
+                            e.currentTarget.style.borderColor = 'rgba(251, 146, 60, 0.2)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)';
+                            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.03)';
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                            <span style={{ 
+                              fontSize: '0.62rem', 
+                              fontWeight: 800, 
+                              padding: '2px 6px', 
+                              borderRadius: 4, 
+                              background: lvl.bg,
+                              color: lvl.color,
+                              border: `1px solid ${lvl.border}`,
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.04em'
+                            }}>
+                              {lvl.name}
+                            </span>
+                          </div>
+                          <span style={{ fontSize: '0.72rem', color: '#9ca3af' }}>{lvl.desc}</span>
+                        </div>
+                      ))}
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
           )}
 
           {isHost ? (

@@ -98,6 +98,7 @@ function createMCRoom(roomId) {
     trumpSuit: null,
     trumpSelecterId: null,
     currentTrick: [],  // [{ playerId, card, team }]
+    tricksHistory: [], // [[{ playerId, card, team }, ...]]
     leadSuit: null,
     currentTurn: null,
     trickCount: 0,
@@ -136,6 +137,7 @@ function mcReducer(state, action) {
         trumpSelecterId,
         trumpSuit: null,
         currentTrick: [],
+        tricksHistory: [],
         leadSuit: null,
         currentTurn: null,
         trickCount: 0,
@@ -175,6 +177,7 @@ function mcReducer(state, action) {
         players: state.players.map(p => ({ ...p, cardCount: 13 })),
         currentTurn: state.trumpSelecterId,
         currentTrick: [],
+        tricksHistory: [],
         leadSuit: null,
         trickCount: 0,
         _pendingDeck: undefined,
@@ -227,9 +230,19 @@ function mcReducer(state, action) {
         const newTrickCount = state.trickCount + 1;
         console.log(`[MC REDUCER] Trick complete. Winner: ${trickWinnerId}. Mendis in trick: ${mendisInTrick}. Total Mendis - A: ${newTeams.A.mendis}, B: ${newTeams.B.mendis}`);
 
-        const isEarlyWinA = newTeams.A.mendis >= 3 || (newTeams.A.mendis === 2 && newTeams.B.mendis === 2 && newTeams.A.tricks > 6);
-        const isEarlyWinB = newTeams.B.mendis >= 3 || (newTeams.A.mendis === 2 && newTeams.B.mendis === 2 && newTeams.B.tricks > 6);
+        // Rule 1: Both teams have exactly 2 mendis, and one team has > 6 tricks.
+        const isTieMendisWinA = newTeams.A.mendis === 2 && newTeams.B.mendis === 2 && newTeams.A.tricks > 6;
+        const isTieMendisWinB = newTeams.A.mendis === 2 && newTeams.B.mendis === 2 && newTeams.B.tricks > 6;
+
+        // Rule 2: One team has 2 mendis, the other has less than 2, and the team with 2 mendis has > 6 tricks.
+        const isMendisTricksWinA = newTeams.A.mendis === 2 && newTeams.B.mendis < 2 && newTeams.A.tricks > 6;
+        const isMendisTricksWinB = newTeams.B.mendis === 2 && newTeams.A.mendis < 2 && newTeams.B.tricks > 6;
+
+        const isEarlyWinA = newTeams.A.mendis >= 3 || isTieMendisWinA || isMendisTricksWinA;
+        const isEarlyWinB = newTeams.B.mendis >= 3 || isTieMendisWinB || isMendisTricksWinB;
         const _isRoundOver = newTrickCount === 13 || isEarlyWinA || isEarlyWinB;
+
+        const newTricksHistory = [...(state.tricksHistory || []), newTrick];
 
         return {
           ...state,
@@ -237,6 +250,7 @@ function mcReducer(state, action) {
           hands: newHands,
           players,
           currentTrick: newTrick,
+          tricksHistory: newTricksHistory,
           teams: newTeams,
           trickCount: newTrickCount,
           leadSuit: newLeadSuit,
@@ -342,6 +356,7 @@ function mcReducer(state, action) {
         trumpSuit: null,
         trumpSelecterId: null,
         currentTrick: [],
+        tricksHistory: [],
         leadSuit: null,
         currentTurn: null,
         trickCount: 0,

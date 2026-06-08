@@ -1633,7 +1633,7 @@ function emitMCState(io, roomId, room) {
           if (!r || r.state !== MC_GAME_STATES.PLAYING) return;
           r._botTimeoutPending = false;
           const botHand = r.hands[r.currentTurn] || [];
-          const card = getMCBotPlayCard(botHand, r.currentTrick, r.trumpSuit, r.leadSuit, r.currentTurn, r.players);
+          const card = getMCBotPlayCard(botHand, r.currentTrick, r.trumpSuit, r.leadSuit, r.currentTurn, r.players, r);
           console.log(`[MC DEBUG] Room ${roomId}: Bot ${turnPlayer.name} playing ${card}.`);
           r = mcReducer(r, { type: 'MC_PLAY_CARD', playerId: r.currentTurn, payload: { card } });
           saveMCRoom(roomId, r);
@@ -1771,16 +1771,25 @@ function setupMendiCoatHandlers(io, socket) {
     } catch (e) { console.error('MC REDEAL error', e); }
   });
 
-  socket.on(MC_EVENTS.MC_ADD_BOT, () => {
+  socket.on(MC_EVENTS.MC_ADD_BOT, (payload) => {
     try {
       const nid = mcSocketRoomMap.get(socket.id);
       if (!nid) return;
       let room = getMCRoomFromCache(nid);
       if (!room || room.hostId !== socket.id || room.state !== MC_GAME_STATES.WAITING) return;
       if (room.players.length >= 4) return;
+      const difficulty = payload?.difficulty || 'Expert';
       const botNames = ['AlphaBot', 'BetaBot', 'GammaBot', 'DeltaBot'];
       const botName = botNames[room.players.length] || `Bot_${Math.floor(Math.random()*1000)}`;
-      room.players.push({ id: `bot_${Date.now()}`, name: botName, avatar: 'B', isBot: true, isConnected: true, cardCount: 0 });
+      room.players.push({
+        id: `bot_${Date.now()}`,
+        name: botName,
+        avatar: 'B',
+        isBot: true,
+        isConnected: true,
+        cardCount: 0,
+        difficulty
+      });
       saveMCRoom(nid, room);
       emitMCState(io, nid, room);
     } catch (e) { console.error('MC BOT error', e); }
