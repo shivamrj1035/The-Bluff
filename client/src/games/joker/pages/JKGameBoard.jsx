@@ -59,6 +59,7 @@ export default function JKGameBoard() {
     jkChatMessages,
     jkSocket,
     jkLeaveRoom,
+    jkSendChat,
   } = useJKStore();
 
   const { w } = useWindowSize();
@@ -935,7 +936,7 @@ export default function JKGameBoard() {
 
       {/* Floating Chat Bubble */}
       <div style={{ position: 'fixed', bottom: isMobile ? 12 : 24, right: isMobile ? 12 : 24, zIndex: 1000 }}>
-        <ChatInput roomId={jkRoomId} socket={jkSocket} mode="compact" />
+        <ChatInput roomId={jkRoomId} socket={jkSocket} mode="compact" onSend={jkSendChat} />
       </div>
 
       <style>{`

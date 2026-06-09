@@ -4,6 +4,7 @@ import { useGameStore } from '../store/useGameStore';
 import { toast } from '../../../components/common/Toast';
 import Avatar from '../../../components/common/Icons';
 import ChatInput from '../../../components/common/ChatInput';
+import ChatBubble from '../../../components/common/ChatBubble';
 import AvatarDisplay from '../../../components/common/AvatarDisplay';
 
 const css = `
@@ -115,6 +116,7 @@ export default function LobbyPage() {
     gameState, startGame, roomId, disconnect, kickPlayer,
     reorderPlayers, hostTransferredName, hostTransferredId,
     chatMessages, playerName, avatar, addBot, playerId,
+    sendChat,
   } = useGameStore();
   const [copied, setCopied] = useState(false);
   const prevHostTransfer = useRef(null);
@@ -253,43 +255,53 @@ export default function LobbyPage() {
             </div>
             <div className="player-list">
               <AnimatePresence>
-                {players.map((p, i) => (
-                  <motion.div
-                    key={p.id}
-                    layout
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 10 }}
-                    className={`p-row${p.id === myId ? ' me' : ''}`}
-                  >
-                    <div className={`p-num${i === 0 ? ' first' : ''}`}>{i + 1}</div>
-                    <AvatarDisplay avatarId={p.avatar} playerName={p.name} size={30} animated={true} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div className="p-name">{p.name.toUpperCase()}</div>
-                      <div className="p-badges">
-                        {gameState.hostId === p.id && <span className="badge badge-host">👑 HOST</span>}
-                        {i === 0 && <span className="badge badge-first">GOES FIRST</span>}
-                        {p.id === myId && <span className="badge badge-you">(YOU)</span>}
-                        {p.isBot && <span className="badge" style={{ color: '#22d3ee' }}>🤖 BOT</span>}
-                        {!p.isConnected && !p.isBot && <span className="badge badge-dc">DISCONNECTED</span>}
+                {players.map((p, i) => {
+                  const chatMsg = chatMessages?.find(m => m.senderId === p.id);
+                  const isMe = p.id === myId;
+                  return (
+                    <motion.div
+                      key={p.id}
+                      layout
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 10 }}
+                      className={`p-row${p.id === myId ? ' me' : ''}`}
+                      style={{ position: 'relative' }}
+                    >
+                      {chatMsg && (
+                        <div style={{ position: 'absolute', bottom: '100%', left: 50, zIndex: 20, marginBottom: 6, pointerEvents: 'none' }}>
+                          <ChatBubble message={chatMsg.message} isMe={isMe} />
+                        </div>
+                      )}
+                      <div className={`p-num${i === 0 ? ' first' : ''}`}>{i + 1}</div>
+                      <AvatarDisplay avatarId={p.avatar} playerName={p.name} size={30} animated={true} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="p-name">{p.name.toUpperCase()}</div>
+                        <div className="p-badges">
+                          {gameState.hostId === p.id && <span className="badge badge-host">👑 HOST</span>}
+                          {i === 0 && <span className="badge badge-first">GOES FIRST</span>}
+                          {p.id === myId && <span className="badge badge-you">(YOU)</span>}
+                          {p.isBot && <span className="badge" style={{ color: '#22d3ee' }}>🤖 BOT</span>}
+                          {!p.isConnected && !p.isBot && <span className="badge badge-dc">DISCONNECTED</span>}
+                        </div>
                       </div>
-                    </div>
-                    {isHost && (
-                      <div className="p-reorder">
-                        <button className="reorder-btn" onClick={() => movePlayer(i, -1)} disabled={i === 0}>▲</button>
-                        <button className="reorder-btn" onClick={() => movePlayer(i, 1)} disabled={i === players.length - 1}>▼</button>
-                      </div>
-                    )}
-                    {isHost && p.id !== myId && (
-                      <button className="kick-btn" onClick={() => kickPlayer(p.id)}>KICK</button>
-                    )}
-                    <div className="dot-live" />
-                  </motion.div>
-                ))}
+                      {isHost && (
+                        <div className="p-reorder">
+                          <button className="reorder-btn" onClick={() => movePlayer(i, -1)} disabled={i === 0}>▲</button>
+                          <button className="reorder-btn" onClick={() => movePlayer(i, 1)} disabled={i === players.length - 1}>▼</button>
+                        </div>
+                      )}
+                      {isHost && p.id !== myId && (
+                        <button className="kick-btn" onClick={() => kickPlayer(p.id)}>KICK</button>
+                      )}
+                      <div className="dot-live" />
+                    </motion.div>
+                  );
+                })}
               </AnimatePresence>
             </div>
             <div className="chat-row">
-              <ChatInput compact={true} />
+              <ChatInput compact={true} onSend={sendChat} />
             </div>
           </div>
 

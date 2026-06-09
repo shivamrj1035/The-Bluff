@@ -1832,6 +1832,26 @@ function setupMendiCoatHandlers(io, socket) {
     } catch (e) { console.error('MC REORDER error', e); }
   });
 
+  // ── CHAT MESSAGE ────────────────────────────────────────────────────────
+  socket.on(MC_EVENTS.CHAT_MESSAGE, ({ roomId, message }) => {
+    try {
+      const nid = normalizeId(roomId);
+      const room = getMCRoomFromCache(nid);
+      if (!room) return;
+      const player = room.players.find(p => p.id === socket.id);
+      if (!player) return;
+      const text = String(message || '').trim().slice(0, 120);
+      if (!text) return;
+      io.to(nid).emit(MC_EVENTS.CHAT_BROADCAST, {
+        senderId: socket.id,
+        senderName: player.name,
+        message: text,
+        ts: Date.now(),
+      });
+      console.log(`[MC CHAT] ${player.name} in ${nid}: "${text}"`);
+    } catch (err) { console.error('[MC CHAT_MESSAGE error]', err); }
+  });
+
   socket.on('disconnect', async () => {
     try {
       const mcRoomId = mcSocketRoomMap.get(socket.id);
@@ -2305,6 +2325,7 @@ function setupJKHandlers(io, socket) {
       io.to(nid).emit(JK_EVENTS.CHAT_BROADCAST, {
         playerId: socket.id,
         sender: player.name,
+        senderName: player.name,
         text: String(text || "").slice(0, 100),
         ts: Date.now(),
       });

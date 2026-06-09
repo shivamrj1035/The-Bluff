@@ -169,6 +169,7 @@ export default function GameBoard() {
     gameState, playerId, bluffToast,
     selectedCards, toggleCard, playCards, callBluff, pickBluffCard, selectBluffCard,
     passTurn, kickPlayer, restartGame, closeGame, disconnect, chatMessages,
+    sendChat,
   } = useGameStore();
 
   const getMsgs = (pid) => chatMessages.filter(m => m.senderId === pid);
@@ -1096,7 +1097,7 @@ export default function GameBoard() {
                 </button>
               )}
 
-              {!isEnded && <ChatInput compact={true} />}
+              {!isEnded && <ChatInput compact={true} onSend={sendChat} />}
             </div>
           </div>
         </div>
@@ -1105,7 +1106,7 @@ export default function GameBoard() {
       {/* ── Floating Chat Input on portrait mobile ── */}
       {isPortrait && !isEnded && (
         <div style={{ position: 'fixed', bottom: 12, right: 12, zIndex: 1000 }}>
-          <ChatInput compact={true} />
+          <ChatInput compact={true} onSend={sendChat} />
         </div>
       )}
 

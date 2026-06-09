@@ -203,7 +203,7 @@ export default function MCLobbyPage() {
 
         {/* Chat */}
         <div style={{ padding:'16px 20px 0' }}>
-          <ChatInput roomId={mcRoomId} socket={mcSocket} mode="inline" />
+          <ChatInput roomId={mcRoomId} socket={mcSocket} mode="inline" onSend={mcSendChat} />
         </div>
 
         {/* Invite + Start */}

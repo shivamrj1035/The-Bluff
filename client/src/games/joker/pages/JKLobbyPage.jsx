@@ -210,7 +210,7 @@ export default function JKLobbyPage() {
 
         {/* Chat */}
         <div style={{ padding:'16px 20px 0' }}>
-          <ChatInput roomId={jkRoomId} socket={jkSocket} mode="inline" />
+          <ChatInput roomId={jkRoomId} socket={jkSocket} mode="inline" onSend={jkSendChat} />
         </div>
 
         {/* Invite + Start */}

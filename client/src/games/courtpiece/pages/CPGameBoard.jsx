@@ -581,7 +581,7 @@ export default function CPGameBoard() {
 
       {/* Floating Chat Bubble */}
       <div style={{ position: 'fixed', bottom: isMobile ? 12 : 24, right: isMobile ? 12 : 24, zIndex: 1000 }}>
-        <ChatInput roomId={cpRoomId} socket={cpSocket} mode="compact" />
+        <ChatInput roomId={cpRoomId} socket={cpSocket} mode="compact" onSend={cpSendChat} />
       </div>
 
       <style>{`

@@ -188,7 +188,7 @@ export default function CPLobbyPage() {
 
         {/* Chat */}
         <div style={{ padding:'16px 20px 0' }}>
-          <ChatInput roomId={cpRoomId} socket={cpSocket} mode="inline" />
+          <ChatInput roomId={cpRoomId} socket={cpSocket} mode="inline" onSend={cpSendChat} />
         </div>
 
         {/* Invite + Start */}

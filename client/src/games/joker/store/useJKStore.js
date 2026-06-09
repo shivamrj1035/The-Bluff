@@ -185,7 +185,7 @@ export const useJKStore = create((set, get) => ({
     set({ jkStatus: 'IDLE', jkRoomId: '', jkGameState: null });
   },
 
-  jkSendMessage: (text) => {
+  jkSendChat: (text) => {
     const { jkSocket: s } = get();
     s?.emit('chat_message', { text });
   },
