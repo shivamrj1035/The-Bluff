@@ -144,9 +144,9 @@ export const useCPStore = create((set, get) => ({
     s?.emit('cp_start_game', { roomId: cpRoomId });
   },
 
-  cpReshuffle: () => {
+  cpRestart: () => {
     const { cpSocket: s, cpRoomId } = get();
-    s?.emit('cp_reshuffle', { roomId: cpRoomId });
+    s?.emit('cp_restart', { roomId: cpRoomId });
   },
 
   cpSelectTrump: (suit) => {

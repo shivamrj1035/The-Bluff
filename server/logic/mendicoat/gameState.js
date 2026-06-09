@@ -154,7 +154,7 @@ function mcReducer(state, action) {
       };
     }
 
-    case 'MC_RESHUFFLE': {
+    case 'MC_RESTART': {
       const dealerIdx = state.dealerIdx !== undefined ? state.dealerIdx : 0;
       // Pick a random player to be the trump selector
       const trumpSelecterIdx = Math.floor(Math.random() * 4);
@@ -178,8 +178,8 @@ function mcReducer(state, action) {
         trickCount: 0,
         redealCount: 0,
         teams: {
-          A: { tricks: 0, mendis: 0, coats: state.teams.A.coats },
-          B: { tricks: 0, mendis: 0, coats: state.teams.B.coats },
+          A: { tricks: 0, mendis: 0, coats: 0 },
+          B: { tricks: 0, mendis: 0, coats: 0 },
         },
         roundWinner: null,
         matchWinner: null,

@@ -172,7 +172,7 @@ function cpReducer(state, action) {
       };
     }
 
-    case 'CP_RESHUFFLE': {
+    case 'CP_RESTART': {
       const dealerIdx = state.dealerIdx !== undefined ? state.dealerIdx : 0;
       
       // Pick a random player to be the trump selector
@@ -197,8 +197,8 @@ function cpReducer(state, action) {
         trickCount: 0,
         redealCount: 0,
         teams: {
-          A: { tricks: 0, coats: state.teams.A.coats },
-          B: { tricks: 0, coats: state.teams.B.coats },
+          A: { tricks: 0, coats: 0 },
+          B: { tricks: 0, coats: 0 },
         },
         roundWinner: null,
         matchWinner: null,

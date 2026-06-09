@@ -27,13 +27,14 @@ export default function MCGameBoard() {
   const {
     mcGameState: gs, mcRoomId, mcSelectedCard, mcSetSelectedCard,
     mcPlayCard, mcSelectTrump, mcRestartGame,
-    mcChatMessages, mcSocket, mcDisconnect, mcSendChat, mcReshuffle,
+    mcChatMessages, mcSocket, mcDisconnect, mcSendChat, mcRestart, mcCloseGame,
   } = useMCStore();
 
   const { w } = useWindowSize();
   const isMobile = w < 640;
 
   const [scoreOpen, setScoreOpen] = useState(false);
+  const [restartModalOpen, setRestartModalOpen] = useState(false);
 
   if (!gs) {
     return (
@@ -263,19 +264,16 @@ export default function MCGameBoard() {
             <motion.button
               whileHover={{ scale: 1.04, boxShadow: '0 6px 20px rgba(245, 158, 11, 0.35)' }}
               whileTap={{ scale: 0.96 }}
-              onClick={mcReshuffle}
+              onClick={() => setRestartModalOpen(true)}
               style={{
                 background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.22) 0%, rgba(217, 119, 6, 0.12) 100%)',
                 border: '1px solid rgba(245, 158, 11, 0.45)',
                 color: '#fbbf24',
-                padding: isMobile ? '5px 12px' : '7px 18px',
+                padding: isMobile ? '5px 14px' : '7px 22px',
                 borderRadius: 12,
                 fontSize: '0.75rem',
                 fontWeight: 800,
                 cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
                 fontFamily: "'Inter', sans-serif",
                 textShadow: '0 0 8px rgba(245, 158, 11, 0.3)',
                 boxShadow: '0 4px 12px rgba(245, 158, 11, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
@@ -284,15 +282,7 @@ export default function MCGameBoard() {
                 transition: 'border-color 0.2s, background 0.2s'
               }}
             >
-              <motion.span 
-                animate={{ rotate: 0 }}
-                whileHover={{ rotate: 180 }}
-                transition={{ duration: 0.4, ease: "easeInOut" }}
-                style={{ display: 'inline-block' }}
-              >
-                🔄
-              </motion.span>
-              <span>Reshuffle</span>
+              Restart
             </motion.button>
           )}
           {/* Mobile: score toggle button */}
@@ -498,6 +488,133 @@ export default function MCGameBoard() {
       <div style={{ position: 'fixed', bottom: isMobile ? 12 : 24, right: isMobile ? 12 : 24, zIndex: 1000 }}>
         <ChatInput mode="compact" onSend={mcSendChat} />
       </div>
+
+      {/* ── CUSTOM RESTART DIALOG MODAL ── */}
+      <AnimatePresence>
+        {restartModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 2000,
+              background: 'rgba(5, 2, 12, 0.75)',
+              backdropFilter: 'blur(12px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 20
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              style={{
+                width: 'min(100%, 420px)',
+                background: 'rgba(17, 12, 28, 0.95)',
+                borderRadius: 24,
+                border: '1px solid rgba(245, 158, 11, 0.2)',
+                padding: '32px 28px',
+                textAlign: 'center',
+                boxShadow: '0 30px 80px rgba(0, 0, 0, 0.8), 0 0 40px rgba(245, 158, 11, 0.05)',
+              }}
+            >
+              <h3 style={{ 
+                fontSize: '1.4rem', 
+                fontWeight: 900, 
+                color: '#fff', 
+                margin: '0 0 12px',
+                letterSpacing: '-0.02em',
+                fontFamily: "'Inter', sans-serif"
+              }}>
+                Restart Game
+              </h3>
+              <p style={{ 
+                fontSize: '0.875rem', 
+                color: '#94a3b8', 
+                lineHeight: 1.6, 
+                margin: '0 0 28px',
+                padding: '0 10px'
+              }}>
+                Would you like to change the team members or start a new game with the same teams?
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <motion.button
+                  whileHover={{ scale: 1.02, boxShadow: '0 6px 20px rgba(124, 58, 237, 0.35)' }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    setRestartModalOpen(false);
+                    mcCloseGame();
+                  }}
+                  style={{
+                    width: '100%',
+                    background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '14px',
+                    borderRadius: 14,
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    fontSize: '0.9rem',
+                    boxShadow: '0 4px 15px rgba(124, 58, 237, 0.2)',
+                    transition: 'box-shadow 0.2s'
+                  }}
+                >
+                  Yes, Change Teams
+                </motion.button>
+
+                <motion.button
+                  whileHover={{ scale: 1.02, boxShadow: '0 6px 20px rgba(245, 158, 11, 0.35)' }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    setRestartModalOpen(false);
+                    mcRestart();
+                  }}
+                  style={{
+                    width: '100%',
+                    background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                    color: '#000',
+                    border: 'none',
+                    padding: '14px',
+                    borderRadius: 14,
+                    fontWeight: 900,
+                    cursor: 'pointer',
+                    fontSize: '0.9rem',
+                    boxShadow: '0 4px 15px rgba(245, 158, 11, 0.2)',
+                    transition: 'box-shadow 0.2s'
+                  }}
+                >
+                  No, Continue Same Teams
+                </motion.button>
+
+                <motion.button
+                  whileHover={{ background: 'rgba(255, 255, 255, 0.05)', color: '#fff' }}
+                  onClick={() => setRestartModalOpen(false)}
+                  style={{
+                    width: '100%',
+                    background: 'transparent',
+                    color: '#64748b',
+                    border: '1px solid rgba(255, 255, 255, 0.05)',
+                    padding: '12px',
+                    borderRadius: 14,
+                    cursor: 'pointer',
+                    fontSize: '0.85rem',
+                    fontWeight: 700,
+                    marginTop: 6,
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  Cancel
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
