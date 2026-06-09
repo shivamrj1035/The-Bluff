@@ -33,6 +33,7 @@ const CP_EVENTS = {
   CP_LEAVE_ROOM:      'cp_leave_room',
   CP_REORDER_PLAYERS: 'cp_reorder_players',
   CP_ADD_BOT:         'cp_add_bot',
+  CP_RESHUFFLE:       'cp_reshuffle',
   CHAT_MESSAGE:       'chat_message',
 
   // Server → Client

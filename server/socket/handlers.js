@@ -1271,6 +1271,27 @@ function setupCPHandlers(io, socket) {
     } catch (err) { console.error('[CP START_GAME error]', err); }
   });
 
+  socket.on(CP_EVENTS.CP_RESHUFFLE, async ({ roomId }) => {
+    try {
+      const nid = normalizeId(roomId);
+      let room = await getCPRoom(nid);
+      if (!room || room.hostId !== socket.id) return;
+      if (room.state !== CP_GAME_STATES.PLAYING || room.trickCount !== 0 || room.currentTrick.length !== 0) {
+        socket.emit(CP_EVENTS.CP_ERROR, { message: 'Cannot reshuffle after the game has begun.' });
+        return;
+      }
+      room = cpReducer(room, { type: 'CP_RESHUFFLE' });
+      saveCPRoom(nid, room);
+      emitCPState(io, nid, room);
+      io.to(nid).emit(CP_EVENTS.CHAT_BROADCAST, {
+        senderId: 'system',
+        senderName: 'System',
+        message: 'The host has reshuffled the cards.',
+        ts: Date.now(),
+      });
+    } catch (err) { console.error('[CP RESHUFFLE error]', err); }
+  });
+
   socket.on(CP_EVENTS.CP_SELECT_TRUMP, async ({ roomId, suit }) => {
     try {
       const nid = normalizeId(roomId);
@@ -1730,6 +1751,28 @@ function setupMendiCoatHandlers(io, socket) {
       saveMCRoom(nid, room);
       emitMCState(io, nid, room);
     } catch (e) { console.error('MC START error', e); }
+  });
+
+  socket.on(MC_EVENTS.MC_RESHUFFLE, () => {
+    try {
+      const nid = mcSocketRoomMap.get(socket.id);
+      if (!nid) return;
+      let room = getMCRoomFromCache(nid);
+      if (!room || room.hostId !== socket.id) return;
+      if (room.state !== MC_GAME_STATES.PLAYING || room.trickCount !== 0 || room.currentTrick.length !== 0) {
+        socket.emit(MC_EVENTS.MC_ERROR, { message: 'Cannot reshuffle after the game has begun.' });
+        return;
+      }
+      room = mcReducer(room, { type: 'MC_RESHUFFLE' });
+      saveMCRoom(nid, room);
+      emitMCState(io, nid, room);
+      io.to(nid).emit(MC_EVENTS.CHAT_BROADCAST, {
+        senderId: 'system',
+        senderName: 'System',
+        message: 'The host has reshuffled the cards.',
+        ts: Date.now(),
+      });
+    } catch (e) { console.error('MC RESHUFFLE error', e); }
   });
 
   socket.on(MC_EVENTS.MC_SELECT_TRUMP, (payload) => {

@@ -144,6 +144,11 @@ export const useMCStore = create((set, get) => ({
     s?.emit('mc_start_game', { roomId: mcRoomId });
   },
 
+  mcReshuffle: () => {
+    const { mcSocket: s, mcRoomId } = get();
+    s?.emit('mc_reshuffle', { roomId: mcRoomId });
+  },
+
   mcSelectTrump: (suit) => {
     const { mcSocket: s, mcRoomId } = get();
     s?.emit('mc_select_trump', { roomId: mcRoomId, suit });

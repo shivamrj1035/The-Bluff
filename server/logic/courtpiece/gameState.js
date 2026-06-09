@@ -140,8 +140,43 @@ function cpReducer(state, action) {
       // Setup first dealer (or use existing dealerIdx if starting next hand)
       const dealerIdx = state.dealerIdx !== undefined ? state.dealerIdx : 0;
       
-      // Trump caller is next player in turn order after dealer
-      const trumpSelecterIdx = (dealerIdx + 1) % 4;
+      // Pick a random player to be the trump selector
+      const trumpSelecterIdx = Math.floor(Math.random() * 4);
+      const trumpSelecterId = state.players[trumpSelecterIdx].id;
+
+      const deck = shuffleDeck(createDeck());
+      // 5-4-4 Deal: Stage 1 - 5 cards to caller only
+      const { hands, reserved } = dealCards(trumpSelecterId, state.players, deck);
+
+      return {
+        ...state,
+        state: CP_GAME_STATES.TRUMP_SELECTION,
+        dealerIdx,
+        players: state.players.map(p => ({ ...p, cardCount: p.id === trumpSelecterId ? 5 : 0 })),
+        hands,
+        trumpSelecterId,
+        trumpSuit: null,
+        currentTrick: [],
+        leadSuit: null,
+        currentTurn: null,
+        trickCount: 0,
+        redealCount: 0,
+        teams: {
+          A: { tricks: 0, coats: state.teams.A.coats },
+          B: { tricks: 0, coats: state.teams.B.coats },
+        },
+        roundWinner: null,
+        matchWinner: null,
+        _pendingDeck: reserved,
+        turnStartTime: Date.now(),
+      };
+    }
+
+    case 'CP_RESHUFFLE': {
+      const dealerIdx = state.dealerIdx !== undefined ? state.dealerIdx : 0;
+      
+      // Pick a random player to be the trump selector
+      const trumpSelecterIdx = Math.floor(Math.random() * 4);
       const trumpSelecterId = state.players[trumpSelecterIdx].id;
 
       const deck = shuffleDeck(createDeck());

@@ -37,6 +37,7 @@ export default function CPGameBoard() {
     cpChatMessages,
     cpSocket,
     cpDisconnect,
+    cpReshuffle,
   } = useCPStore();
 
   const { w } = useWindowSize();
@@ -285,6 +286,42 @@ export default function CPGameBoard() {
         </div>
 
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {isHost && gs.state === 'PLAYING' && gs.trickCount === 0 && (!gs.currentTrick || gs.currentTrick.length === 0) && (
+            <motion.button
+              whileHover={{ scale: 1.04, boxShadow: '0 6px 20px rgba(245, 158, 11, 0.35)' }}
+              whileTap={{ scale: 0.96 }}
+              onClick={cpReshuffle}
+              style={{
+                background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.22) 0%, rgba(217, 119, 6, 0.12) 100%)',
+                border: '1px solid rgba(245, 158, 11, 0.45)',
+                color: '#fbbf24',
+                padding: isMobile ? '5px 12px' : '7px 18px',
+                borderRadius: 12,
+                fontSize: '0.75rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                fontFamily: "'Inter', sans-serif",
+                textShadow: '0 0 8px rgba(245, 158, 11, 0.3)',
+                boxShadow: '0 4px 12px rgba(245, 158, 11, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+                backdropFilter: 'blur(8px)',
+                letterSpacing: '0.03em',
+                transition: 'border-color 0.2s, background 0.2s'
+              }}
+            >
+              <motion.span 
+                animate={{ rotate: 0 }}
+                whileHover={{ rotate: 180 }}
+                transition={{ duration: 0.4, ease: "easeInOut" }}
+                style={{ display: 'inline-block' }}
+              >
+                🔄
+              </motion.span>
+              <span>Reshuffle</span>
+            </motion.button>
+          )}
           {isMobile && (
             <button onClick={() => setScoreOpen(o => !o)} style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', color: '#f59e0b', padding: '5px 10px', borderRadius: 8, fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer' }}>
               {scoreOpen ? 'Hide' : 'Score'}

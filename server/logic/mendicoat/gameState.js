@@ -122,7 +122,42 @@ function mcReducer(state, action) {
     // ── START GAME ─────────────────────────────────────────────────────────
     case 'MC_START_GAME': {
       const dealerIdx = state.dealerIdx !== undefined ? state.dealerIdx : 0;
-      const trumpSelecterIdx = (dealerIdx + 1) % 4;
+      // Pick a random player to be the trump selector
+      const trumpSelecterIdx = Math.floor(Math.random() * 4);
+      const trumpSelecterId = state.players[trumpSelecterIdx].id;
+
+      const deck = shuffleDeck(createDeck());
+      const { hands, reserved } = dealCards(trumpSelecterId, state.players, deck);
+
+      return {
+        ...state,
+        state: MC_GAME_STATES.TRUMP_SELECTION,
+        dealerIdx,
+        players: state.players.map(p => ({ ...p, cardCount: p.id === trumpSelecterId ? 5 : 0 })),
+        hands,
+        trumpSelecterId,
+        trumpSuit: null,
+        currentTrick: [],
+        tricksHistory: [],
+        leadSuit: null,
+        currentTurn: null,
+        trickCount: 0,
+        redealCount: 0,
+        teams: {
+          A: { tricks: 0, mendis: 0, coats: state.teams.A.coats },
+          B: { tricks: 0, mendis: 0, coats: state.teams.B.coats },
+        },
+        roundWinner: null,
+        matchWinner: null,
+        _pendingDeck: reserved,
+        turnStartTime: Date.now(),
+      };
+    }
+
+    case 'MC_RESHUFFLE': {
+      const dealerIdx = state.dealerIdx !== undefined ? state.dealerIdx : 0;
+      // Pick a random player to be the trump selector
+      const trumpSelecterIdx = Math.floor(Math.random() * 4);
       const trumpSelecterId = state.players[trumpSelecterIdx].id;
 
       const deck = shuffleDeck(createDeck());

@@ -31,6 +31,7 @@ const MC_EVENTS = {
   MC_LEAVE_ROOM:      'mc_leave_room',
   MC_REORDER_PLAYERS: 'mc_reorder_players',
   MC_ADD_BOT:         'mc_add_bot',
+  MC_RESHUFFLE:       'mc_reshuffle',
   CHAT_MESSAGE:       'chat_message',
 
   MC_GAME_STATE:       'mc_game_state',
