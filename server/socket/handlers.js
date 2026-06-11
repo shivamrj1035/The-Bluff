@@ -1417,9 +1417,14 @@ function setupCPHandlers(io, socket) {
       const nid = normalizeId(roomId);
       let room = await getCPRoom(nid);
       if (!room || room.hostId !== socket.id) return;
-      // Full match reset (coats too)
-      room = cpReducer(room, { type: 'CP_RESET_TO_LOBBY' });
-      room.teams = { A: { tricks: 0, coats: 0 }, B: { tricks: 0, coats: 0 } };
+      if (room.state === CP_GAME_STATES.ROUND_END) {
+        // Start next round of the same match (keep coats)
+        room = cpReducer(room, { type: 'CP_START_GAME', playerId: socket.id });
+      } else {
+        // Full match reset (coats too)
+        room = cpReducer(room, { type: 'CP_RESET_TO_LOBBY' });
+        room.teams = { A: { tricks: 0, coats: 0 }, B: { tricks: 0, coats: 0 } };
+      }
       saveCPRoom(nid, room);
       emitCPState(io, nid, room);
     } catch (err) { console.error('[CP RESTART_GAME error]', err); }

@@ -77,6 +77,21 @@ function handleRedeal(state) {
   };
 }
 
+function pickTrumpSelector(players, roundWinner) {
+  if (!players || players.length < 4) {
+    return players && players[0] ? players[0].id : null;
+  }
+  let idx;
+  if (roundWinner === 'A') {
+    idx = Math.random() < 0.5 ? 0 : 2;
+  } else if (roundWinner === 'B') {
+    idx = Math.random() < 0.5 ? 1 : 3;
+  } else {
+    idx = Math.floor(Math.random() * 4);
+  }
+  return players[idx].id;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  ROOM & REDUCER
 // ─────────────────────────────────────────────────────────────────────────────
@@ -122,9 +137,8 @@ function mcReducer(state, action) {
     // ── START GAME ─────────────────────────────────────────────────────────
     case 'MC_START_GAME': {
       const dealerIdx = state.dealerIdx !== undefined ? state.dealerIdx : 0;
-      // Pick a random player to be the trump selector
-      const trumpSelecterIdx = Math.floor(Math.random() * 4);
-      const trumpSelecterId = state.players[trumpSelecterIdx].id;
+      // Pick the trump selector (randomly from the winning team if a game was played)
+      const trumpSelecterId = pickTrumpSelector(state.players, state.roundWinner);
 
       const deck = shuffleDeck(createDeck());
       const { hands, reserved } = dealCards(trumpSelecterId, state.players, deck);
